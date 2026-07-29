@@ -24,13 +24,20 @@ import { Route as AuthenticatedTasksRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedStudyRouteImport } from './routes/_authenticated/study'
 import { Route as AuthenticatedStatisticsRouteImport } from './routes/_authenticated/statistics'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedProgressRouteImport } from './routes/_authenticated/progress'
 import { Route as AuthenticatedProductivityRouteImport } from './routes/_authenticated/productivity'
+import { Route as AuthenticatedPracticeRouteImport } from './routes/_authenticated/practice'
+import { Route as AuthenticatedPlanRouteImport } from './routes/_authenticated/plan'
 import { Route as AuthenticatedMemoryRouteImport } from './routes/_authenticated/memory'
+import { Route as AuthenticatedLearnRouteImport } from './routes/_authenticated/learn'
+import { Route as AuthenticatedFeedRouteImport } from './routes/_authenticated/feed'
 import { Route as AuthenticatedDocumentsRouteImport } from './routes/_authenticated/documents'
 import { Route as AuthenticatedChatRouteImport } from './routes/_authenticated/chat'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
+import { Route as AuthenticatedBoardsRouteImport } from './routes/_authenticated/boards'
 import { Route as ApiSharesTokenRouteImport } from './routes/api/shares/$token'
 import { Route as ApiSharedTokenRouteImport } from './routes/api/shared/$token'
+import { Route as ApiLearningSessionRouteImport } from './routes/api/learning/session'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
@@ -106,15 +113,40 @@ const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedProgressRoute = AuthenticatedProgressRouteImport.update({
+  id: '/progress',
+  path: '/progress',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedProductivityRoute =
   AuthenticatedProductivityRouteImport.update({
     id: '/productivity',
     path: '/productivity',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedPracticeRoute = AuthenticatedPracticeRouteImport.update({
+  id: '/practice',
+  path: '/practice',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPlanRoute = AuthenticatedPlanRouteImport.update({
+  id: '/plan',
+  path: '/plan',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedMemoryRoute = AuthenticatedMemoryRouteImport.update({
   id: '/memory',
   path: '/memory',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedLearnRoute = AuthenticatedLearnRouteImport.update({
+  id: '/learn',
+  path: '/learn',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedFeedRoute = AuthenticatedFeedRouteImport.update({
+  id: '/feed',
+  path: '/feed',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedDocumentsRoute = AuthenticatedDocumentsRouteImport.update({
@@ -132,6 +164,11 @@ const AuthenticatedCalendarRoute = AuthenticatedCalendarRouteImport.update({
   path: '/calendar',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedBoardsRoute = AuthenticatedBoardsRouteImport.update({
+  id: '/boards',
+  path: '/boards',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const ApiSharesTokenRoute = ApiSharesTokenRouteImport.update({
   id: '/$token',
   path: '/$token',
@@ -142,17 +179,28 @@ const ApiSharedTokenRoute = ApiSharedTokenRouteImport.update({
   path: '/api/shared/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiLearningSessionRoute = ApiLearningSessionRouteImport.update({
+  id: '/api/learning/session',
+  path: '/api/learning/session',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/boards': typeof AuthenticatedBoardsRoute
   '/calendar': typeof AuthenticatedCalendarRoute
   '/chat': typeof AuthenticatedChatRoute
   '/documents': typeof AuthenticatedDocumentsRoute
+  '/feed': typeof AuthenticatedFeedRoute
+  '/learn': typeof AuthenticatedLearnRoute
   '/memory': typeof AuthenticatedMemoryRoute
+  '/plan': typeof AuthenticatedPlanRoute
+  '/practice': typeof AuthenticatedPracticeRoute
   '/productivity': typeof AuthenticatedProductivityRoute
+  '/progress': typeof AuthenticatedProgressRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/statistics': typeof AuthenticatedStatisticsRoute
   '/study': typeof AuthenticatedStudyRoute
@@ -163,6 +211,7 @@ export interface FileRoutesByFullPath {
   '/api/openrouter-test': typeof ApiOpenrouterTestRoute
   '/api/shares': typeof ApiSharesRouteWithChildren
   '/share/$token': typeof ShareTokenRoute
+  '/api/learning/session': typeof ApiLearningSessionRoute
   '/api/shared/$token': typeof ApiSharedTokenRoute
   '/api/shares/$token': typeof ApiSharesTokenRoute
 }
@@ -171,11 +220,17 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/boards': typeof AuthenticatedBoardsRoute
   '/calendar': typeof AuthenticatedCalendarRoute
   '/chat': typeof AuthenticatedChatRoute
   '/documents': typeof AuthenticatedDocumentsRoute
+  '/feed': typeof AuthenticatedFeedRoute
+  '/learn': typeof AuthenticatedLearnRoute
   '/memory': typeof AuthenticatedMemoryRoute
+  '/plan': typeof AuthenticatedPlanRoute
+  '/practice': typeof AuthenticatedPracticeRoute
   '/productivity': typeof AuthenticatedProductivityRoute
+  '/progress': typeof AuthenticatedProgressRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/statistics': typeof AuthenticatedStatisticsRoute
   '/study': typeof AuthenticatedStudyRoute
@@ -186,6 +241,7 @@ export interface FileRoutesByTo {
   '/api/openrouter-test': typeof ApiOpenrouterTestRoute
   '/api/shares': typeof ApiSharesRouteWithChildren
   '/share/$token': typeof ShareTokenRoute
+  '/api/learning/session': typeof ApiLearningSessionRoute
   '/api/shared/$token': typeof ApiSharedTokenRoute
   '/api/shares/$token': typeof ApiSharesTokenRoute
 }
@@ -196,11 +252,17 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/_authenticated/boards': typeof AuthenticatedBoardsRoute
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
   '/_authenticated/chat': typeof AuthenticatedChatRoute
   '/_authenticated/documents': typeof AuthenticatedDocumentsRoute
+  '/_authenticated/feed': typeof AuthenticatedFeedRoute
+  '/_authenticated/learn': typeof AuthenticatedLearnRoute
   '/_authenticated/memory': typeof AuthenticatedMemoryRoute
+  '/_authenticated/plan': typeof AuthenticatedPlanRoute
+  '/_authenticated/practice': typeof AuthenticatedPracticeRoute
   '/_authenticated/productivity': typeof AuthenticatedProductivityRoute
+  '/_authenticated/progress': typeof AuthenticatedProgressRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/statistics': typeof AuthenticatedStatisticsRoute
   '/_authenticated/study': typeof AuthenticatedStudyRoute
@@ -211,6 +273,7 @@ export interface FileRoutesById {
   '/api/openrouter-test': typeof ApiOpenrouterTestRoute
   '/api/shares': typeof ApiSharesRouteWithChildren
   '/share/$token': typeof ShareTokenRoute
+  '/api/learning/session': typeof ApiLearningSessionRoute
   '/api/shared/$token': typeof ApiSharedTokenRoute
   '/api/shares/$token': typeof ApiSharesTokenRoute
 }
@@ -221,11 +284,17 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/sitemap.xml'
+    | '/boards'
     | '/calendar'
     | '/chat'
     | '/documents'
+    | '/feed'
+    | '/learn'
     | '/memory'
+    | '/plan'
+    | '/practice'
     | '/productivity'
+    | '/progress'
     | '/settings'
     | '/statistics'
     | '/study'
@@ -236,6 +305,7 @@ export interface FileRouteTypes {
     | '/api/openrouter-test'
     | '/api/shares'
     | '/share/$token'
+    | '/api/learning/session'
     | '/api/shared/$token'
     | '/api/shares/$token'
   fileRoutesByTo: FileRoutesByTo
@@ -244,11 +314,17 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/sitemap.xml'
+    | '/boards'
     | '/calendar'
     | '/chat'
     | '/documents'
+    | '/feed'
+    | '/learn'
     | '/memory'
+    | '/plan'
+    | '/practice'
     | '/productivity'
+    | '/progress'
     | '/settings'
     | '/statistics'
     | '/study'
@@ -259,6 +335,7 @@ export interface FileRouteTypes {
     | '/api/openrouter-test'
     | '/api/shares'
     | '/share/$token'
+    | '/api/learning/session'
     | '/api/shared/$token'
     | '/api/shares/$token'
   id:
@@ -268,11 +345,17 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/sitemap.xml'
+    | '/_authenticated/boards'
     | '/_authenticated/calendar'
     | '/_authenticated/chat'
     | '/_authenticated/documents'
+    | '/_authenticated/feed'
+    | '/_authenticated/learn'
     | '/_authenticated/memory'
+    | '/_authenticated/plan'
+    | '/_authenticated/practice'
     | '/_authenticated/productivity'
+    | '/_authenticated/progress'
     | '/_authenticated/settings'
     | '/_authenticated/statistics'
     | '/_authenticated/study'
@@ -283,6 +366,7 @@ export interface FileRouteTypes {
     | '/api/openrouter-test'
     | '/api/shares'
     | '/share/$token'
+    | '/api/learning/session'
     | '/api/shared/$token'
     | '/api/shares/$token'
   fileRoutesById: FileRoutesById
@@ -298,6 +382,7 @@ export interface RootRouteChildren {
   ApiOpenrouterTestRoute: typeof ApiOpenrouterTestRoute
   ApiSharesRoute: typeof ApiSharesRouteWithChildren
   ShareTokenRoute: typeof ShareTokenRoute
+  ApiLearningSessionRoute: typeof ApiLearningSessionRoute
   ApiSharedTokenRoute: typeof ApiSharedTokenRoute
 }
 
@@ -408,6 +493,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/progress': {
+      id: '/_authenticated/progress'
+      path: '/progress'
+      fullPath: '/progress'
+      preLoaderRoute: typeof AuthenticatedProgressRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/productivity': {
       id: '/_authenticated/productivity'
       path: '/productivity'
@@ -415,11 +507,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProductivityRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/practice': {
+      id: '/_authenticated/practice'
+      path: '/practice'
+      fullPath: '/practice'
+      preLoaderRoute: typeof AuthenticatedPracticeRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/plan': {
+      id: '/_authenticated/plan'
+      path: '/plan'
+      fullPath: '/plan'
+      preLoaderRoute: typeof AuthenticatedPlanRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/memory': {
       id: '/_authenticated/memory'
       path: '/memory'
       fullPath: '/memory'
       preLoaderRoute: typeof AuthenticatedMemoryRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/learn': {
+      id: '/_authenticated/learn'
+      path: '/learn'
+      fullPath: '/learn'
+      preLoaderRoute: typeof AuthenticatedLearnRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/feed': {
+      id: '/_authenticated/feed'
+      path: '/feed'
+      fullPath: '/feed'
+      preLoaderRoute: typeof AuthenticatedFeedRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/documents': {
@@ -443,6 +563,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCalendarRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/boards': {
+      id: '/_authenticated/boards'
+      path: '/boards'
+      fullPath: '/boards'
+      preLoaderRoute: typeof AuthenticatedBoardsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/api/shares/$token': {
       id: '/api/shares/$token'
       path: '/$token'
@@ -457,15 +584,28 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSharedTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/learning/session': {
+      id: '/api/learning/session'
+      path: '/api/learning/session'
+      fullPath: '/api/learning/session'
+      preLoaderRoute: typeof ApiLearningSessionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedBoardsRoute: typeof AuthenticatedBoardsRoute
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRoute
   AuthenticatedChatRoute: typeof AuthenticatedChatRoute
   AuthenticatedDocumentsRoute: typeof AuthenticatedDocumentsRoute
+  AuthenticatedFeedRoute: typeof AuthenticatedFeedRoute
+  AuthenticatedLearnRoute: typeof AuthenticatedLearnRoute
   AuthenticatedMemoryRoute: typeof AuthenticatedMemoryRoute
+  AuthenticatedPlanRoute: typeof AuthenticatedPlanRoute
+  AuthenticatedPracticeRoute: typeof AuthenticatedPracticeRoute
   AuthenticatedProductivityRoute: typeof AuthenticatedProductivityRoute
+  AuthenticatedProgressRoute: typeof AuthenticatedProgressRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedStatisticsRoute: typeof AuthenticatedStatisticsRoute
   AuthenticatedStudyRoute: typeof AuthenticatedStudyRoute
@@ -474,11 +614,17 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedBoardsRoute: AuthenticatedBoardsRoute,
   AuthenticatedCalendarRoute: AuthenticatedCalendarRoute,
   AuthenticatedChatRoute: AuthenticatedChatRoute,
   AuthenticatedDocumentsRoute: AuthenticatedDocumentsRoute,
+  AuthenticatedFeedRoute: AuthenticatedFeedRoute,
+  AuthenticatedLearnRoute: AuthenticatedLearnRoute,
   AuthenticatedMemoryRoute: AuthenticatedMemoryRoute,
+  AuthenticatedPlanRoute: AuthenticatedPlanRoute,
+  AuthenticatedPracticeRoute: AuthenticatedPracticeRoute,
   AuthenticatedProductivityRoute: AuthenticatedProductivityRoute,
+  AuthenticatedProgressRoute: AuthenticatedProgressRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedStatisticsRoute: AuthenticatedStatisticsRoute,
   AuthenticatedStudyRoute: AuthenticatedStudyRoute,
@@ -512,6 +658,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiOpenrouterTestRoute: ApiOpenrouterTestRoute,
   ApiSharesRoute: ApiSharesRouteWithChildren,
   ShareTokenRoute: ShareTokenRoute,
+  ApiLearningSessionRoute: ApiLearningSessionRoute,
   ApiSharedTokenRoute: ApiSharedTokenRoute,
 }
 export const routeTree = rootRouteImport

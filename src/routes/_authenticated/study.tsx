@@ -213,6 +213,15 @@ function StudyPage() {
 
   return (
     <AppShell>
+      {mode === "landing" && (
+        <a
+          href="/learn"
+          className="mb-4 inline-flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition hover:bg-primary/20"
+        >
+          <Sparkles className="h-4 w-4" />
+          Try the adaptive learning experience
+        </a>
+      )}
       {mode !== "landing" && (
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
