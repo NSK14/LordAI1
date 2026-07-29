@@ -334,7 +334,7 @@ export function ChatInput({
           </div>
         </div>
       </motion.form>
-      
+
       <CalendarModal open={calendarOpen} onClose={() => setCalendarOpen(false)} />
     </div>
   );

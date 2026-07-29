@@ -8,11 +8,11 @@
 
 **A Next-Generation AI**
 
-[![React](https://img.shields.io/badge/React-19-blue?style=flat-square)]()
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=flat-square)]()
-[![TanStack Router](https://img.shields.io/badge/TanStack-Router-orange?style=flat-square)]()
-[![Vite](https://img.shields.io/badge/Vite-Latest-purple?style=flat-square)]()
-[![AI SDK](https://img.shields.io/badge/AI-SDK-green?style=flat-square)]()
+[![React](https://img.shields.io/badge/React-19-blue?style=flat-square)](<>)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=flat-square)](<>)
+[![TanStack Router](https://img.shields.io/badge/TanStack-Router-orange?style=flat-square)](<>)
+[![Vite](https://img.shields.io/badge/Vite-Latest-purple?style=flat-square)](<>)
+[![AI SDK](https://img.shields.io/badge/AI-SDK-green?style=flat-square)](<>)
 
 ---
 
@@ -34,7 +34,7 @@ Built with a cyberpunk-inspired HUD interface, LORD combines:
 - 🎙️ Voice Command Infrastructure
 - 🧠 Long-Term Memory Systems
 - 📊 Real-Time System Monitoring
-- 🧠 Study tutor 
+- 🧠 Study tutor
 - ⚡ Multi-Mode Intelligence Engine
 - 🎯 Workflow Assistance
 - 🔍 Research & Knowledge Operations
@@ -298,16 +298,16 @@ Copy the example environment file and fill in your values. **Never commit `.env`
 cp .env.example .env
 ```
 
-| Variable | Required | Where | Purpose |
-| --- | --- | --- | --- |
-| `VITE_SUPABASE_URL` | ✅ | Client | Supabase project URL (public) |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | ✅ | Client | Supabase anon/publishable key (public) |
-| `SUPABASE_URL` | ✅ | Server | Supabase project URL (server) |
-| `SUPABASE_PUBLISHABLE_KEY` | ✅ | Server | Supabase anon/publishable key (server) |
-| `OPENROUTER_API_KEY` | ✅ | Server | OpenRouter API key for AI (secret) |
-| `SUPABASE_SERVICE_ROLE_KEY` | ⬜ | Server | Admin client (bypasses RLS) |
-| `SUPABASE_PROJECT_ID` | ⬜ | Both | Supabase CLI / tooling |
-| `OPENROUTER_REFERER` / `OPENROUTER_TITLE` | ⬜ | Server | OpenRouter attribution headers |
+| Variable                                  | Required | Where  | Purpose                                |
+| ----------------------------------------- | -------- | ------ | -------------------------------------- |
+| `VITE_SUPABASE_URL`                       | ✅       | Client | Supabase project URL (public)          |
+| `VITE_SUPABASE_PUBLISHABLE_KEY`           | ✅       | Client | Supabase anon/publishable key (public) |
+| `SUPABASE_URL`                            | ✅       | Server | Supabase project URL (server)          |
+| `SUPABASE_PUBLISHABLE_KEY`                | ✅       | Server | Supabase anon/publishable key (server) |
+| `OPENROUTER_API_KEY`                      | ✅       | Server | OpenRouter API key for AI (secret)     |
+| `SUPABASE_SERVICE_ROLE_KEY`               | ⬜       | Server | Admin client (bypasses RLS)            |
+| `SUPABASE_PROJECT_ID`                     | ⬜       | Both   | Supabase CLI / tooling                 |
+| `OPENROUTER_REFERER` / `OPENROUTER_TITLE` | ⬜       | Server | OpenRouter attribution headers         |
 
 > Only `VITE_`-prefixed variables reach the browser. Keep `OPENROUTER_API_KEY` and
 > service-role keys server-side only.

@@ -73,16 +73,16 @@ export interface Conversation {
 }
 
 // Calendar Event types
-export type EventCategory = 
-  | "study" 
-  | "work" 
-  | "fitness" 
-  | "personal" 
-  | "finance" 
-  | "travel" 
-  | "meeting" 
-  | "health" 
-  | "goal" 
+export type EventCategory =
+  | "study"
+  | "work"
+  | "fitness"
+  | "personal"
+  | "finance"
+  | "travel"
+  | "meeting"
+  | "health"
+  | "goal"
   | "other";
 
 export type EventPriority = "low" | "med" | "high";

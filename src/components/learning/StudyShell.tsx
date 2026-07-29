@@ -1,6 +1,7 @@
-/* eslint-disable @typescript-eslint/no-explicit-any -- database schema is introduced by this change and client types regenerate after migration deployment. */
-import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+/* eslint-disable @typescript-eslint/no-explicit-any -- database schema is defined in types and client types regenerate after migration deployment. */
+import { useMemo, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Route, useSearch } from "@tanstack/react-router";
 import {
   BookOpen,
   BrainCircuit,
@@ -18,8 +19,6 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/lord/AppShell";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import { authenticatedFetch } from "@/lib/authenticated-fetch";
-import { getApiBaseUrl } from "@/lib/api-config";
 import {
   createBoard,
   completePlanTask,
@@ -36,6 +35,7 @@ import { AI_GENERATED_NOTICE } from "@/lib/learning/types";
 import { MasteryMap } from "./MasteryMap";
 
 export type LearningView = "learn" | "practice" | "plan" | "feed" | "boards" | "progress";
+
 const labels: Record<LearningView, string> = {
   learn: "Learn with LORD",
   practice: "Adaptive Practice",
@@ -46,7 +46,7 @@ const labels: Record<LearningView, string> = {
 };
 
 async function getSession(body: unknown) {
-  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/learning/session`, {
+  const response = await fetch(`/api/learning/session`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -58,7 +58,7 @@ async function getSession(body: unknown) {
 type TutorMessage = { id: string; role: "user" | "assistant"; text: string };
 
 async function streamTutorReply(body: unknown, onDelta: (text: string) => void) {
-  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/chat`, {
+  const response = await fetch("/api/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -90,7 +90,13 @@ async function streamTutorReply(body: unknown, onDelta: (text: string) => void) 
   return answer;
 }
 
-export function LearningPage({ view }: { view: LearningView }) {
+export function StudyShell() {
+  const rawView = useSearch({ from: "/_authenticated/study" });
+  const view: LearningView = ["learn", "practice", "plan", "feed", "boards", "progress"].includes(
+    rawView.view,
+  )
+    ? (rawView.view as LearningView)
+    : "learn";
   const { user } = useCurrentUser();
   const qc = useQueryClient();
   const [notice, setNotice] = useState<string | null>(null);
@@ -102,9 +108,63 @@ export function LearningPage({ view }: { view: LearningView }) {
   });
   const data = snapshot.data;
   const next = useMemo(() => data && selectNextConcept(data.concepts, data.mastery), [data]);
+  if (!user || !data) return null;
   const activeConcept = data?.concepts.find((concept) => concept.id === selectedConceptId) ?? next;
-  const refresh = () => qc.invalidateQueries({ queryKey: ["learning", user?.id] });
-  if (!user) return null;
+
+  const renderView = () => {
+    switch (view) {
+      case "practice":
+        return (
+          <PracticeView
+            data={data}
+            next={activeConcept}
+            userId={user.id}
+            refresh={() => qc.invalidateQueries({ queryKey: ["learning", user.id] })}
+            notify={setNotice}
+          />
+        );
+      case "plan":
+        return (
+          <PlanView
+            data={data}
+            next={activeConcept}
+            userId={user.id}
+            notify={setNotice}
+            refresh={() => qc.invalidateQueries({ queryKey: ["learning", user.id] })}
+          />
+        );
+      case "feed":
+        return (
+          <FeedView
+            data={data}
+            userId={user.id}
+            notify={setNotice}
+            refresh={() => qc.invalidateQueries({ queryKey: ["learning", user.id] })}
+          />
+        );
+      case "boards":
+        return (
+          <BoardsView
+            data={data}
+            userId={user.id}
+            notify={setNotice}
+            refresh={() => qc.invalidateQueries({ queryKey: ["learning", user.id] })}
+          />
+        );
+      case "progress":
+        return <ProgressView data={data} />;
+      default:
+        return (
+          <LearnView
+            data={data}
+            next={activeConcept}
+            userId={user.id}
+            refresh={() => qc.invalidateQueries({ queryKey: ["learning", user.id] })}
+            notify={setNotice}
+          />
+        );
+    }
+  };
 
   return (
     <AppShell>
@@ -121,7 +181,7 @@ export function LearningPage({ view }: { view: LearningView }) {
               (item) => (
                 <a
                   key={item}
-                  href={`/${item}`}
+                  href={`/study?view=${item}`}
                   className={`rounded-md border px-3 py-2 ${item === view ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
                 >
                   {labels[item]}
@@ -142,24 +202,38 @@ export function LearningPage({ view }: { view: LearningView }) {
           </p>
         )}
         {data && (
-          <>
-            {view === "learn" && (
-              <MasteryMap
-                concepts={data.concepts}
-                mastery={data.mastery}
-                selectedId={activeConcept?.id}
-                onSelect={(concept) => setSelectedConceptId(concept.id)}
-              />
-            )}
-            <View
-              view={view}
-              data={data}
-              next={activeConcept}
-              userId={user.id}
-              refresh={refresh}
-              notify={setNotice}
+          <div className="space-y-6">
+            <MasteryMap
+              concepts={data.concepts}
+              mastery={data.mastery}
+              selectedId={activeConcept?.id}
+              onSelect={(concept) => setSelectedConceptId(concept.id)}
             />
-          </>
+            {view === "learn" ? (
+              <div className="grid gap-6 lg:grid-cols-3">
+                <div className="lg:col-span-2 space-y-6">
+                  <LearnView
+                    data={data}
+                    next={activeConcept}
+                    userId={user.id}
+                    refresh={() => qc.invalidateQueries({ queryKey: ["learning", user.id] })}
+                    notify={setNotice}
+                  />
+                </div>
+                <div className="space-y-6">
+                  <LearningDock
+                    next={activeConcept}
+                    userId={user.id}
+                    sources={data.sources}
+                    notify={setNotice}
+                    refresh={() => qc.invalidateQueries({ queryKey: ["learning", user.id] })}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div>{renderView()}</div>
+            )}
+          </div>
         )}
         {notice && (
           <p
@@ -174,35 +248,7 @@ export function LearningPage({ view }: { view: LearningView }) {
   );
 }
 
-function View({
-  view,
-  data,
-  next,
-  userId,
-  refresh,
-  notify,
-}: {
-  view: LearningView;
-  data: Awaited<ReturnType<typeof getLearningSnapshot>>;
-  next: any;
-  userId: string;
-  refresh: () => void;
-  notify: (value: string) => void;
-}) {
-  if (view === "learn")
-    return <Learn data={data} next={next} userId={userId} refresh={refresh} notify={notify} />;
-  if (view === "practice")
-    return <Practice data={data} next={next} userId={userId} refresh={refresh} notify={notify} />;
-  if (view === "plan")
-    return <Plan data={data} next={next} userId={userId} notify={notify} refresh={refresh} />;
-  if (view === "feed")
-    return <Feed data={data} userId={userId} notify={notify} refresh={refresh} />;
-  if (view === "boards")
-    return <Boards data={data} userId={userId} notify={notify} refresh={refresh} />;
-  return <Progress data={data} />;
-}
-
-function Learn({ data, next, userId, refresh, notify }: any) {
+function LearnView({ data, next, userId, refresh, notify }: any) {
   const [subject, setSubject] = useState(data.profile?.subjects?.[0] ?? "Mathematics");
   const [goal, setGoal] = useState(
     data.profile?.goals?.[0] ?? "Build confidence through steady practice",
@@ -235,20 +281,10 @@ function Learn({ data, next, userId, refresh, notify }: any) {
         .single();
       if (error) throw error;
       const chunks = extractedText.match(/[\s\S]{1,1800}/g) ?? [];
-      // Chunking is best-effort while older deployed databases await the migration.
       if (source?.id && chunks.length)
-        void db
-          .from("learning_source_chunks")
-          .insert(
-            chunks.map((content: string, chunkIndex: number) => ({
-              user_id: userId,
-              source_id: source.id,
-              chunk_index: chunkIndex,
-              content,
-            })),
-          )
-          .then(() => undefined)
-          .catch(() => undefined);
+        await import("@/lib/learning/client").then(({ saveSourceChunks }) =>
+          saveSourceChunks(userId, source.id, chunks).catch(() => undefined),
+        );
       notify("Private study material saved. It can be used for grounded study activities.");
       setSourceText("");
       refresh();
@@ -292,11 +328,11 @@ function Learn({ data, next, userId, refresh, notify }: any) {
             standards and your own materials.
           </p>
           <div className="flex flex-wrap gap-2 pt-1">
-            <a href={`/practice?concept=${next?.id ?? ""}`} className="action inline-flex">
+            <a href={`/study?view=practice`} className="action inline-flex">
               Continue with {next?.title ?? "a learning check"} <ChevronRight className="h-4 w-4" />
             </a>
             <a
-              href="/plan"
+              href="/study?view=plan"
               className="rounded-md border border-border px-3 py-2 text-sm hover:bg-muted"
             >
               View my plan
@@ -402,12 +438,218 @@ function Learn({ data, next, userId, refresh, notify }: any) {
             >
               Save private source
             </button>
-            <a href={`/practice?concept=${next?.id ?? ""}`} className="action inline-flex">
+            <a href={`/study?view=practice`} className="action inline-flex">
               Start a guided understanding check <ChevronRight className="h-4 w-4" />
             </a>
           </div>
         </Panel>
       </div>
+    </div>
+  );
+}
+
+function LearningDock({
+  next,
+  userId,
+  sources,
+  notify,
+  refresh,
+}: {
+  next: any;
+  userId: string;
+  sources: Array<{ id: string; name: string; extracted_text?: string | null }>;
+  notify: (value: string) => void;
+  refresh: () => void;
+}) {
+  const [hint, setHint] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [flashcardTitle, setFlashcardTitle] = useState("");
+  const [isCreatingFlashcards, setIsCreatingFlashcards] = useState(false);
+
+  const generateHint = async () => {
+    setIsGenerating(true);
+    setHint("");
+    try {
+      const answer = await streamTutorReply(
+        {
+          mode: "balanced",
+          context: { page: "study", workflow: "adaptive-socratic-tutor" },
+          messages: [
+            {
+              id: crypto.randomUUID(),
+              role: "user",
+              parts: [
+                {
+                  type: "text",
+                  text: `Provide a single, short hint for the concept: ${next?.title ?? "the current topic"}. Do not give the full answer.`,
+                },
+              ],
+            },
+          ],
+        },
+        (text) => setHint(text),
+      );
+      if (answer.trim()) {
+        void saveTutorMessage(userId, crypto.randomUUID(), "assistant", answer).catch(
+          () => undefined,
+        );
+      }
+    } catch {
+      notify("Could not generate a hint right now.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const createFlashcards = async () => {
+    if (!flashcardTitle.trim()) return;
+    setIsCreatingFlashcards(true);
+    try {
+      const answer = await streamTutorReply(
+        {
+          mode: "balanced",
+          context: { page: "study", workflow: "adaptive-socratic-tutor" },
+          messages: [
+            {
+              id: crypto.randomUUID(),
+              role: "user",
+              parts: [
+                {
+                  type: "text",
+                  text: `Create a set of 6 flashcards for ${flashcardTitle}. Front = concise question; Back = one-line answer. Format as JSON array: [{"front":"...","back":"..."}].`,
+                },
+              ],
+            },
+          ],
+        },
+        () => {},
+      );
+      const jsonMatch = answer.match(/\[[\s\S]*?\]/);
+      if (!jsonMatch) {
+        notify("Could not parse flashcards.");
+        return;
+      }
+      const cards = JSON.parse(jsonMatch[0]);
+      await import("@/lib/learning/client").then(({ saveArtifact }) =>
+        saveArtifact(userId, {
+          conceptId: next?.id ?? null,
+          type: "flashcards",
+          title: flashcardTitle,
+          content: { cards },
+          aiGenerated: true,
+        }),
+      );
+      notify("Flashcards saved to your learning artifacts.");
+      setFlashcardTitle("");
+      refresh();
+    } catch {
+      notify("Could not create flashcards.");
+    } finally {
+      setIsCreatingFlashcards(false);
+    }
+  };
+
+  const addToPlan = async () => {
+    if (!next?.id) return;
+    try {
+      await import("@/lib/learning/client").then(({ saveProfile }) =>
+        saveProfile(userId, {
+          goals: [`Practice and review ${next.title}`],
+          subjects: [next.subject],
+        }),
+      );
+      notify(`${next.title} added to your learning goals.`);
+    } catch {
+      notify("Could not update your plan.");
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <section className="rounded-xl border border-primary/25 bg-card/80 p-5 space-y-4">
+        <h2 className="font-semibold flex items-center gap-2">
+          <Target className="h-4 w-4 text-primary" />
+          Learning Dock
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          {next
+            ? `Currently focused on: ${next.title}`
+            : "Select a concept from the mastery map to get started."}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={generateHint}
+            disabled={isGenerating}
+            className="rounded-md border border-border px-3 py-1.5 text-xs hover:border-primary/50 hover:text-primary disabled:opacity-50"
+          >
+            <Lightbulb className="mr-1 inline h-3.5 w-3.5" />
+            Give me a hint
+          </button>
+          <button
+            onClick={() => {}}
+            disabled={!next}
+            className="rounded-md border border-border px-3 py-1.5 text-xs hover:border-primary/50 hover:text-primary disabled:opacity-50"
+          >
+            <Sparkles className="mr-1 inline h-3.5 w-3.5" />
+            Worked example
+          </button>
+          <button
+            onClick={() => {}}
+            disabled={!next}
+            className="rounded-md border border-border px-3 py-1.5 text-xs hover:border-primary/50 hover:text-primary disabled:opacity-50"
+          >
+            Explain simpler
+          </button>
+          <button
+            onClick={() => {}}
+            disabled={!next}
+            className="rounded-md border border-border px-3 py-1.5 text-xs hover:border-primary/50 hover:text-primary disabled:opacity-50"
+          >
+            Mini-check
+          </button>
+          <button
+            onClick={addToPlan}
+            disabled={!next}
+            className="rounded-md border border-border px-3 py-1.5 text-xs hover:border-primary/50 hover:text-primary disabled:opacity-50"
+          >
+            Add to plan
+          </button>
+        </div>
+        {hint && (
+          <div className="rounded-md border border-primary/20 bg-primary/5 p-3 text-sm">
+            <p className="text-xs font-semibold uppercase tracking-wider text-primary mb-1">Hint</p>
+            <p className="text-muted-foreground">{hint}</p>
+          </div>
+        )}
+      </section>
+      <section className="rounded-xl border border-primary/25 bg-card/80 p-5 space-y-3">
+        <h3 className="font-semibold flex items-center gap-2 text-sm">
+          <Sparkles className="h-4 w-4 text-primary" />
+          Create flashcards
+        </h3>
+        <input
+          value={flashcardTitle}
+          onChange={(e) => setFlashcardTitle(e.target.value)}
+          placeholder="e.g. cbse-math-10-quadratic"
+          className="field min-w-0 text-sm"
+        />
+        <button
+          onClick={createFlashcards}
+          disabled={isCreatingFlashcards || !flashcardTitle.trim()}
+          className="action text-sm"
+        >
+          {isCreatingFlashcards ? "Generating…" : "Generate flashcards"}
+        </button>
+      </section>
+      <section className="rounded-xl border border-primary/25 bg-card/80 p-5 space-y-3">
+        <h3 className="font-semibold flex items-center gap-2 text-sm">
+          <MessageSquare className="h-4 w-4 text-primary" />
+          Sources
+        </h3>
+        <p className="text-xs text-muted-foreground">
+          {sources.length} private source(s) available for grounded answers.
+        </p>
+      </section>
     </div>
   );
 }
@@ -429,7 +671,7 @@ function TutorStudio({
     {
       id: "welcome",
       role: "assistant",
-      text: `Hi — I’m LORD, your ${subject} learning coach. What would you like to understand? I’ll guide you with questions and hints before I reveal an answer.`,
+      text: `Hi — I'm LORD, your ${subject} learning coach. What would you like to understand? I'll guide you with questions and hints before I reveal an answer.`,
     },
   ]);
   const [draft, setDraft] = useState("");
@@ -514,7 +756,7 @@ function TutorStudio({
           message.id === assistantId
             ? {
                 ...message,
-                text: "I’m unable to respond right now. You can still continue with a guided practice check.",
+                text: "I'm unable to respond right now. You can still continue with a guided practice check.",
               }
             : message,
         ),
@@ -592,7 +834,7 @@ function TutorStudio({
   );
 }
 
-function Practice({ data, next, userId, refresh, notify }: any) {
+function PracticeView({ data, next, userId, refresh, notify }: any) {
   const [question, setQuestion] = useState<Question | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [result, setResult] = useState<string | null>(null);
@@ -672,7 +914,7 @@ function Practice({ data, next, userId, refresh, notify }: any) {
   );
 }
 
-function Plan({ data, next, userId, notify, refresh }: any) {
+function PlanView({ data, next, userId, notify, refresh }: any) {
   const [loading, setLoading] = useState(false);
   const generate = async () => {
     const ids = [next?.id, ...data.mastery.map((m: any) => m.concept_id)]
@@ -765,7 +1007,7 @@ function Plan({ data, next, userId, notify, refresh }: any) {
   );
 }
 
-function Feed({ data, userId, notify, refresh }: any) {
+function FeedView({ data, userId, notify, refresh }: any) {
   const [boardId, setBoardId] = useState("");
   return (
     <div className="grid gap-4 md:grid-cols-2">
@@ -819,7 +1061,7 @@ function Feed({ data, userId, notify, refresh }: any) {
   );
 }
 
-function Boards({ data, userId, notify, refresh }: any) {
+function BoardsView({ data, userId, notify, refresh }: any) {
   const [name, setName] = useState("");
   return (
     <div className="space-y-4">
@@ -861,7 +1103,7 @@ function Boards({ data, userId, notify, refresh }: any) {
   );
 }
 
-function Progress({ data }: any) {
+function ProgressView({ data }: any) {
   const ready = isReadyForTest(data.mastery);
   return (
     <div className="space-y-4">
@@ -893,7 +1135,8 @@ function Progress({ data }: any) {
     </div>
   );
 }
-function Panel({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
+
+function Panel({ icon, title, children }: { icon: any; title: string; children: any }) {
   return (
     <section className="space-y-4 rounded-xl border border-border/70 bg-card/60 p-5">
       <h2 className="flex items-center gap-2 font-semibold">

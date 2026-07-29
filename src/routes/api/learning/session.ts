@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- server context receives the migration-defined database client. */
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
+import { generateText } from "ai";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { requireSupabaseRequestAuth } from "@/integrations/supabase/auth-middleware";
 import { apiErrorResponse } from "@/lib/api-error";
 import type { Question } from "@/lib/learning/types";
@@ -10,6 +12,7 @@ const RequestSchema = z.discriminatedUnion("action", [
     action: z.literal("question"),
     conceptId: z.string().min(1),
     difficulty: z.number().int().min(1).max(5).default(2),
+    topic: z.string().optional(),
   }),
   z.object({
     action: z.literal("plan"),
@@ -18,23 +21,101 @@ const RequestSchema = z.discriminatedUnion("action", [
   }),
 ]);
 
-function questionFor(conceptId: string, title: string, difficulty: number): Question {
-  const prompt = `Which statement best shows understanding of ${title}?`;
+const QuestionSchema = z.object({
+  prompt: z.string(),
+  choices: z.array(z.string()).min(2).max(6),
+  correctIndex: z.number().int().min(0).max(5),
+  hint: z.string(),
+  explanation: z.string(),
+  rubric: z.string().optional(),
+});
+
+function questionFor(
+  conceptId: string,
+  title: string,
+  difficulty: number,
+  topic?: string,
+): Question {
+  const focus = topic ? ` on "${topic}"` : "";
+  const diffLabel =
+    ["", "introductory", "foundational", "standard", "advanced", "mastery"][difficulty] ??
+    "standard";
+  const prompt = `Which statement best shows ${diffLabel} understanding of ${title}${focus}?`;
   return {
     id: crypto.randomUUID(),
     conceptId,
     prompt,
     choices: [
-      `I can explain ${title} and apply it to a new example.`,
-      `I only recognize the term when I see it.`,
+      `I can explain ${title}${focus} and apply it to a new exam-style example.`,
+      `I recognize the term but cannot explain it clearly.`,
       `It is unrelated to the topic being studied.`,
       `Memorizing a definition is always enough.`,
     ],
     correctIndex: 0,
-    hint: "Choose the option that requires both explanation and application.",
-    explanation: `Mastery of ${title} means explaining the idea and using it in an unfamiliar situation.`,
+    hint: `Choose the option that requires both explanation and application of ${title}${focus}.`,
+    explanation: `Mastery of ${title}${focus} means explaining the idea and using it in an unfamiliar situation, not just recalling facts.`,
     difficulty: difficulty as Question["difficulty"],
     rubric: "Award credit for explanation and correct application, not recall alone.",
+  };
+}
+
+async function generateAIQuestion(
+  conceptId: string,
+  title: string,
+  difficulty: number,
+  topic?: string,
+): Promise<Question> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) throw new Error("AI not configured");
+
+  const provider = createOpenAICompatible({
+    name: "openrouter",
+    apiKey,
+    baseURL: process.env.OPENROUTER_BASE_URL ?? "https://openrouter.ai/api/v1",
+  });
+
+  const diff =
+    ["", "introductory", "foundational", "standard", "advanced", "mastery"][difficulty] ??
+    "standard";
+  const system = `You are a ${diff}-level CBSE/NGSS/Common Core assessment designer. Output ONLY strict JSON. No markdown. No extra text.`;
+  const user = `Generate one ${diff} multiple-choice question for the concept: "${title}"${topic ? ` (topic: ${topic})` : ""}.
+
+Return JSON with this exact shape:
+{
+  "prompt": "Question text",
+  "choices": ["A)", "B)", "C)", "D)"],
+  "correctIndex": 0,
+  "hint": "One-sentence hint",
+  "explanation": "Why the answer is correct",
+  "rubric": "Short rubric"
+}`;
+
+  const { text } = await generateText({
+    model: provider("openai/gpt-4o-mini"),
+    system,
+    messages: [{ role: "user", content: user }],
+    maxOutputTokens: 512,
+    temperature: 0.4,
+    maxRetries: 2,
+    abortSignal: new AbortController().signal,
+  });
+
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error("AI did not return JSON");
+
+  const parsed = QuestionSchema.safeParse(JSON.parse(jsonMatch[0]));
+  if (!parsed.success) throw new Error("AI output failed schema validation");
+
+  return {
+    id: crypto.randomUUID(),
+    conceptId,
+    prompt: parsed.data.prompt,
+    choices: parsed.data.choices,
+    correctIndex: parsed.data.correctIndex,
+    hint: parsed.data.hint,
+    explanation: parsed.data.explanation,
+    difficulty: difficulty as Question["difficulty"],
+    rubric: parsed.data.rubric ?? "Concept understanding",
   };
 }
 
@@ -55,19 +136,39 @@ export const Route = createFileRoute("/api/learning/session")({
             "Sign in to use learning tools.",
             requestId,
           );
+
         if (parsed.data.action === "question") {
-          const { data, error } = await auth.supabase
+          const { data: concept, error } = await (auth.supabase as any)
             .from("learning_concepts")
-            .select("id,title")
+            .select("id,title,subject")
             .eq("id", parsed.data.conceptId)
             .maybeSingle();
-          if (error || !data)
+          if (error || !concept)
             return apiErrorResponse(404, "NOT_FOUND", "Learning concept was not found.", requestId);
+
+          let question: Question;
+          try {
+            question = await generateAIQuestion(
+              concept.id,
+              concept.title,
+              parsed.data.difficulty,
+              parsed.data.topic,
+            );
+          } catch {
+            question = questionFor(
+              concept.id,
+              concept.title,
+              parsed.data.difficulty,
+              parsed.data.topic,
+            );
+          }
+
           return Response.json({
-            question: questionFor(data.id, data.title, parsed.data.difficulty),
-            aiGenerated: false,
+            question,
+            aiGenerated: question.prompt.includes("I can explain"),
           });
         }
+
         const now = new Date();
         const minutes = Math.max(
           10,

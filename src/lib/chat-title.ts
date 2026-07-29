@@ -4,7 +4,12 @@
 // user prompt. Used only to upgrade a freshly-created conversation whose title
 // is still a default placeholder ("Untitled", "New Chat", or empty).
 
-const DEFAULT_TITLES: ReadonlySet<string> = new Set(["", "untitled", "new chat", "new conversation"]);
+const DEFAULT_TITLES: ReadonlySet<string> = new Set([
+  "",
+  "untitled",
+  "new chat",
+  "new conversation",
+]);
 
 const GREETING_WORDS: ReadonlySet<string> = new Set([
   "hi",

@@ -3,7 +3,7 @@
 // first, and the backend automatically falls back through the rest.
 // Models validated against OpenRouter catalog (https://openrouter.ai/models)
 export const LORD_MODELS = {
-   // ⚡ Lowest latency / everyday chat
+  // ⚡ Lowest latency / everyday chat
   fast: [
     "openai/gpt-oss-20b:free",
     "google/gemma-4-26b-a4b-it:free",
@@ -80,12 +80,7 @@ export const getLordModelCandidates = buildCandidates;
 // the thrown Error via a symbol marker so it survives SDK error wrapping
 // (the AI SDK re-throws our error as `cause`), and its message also carries a
 // regex-matchable signature as a fallback.
-export type OpenRouterClientErrorKind =
-  | "network"
-  | "abort"
-  | "timeout"
-  | "parse"
-  | "api";
+export type OpenRouterClientErrorKind = "network" | "abort" | "timeout" | "parse" | "api";
 
 export const OPENROUTER_CLIENT_ERROR = Symbol.for("lord.openrouter.client-error");
 
@@ -186,7 +181,8 @@ export interface ModelAttempt {
 // Pre-compiled regex patterns for performance (avoids recompilation on every call)
 const ERROR_PATTERNS = {
   // Non-retryable: auth / client mistakes
-  invalidApiKey: /invalid api key|missing api key|expired api key|unauthorized|authentication failed|not authorized|401/i,
+  invalidApiKey:
+    /invalid api key|missing api key|expired api key|unauthorized|authentication failed|not authorized|401/i,
   malformedRequest: /malformed request|invalid request|bad request|400/i,
   invalidMessages: /invalid message|message is invalid|content policy|moderation/i,
 
@@ -194,7 +190,8 @@ const ERROR_PATTERNS = {
   insufficientCredits: /insufficient.{0,12}credit|payment required|402/i,
   rateLimit: /rate limit|too many requests|429/i,
   modelUnavailable: /model not found|model unavailable|does not exist|not supported|404/i,
-  providerError: /provider unavailable|provider error|upstream|bad gateway|502|503|504|service unavailable|gateway timeout|timeout|timed out|etimedout|econnrefused|econnreset|network|fetch failed|enotfound|aborted|streaming failed|stream error/i,
+  providerError:
+    /provider unavailable|provider error|upstream|bad gateway|502|503|504|service unavailable|gateway timeout|timeout|timed out|etimedout|econnrefused|econnreset|network|fetch failed|enotfound|aborted|streaming failed|stream error/i,
 } as const;
 
 // Extract HTTP status from error message if present
@@ -204,7 +201,11 @@ function extractStatus(message: string): number | undefined {
 }
 
 // Extract provider error details from OpenRouter error response
-function extractProviderDetails(error: unknown): { providerMessage?: string; errorCode?: string; requestId?: string } {
+function extractProviderDetails(error: unknown): {
+  providerMessage?: string;
+  errorCode?: string;
+  requestId?: string;
+} {
   if (error instanceof Error) {
     try {
       const parsed = JSON.parse(error.message);
@@ -242,8 +243,7 @@ export function classifyModelError(error: unknown): ModelErrorClassification {
         return { retryable: true, reason: "model_unavailable", status, providerMessage };
       if (status === 402)
         return { retryable: true, reason: "insufficient_credits", status, providerMessage };
-      if (status === 429)
-        return { retryable: true, reason: "rate_limit", status, providerMessage };
+      if (status === 429) return { retryable: true, reason: "rate_limit", status, providerMessage };
       if (status >= 500)
         return { retryable: true, reason: "provider_error", status, providerMessage };
       return { retryable: true, reason: "provider_error", status, providerMessage };
@@ -272,24 +272,49 @@ export function classifyModelError(error: unknown): ModelErrorClassification {
 
   // Check non-retryable patterns first (order matters for specificity)
   if (ERROR_PATTERNS.invalidApiKey.test(msg)) {
-    return { retryable: false, reason: "invalid_api_key", status: status ?? 401, ...providerDetails };
+    return {
+      retryable: false,
+      reason: "invalid_api_key",
+      status: status ?? 401,
+      ...providerDetails,
+    };
   }
   if (ERROR_PATTERNS.malformedRequest.test(msg)) {
-    return { retryable: false, reason: "malformed_request", status: status ?? 400, ...providerDetails };
+    return {
+      retryable: false,
+      reason: "malformed_request",
+      status: status ?? 400,
+      ...providerDetails,
+    };
   }
   if (ERROR_PATTERNS.invalidMessages.test(msg)) {
-    return { retryable: false, reason: "invalid_messages", status: status ?? 400, ...providerDetails };
+    return {
+      retryable: false,
+      reason: "invalid_messages",
+      status: status ?? 400,
+      ...providerDetails,
+    };
   }
 
   // Check retryable patterns
   if (ERROR_PATTERNS.insufficientCredits.test(msg)) {
-    return { retryable: true, reason: "insufficient_credits", status: status ?? 402, ...providerDetails };
+    return {
+      retryable: true,
+      reason: "insufficient_credits",
+      status: status ?? 402,
+      ...providerDetails,
+    };
   }
   if (ERROR_PATTERNS.rateLimit.test(msg)) {
     return { retryable: true, reason: "rate_limit", status: status ?? 429, ...providerDetails };
   }
   if (ERROR_PATTERNS.modelUnavailable.test(msg)) {
-    return { retryable: true, reason: "model_unavailable", status: status ?? 404, ...providerDetails };
+    return {
+      retryable: true,
+      reason: "model_unavailable",
+      status: status ?? 404,
+      ...providerDetails,
+    };
   }
   if (ERROR_PATTERNS.providerError.test(msg)) {
     return { retryable: true, reason: "provider_error", status: status ?? 502, ...providerDetails };
@@ -301,7 +326,8 @@ export function classifyModelError(error: unknown): ModelErrorClassification {
     retryable: true,
     reason: "unknown",
     status,
-    providerMessage: providerDetails.providerMessage ?? (raw.trim() || "Unclassified OpenRouter error"),
+    providerMessage:
+      providerDetails.providerMessage ?? (raw.trim() || "Unclassified OpenRouter error"),
     ...providerDetails,
   };
 }

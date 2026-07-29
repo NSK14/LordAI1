@@ -1,17 +1,67 @@
-import { format, parse, addDays, addWeeks, addMonths, addYears, nextFriday, nextMonday, nextTuesday, nextWednesday, nextThursday } from "date-fns";
+import {
+  format,
+  parse,
+  addDays,
+  addWeeks,
+  addMonths,
+  addYears,
+  nextFriday,
+  nextMonday,
+  nextTuesday,
+  nextWednesday,
+  nextThursday,
+} from "date-fns";
 import { type CalendarEvent, type EventCategory, uid } from "./lord-store";
 
 // Keywords that indicate scheduling intent
 const SCHEDULING_KEYWORDS = [
-  "i have", "my exam", "exam", "meeting", "appointment", "deadline",
-  "birthday", "presentation", "doctor", "dentist", "vacation", "holiday",
-  "interview", "conference", "assignment", "submission", "payment due",
-  "renewal", "festival", "wedding", "reminder", "task due", "schedule",
-  "on august", "on july", "on september", "on october", "on november",
-  "on december", "on january", "on february", "on march", "on april",
-  "on may", "on june", "next friday", "next monday", "next tuesday",
-  "next wednesday", "next thursday", "next week", "tomorrow", "today at",
-  "every month", "every week", "every day", "recurring",
+  "i have",
+  "my exam",
+  "exam",
+  "meeting",
+  "appointment",
+  "deadline",
+  "birthday",
+  "presentation",
+  "doctor",
+  "dentist",
+  "vacation",
+  "holiday",
+  "interview",
+  "conference",
+  "assignment",
+  "submission",
+  "payment due",
+  "renewal",
+  "festival",
+  "wedding",
+  "reminder",
+  "task due",
+  "schedule",
+  "on august",
+  "on july",
+  "on september",
+  "on october",
+  "on november",
+  "on december",
+  "on january",
+  "on february",
+  "on march",
+  "on april",
+  "on may",
+  "on june",
+  "next friday",
+  "next monday",
+  "next tuesday",
+  "next wednesday",
+  "next thursday",
+  "next week",
+  "tomorrow",
+  "today at",
+  "every month",
+  "every week",
+  "every day",
+  "recurring",
 ];
 
 // Time patterns
@@ -33,8 +83,28 @@ const DATE_PATTERNS = [
 
 // Category detection keywords
 const CATEGORY_KEYWORDS: Record<EventCategory, string[]> = {
-  study: ["exam", "study", "quiz", "test", "revision", "homework", "assignment", "semester", "class", "lecture"],
-  work: ["meeting", "interview", "presentation", "deadline", "project", "submission", "conference", "work"],
+  study: [
+    "exam",
+    "study",
+    "quiz",
+    "test",
+    "revision",
+    "homework",
+    "assignment",
+    "semester",
+    "class",
+    "lecture",
+  ],
+  work: [
+    "meeting",
+    "interview",
+    "presentation",
+    "deadline",
+    "project",
+    "submission",
+    "conference",
+    "work",
+  ],
   fitness: ["gym", "workout", "exercise", "fitness", "run", "training"],
   personal: ["birthday", "anniversary", "party", "vacation", "holiday", "wedding", "festival"],
   finance: ["payment", "bill", "invoice", "tax", "budget", "finance"],
@@ -57,7 +127,7 @@ export interface DetectedEvent {
 function detectCategory(text: string): EventCategory {
   const lowerText = text.toLowerCase();
   for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-    if (keywords.some(k => lowerText.includes(k))) {
+    if (keywords.some((k) => lowerText.includes(k))) {
       return category as EventCategory;
     }
   }
@@ -79,7 +149,9 @@ function detectDate(text: string): string | null {
   }
 
   // Check for "next friday", "next monday", etc.
-  const nextDayMatch = lowerText.match(/next\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i);
+  const nextDayMatch = lowerText.match(
+    /next\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i,
+  );
   if (nextDayMatch) {
     const dayMap: Record<string, (d: Date) => Date> = {
       monday: nextMonday,
@@ -149,7 +221,9 @@ function detectTime(text: string): { startTime?: string; endTime?: string } {
     const minute = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
     const period = timeMatch[3].toLowerCase();
     const adjustedHour = period === "pm" && hour !== 12 ? hour + 12 : hour;
-    return { startTime: `${String(adjustedHour).padStart(2, "0")}:${String(minute).padStart(2, "0")}` };
+    return {
+      startTime: `${String(adjustedHour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`,
+    };
   }
   return {};
 }
@@ -159,15 +233,20 @@ function detectRecurrence(text: string): "none" | "daily" | "weekly" | "monthly"
   if (lowerText.includes("every day") || lowerText.includes("daily")) return "daily";
   if (lowerText.includes("every week") || lowerText.includes("weekly")) return "weekly";
   if (lowerText.includes("every month") || lowerText.includes("monthly")) return "monthly";
-  if (lowerText.includes("every year") || lowerText.includes("yearly") || lowerText.includes("birthday")) return "yearly";
+  if (
+    lowerText.includes("every year") ||
+    lowerText.includes("yearly") ||
+    lowerText.includes("birthday")
+  )
+    return "yearly";
   return "none";
 }
 
 export function detectCalendarEvent(text: string): DetectedEvent | null {
   const lowerText = text.toLowerCase();
-  
+
   // Check if any scheduling keyword is present
-  const hasSchedulingIntent = SCHEDULING_KEYWORDS.some(k => lowerText.includes(k));
+  const hasSchedulingIntent = SCHEDULING_KEYWORDS.some((k) => lowerText.includes(k));
   if (!hasSchedulingIntent) return null;
 
   const date = detectDate(text);
@@ -179,12 +258,12 @@ export function detectCalendarEvent(text: string): DetectedEvent | null {
 
   // Extract title - try to get the main event description
   let title = text;
-  
+
   // Remove common prefixes
   title = title.replace(/^(i have|my|schedule|remind me to|remind me)\s+/i, "");
   title = title.replace(/\s+(on|at|next|every|tomorrow|today|in).*$/i, "");
   title = title.replace(/\s+\d{1,2}(st|nd|rd|th)?\s*$/i, "");
-  
+
   // Clean up the title
   title = title.trim();
   if (title.length > 50) {

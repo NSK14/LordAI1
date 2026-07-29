@@ -32,7 +32,7 @@ export const Route = createFileRoute("/api/openrouter-test")({
         const prompt = url.searchParams.get("prompt") ?? undefined;
 
         const result = await testOpenRouterConnection({ apiKey, model, prompt });
-        const status = result.ok ? 200 : result.status ?? 502;
+        const status = result.ok ? 200 : (result.status ?? 502);
         return Response.json(result, { status });
       },
     },

@@ -1,5 +1,11 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import { generateText, streamText, type LanguageModel, type ModelMessage, type StreamTextResult } from "ai";
+import {
+  generateText,
+  streamText,
+  type LanguageModel,
+  type ModelMessage,
+  type StreamTextResult,
+} from "ai";
 
 import { estimateCost } from "@/lib/model-cost";
 import type { TokenUsageEvent } from "@/lib/token-usage-store";
@@ -52,8 +58,7 @@ export function validateOpenRouterApiKey(apiKey: string | undefined): {
   issue?: string;
 } {
   if (!apiKey) return { valid: false, issue: "missing" };
-  if (apiKey !== apiKey.trim())
-    return { valid: false, issue: "contains surrounding whitespace" };
+  if (apiKey !== apiKey.trim()) return { valid: false, issue: "contains surrounding whitespace" };
   if (/\s/.test(apiKey)) return { valid: false, issue: "contains whitespace" };
   if (apiKey.includes('"') || apiKey.includes("'"))
     return { valid: false, issue: "contains quotes" };
@@ -64,10 +69,7 @@ export function validateOpenRouterApiKey(apiKey: string | undefined): {
 
 // Read a header case-insensitively from whatever shape `fetch` gives us
 // (a `Headers` instance or a plain record).
-function readHeader(
-  headers: HeadersInit | undefined,
-  name: string,
-): string | undefined {
+function readHeader(headers: HeadersInit | undefined, name: string): string | undefined {
   if (!headers) return undefined;
   const lower = name.toLowerCase();
   if (typeof Headers !== "undefined" && headers instanceof Headers) {
@@ -93,8 +95,7 @@ function readHeader(
 let diagnosticsLogged = false;
 
 export function getOpenRouterEnvironmentDiagnostics() {
-  const isEdge =
-    typeof (globalThis as { EdgeRuntime?: unknown }).EdgeRuntime !== "undefined";
+  const isEdge = typeof (globalThis as { EdgeRuntime?: unknown }).EdgeRuntime !== "undefined";
   const key = process.env.OPENROUTER_API_KEY;
   return {
     hasApiKey: !!key,
@@ -103,9 +104,7 @@ export function getOpenRouterEnvironmentDiagnostics() {
     nodeVersion: process.version,
     runtime: isEdge ? "edge" : "node",
     platform: typeof process.platform === "string" ? process.platform : "unknown",
-    deployedOn: process.env.VERCEL
-      ? "vercel"
-      : (process.env.NITRO_PRESET ?? "local"),
+    deployedOn: process.env.VERCEL ? "vercel" : (process.env.NITRO_PRESET ?? "local"),
   };
 }
 
@@ -281,8 +280,7 @@ async function openRouterFetch(input: RequestInfo | URL, init?: RequestInit) {
 
     // If this is already our structured error (e.g. the api error above),
     // preserve its original kind instead of re-classifying as network.
-    const effectiveKind =
-      error instanceof OpenRouterClientError ? error.kind : kind;
+    const effectiveKind = error instanceof OpenRouterClientError ? error.kind : kind;
 
     console.error(
       JSON.stringify({
@@ -305,9 +303,7 @@ async function openRouterFetch(input: RequestInfo | URL, init?: RequestInit) {
 export function createOpenRouterProvider(apiKey: string) {
   const validation = validateOpenRouterApiKey(apiKey);
   if (!validation.valid) {
-    console.error(
-      JSON.stringify({ event: "openrouter_invalid_api_key", issue: validation.issue }),
-    );
+    console.error(JSON.stringify({ event: "openrouter_invalid_api_key", issue: validation.issue }));
     throw new OpenRouterClientError(`Invalid OPENROUTER_API_KEY: ${validation.issue}`, {
       kind: "api",
       status: 401,
@@ -375,19 +371,19 @@ export async function findFirstWorkingModel(
     console.info(`Attempt ${attemptNum}:\n${modelId}`);
 
     try {
-await generateText({
-    model: opts.gateway(modelId),
-    system: "Reply with OK",
-    messages: [
-        {
+      await generateText({
+        model: opts.gateway(modelId),
+        system: "Reply with OK",
+        messages: [
+          {
             role: "user",
-            content: "OK"
-        }
-    ],
-    maxOutputTokens: PROBE_MAX_OUTPUT_TOKENS,
-    temperature: 0,
-    maxRetries: 0,
-});
+            content: "OK",
+          },
+        ],
+        maxOutputTokens: PROBE_MAX_OUTPUT_TOKENS,
+        temperature: 0,
+        maxRetries: 0,
+      });
     } catch (err) {
       const classification = classifyModelError(err);
       const attempt: ModelAttempt = {
@@ -404,12 +400,10 @@ await generateText({
       console.info(
         `Failed:\n${attempt.reason} (status: ${attempt.status}, retryable: ${attempt.retryable})`,
       );
-if (!classification.retryable) {
-  console.warn(
-    `Skipping invalid model ${modelId}: ${classification.providerMessage}`
-  );
-  continue;
-}
+      if (!classification.retryable) {
+        console.warn(`Skipping invalid model ${modelId}: ${classification.providerMessage}`);
+        continue;
+      }
       continue;
     }
 
@@ -468,11 +462,7 @@ export async function streamWithFallback(
       );
     },
     onFinish: ({ finishReason, usage }) => {
-      const cost = estimateCost(
-        modelId,
-        usage.inputTokens ?? 0,
-        usage.outputTokens ?? 0,
-      );
+      const cost = estimateCost(modelId, usage.inputTokens ?? 0, usage.outputTokens ?? 0);
       console.info(
         JSON.stringify({
           event: "openrouter_stream_end",
@@ -557,7 +547,7 @@ export async function testOpenRouterConnection(opts: {
     model,
     stream: false,
     messages: [{ role: "user", content: opts.prompt ?? "Say hello." }],
-    max_tokens:512,
+    max_tokens: 512,
     temperature: 0,
   };
   const diagnostics = getOpenRouterEnvironmentDiagnostics();

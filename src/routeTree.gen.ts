@@ -38,6 +38,7 @@ import { Route as AuthenticatedBoardsRouteImport } from './routes/_authenticated
 import { Route as ApiSharesTokenRouteImport } from './routes/api/shares/$token'
 import { Route as ApiSharedTokenRouteImport } from './routes/api/shared/$token'
 import { Route as ApiLearningSessionRouteImport } from './routes/api/learning/session'
+import { Route as ApiLearningSourcesIngestRouteImport } from './routes/api/learning/sources/ingest'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
@@ -184,6 +185,12 @@ const ApiLearningSessionRoute = ApiLearningSessionRouteImport.update({
   path: '/api/learning/session',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiLearningSourcesIngestRoute =
+  ApiLearningSourcesIngestRouteImport.update({
+    id: '/api/learning/sources/ingest',
+    path: '/api/learning/sources/ingest',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -214,6 +221,7 @@ export interface FileRoutesByFullPath {
   '/api/learning/session': typeof ApiLearningSessionRoute
   '/api/shared/$token': typeof ApiSharedTokenRoute
   '/api/shares/$token': typeof ApiSharesTokenRoute
+  '/api/learning/sources/ingest': typeof ApiLearningSourcesIngestRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -244,6 +252,7 @@ export interface FileRoutesByTo {
   '/api/learning/session': typeof ApiLearningSessionRoute
   '/api/shared/$token': typeof ApiSharedTokenRoute
   '/api/shares/$token': typeof ApiSharesTokenRoute
+  '/api/learning/sources/ingest': typeof ApiLearningSourcesIngestRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -276,6 +285,7 @@ export interface FileRoutesById {
   '/api/learning/session': typeof ApiLearningSessionRoute
   '/api/shared/$token': typeof ApiSharedTokenRoute
   '/api/shares/$token': typeof ApiSharesTokenRoute
+  '/api/learning/sources/ingest': typeof ApiLearningSourcesIngestRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -308,6 +318,7 @@ export interface FileRouteTypes {
     | '/api/learning/session'
     | '/api/shared/$token'
     | '/api/shares/$token'
+    | '/api/learning/sources/ingest'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -338,6 +349,7 @@ export interface FileRouteTypes {
     | '/api/learning/session'
     | '/api/shared/$token'
     | '/api/shares/$token'
+    | '/api/learning/sources/ingest'
   id:
     | '__root__'
     | '/'
@@ -369,6 +381,7 @@ export interface FileRouteTypes {
     | '/api/learning/session'
     | '/api/shared/$token'
     | '/api/shares/$token'
+    | '/api/learning/sources/ingest'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -384,6 +397,7 @@ export interface RootRouteChildren {
   ShareTokenRoute: typeof ShareTokenRoute
   ApiLearningSessionRoute: typeof ApiLearningSessionRoute
   ApiSharedTokenRoute: typeof ApiSharedTokenRoute
+  ApiLearningSourcesIngestRoute: typeof ApiLearningSourcesIngestRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -591,6 +605,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiLearningSessionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/learning/sources/ingest': {
+      id: '/api/learning/sources/ingest'
+      path: '/api/learning/sources/ingest'
+      fullPath: '/api/learning/sources/ingest'
+      preLoaderRoute: typeof ApiLearningSourcesIngestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -660,6 +681,7 @@ const rootRouteChildren: RootRouteChildren = {
   ShareTokenRoute: ShareTokenRoute,
   ApiLearningSessionRoute: ApiLearningSessionRoute,
   ApiSharedTokenRoute: ApiSharedTokenRoute,
+  ApiLearningSourcesIngestRoute: ApiLearningSourcesIngestRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

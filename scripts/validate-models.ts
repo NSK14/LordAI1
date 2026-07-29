@@ -64,7 +64,9 @@ function validateModels(configuredModels: string[], availableModels: OpenRouterM
       } else if (model.pricing?.prompt === "0") {
         results.valid.push(`${modelId} (free)`);
       } else {
-        results.valid.push(`${modelId} (paid: $${model.pricing?.prompt}/1M in, $${model.pricing?.completion}/1M out)`);
+        results.valid.push(
+          `${modelId} (paid: $${model.pricing?.prompt}/1M in, $${model.pricing?.completion}/1M out)`,
+        );
       }
     } else {
       // Check for similar models

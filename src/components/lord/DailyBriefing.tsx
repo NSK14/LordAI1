@@ -1,6 +1,20 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Calendar, Clock, X, BookOpen, Briefcase, Dumbbell, Cake, CreditCard, Plane, Users, Heart, Target, MoreHorizontal } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  X,
+  BookOpen,
+  Briefcase,
+  Dumbbell,
+  Cake,
+  CreditCard,
+  Plane,
+  Users,
+  Heart,
+  Target,
+  MoreHorizontal,
+} from "lucide-react";
 import { useCalendar } from "@/components/lord/CalendarProvider";
 import { type CalendarEvent, type EventCategory } from "@/lib/lord-store";
 import { format, parseISO, isSameDay, addDays } from "date-fns";
@@ -46,12 +60,12 @@ export function DailyBriefing() {
     }
 
     // Show briefing if there are events today or tomorrow
-    const todayEvents = events.filter(e => {
+    const todayEvents = events.filter((e) => {
       const eventDate = parseISO(e.date);
       return isSameDay(eventDate, new Date()) && !e.completed;
     });
-    
-    const tomorrowEvents = events.filter(e => {
+
+    const tomorrowEvents = events.filter((e) => {
       const eventDate = parseISO(e.date);
       return isSameDay(eventDate, addDays(new Date(), 1)) && !e.completed;
     });
@@ -67,12 +81,12 @@ export function DailyBriefing() {
     localStorage.setItem("daily-briefing-dismissed", format(new Date(), "yyyy-MM-dd"));
   };
 
-  const todayEvents = events.filter(e => {
+  const todayEvents = events.filter((e) => {
     const eventDate = parseISO(e.date);
     return isSameDay(eventDate, new Date()) && !e.completed;
   });
 
-  const tomorrowEvents = events.filter(e => {
+  const tomorrowEvents = events.filter((e) => {
     const eventDate = parseISO(e.date);
     return isSameDay(eventDate, addDays(new Date(), 1)) && !e.completed;
   });
@@ -110,7 +124,7 @@ export function DailyBriefing() {
                   Today
                 </p>
                 <ul className="space-y-1">
-                  {todayEvents.map(e => {
+                  {todayEvents.map((e) => {
                     const Icon = CATEGORY_ICONS[e.category];
                     return (
                       <li key={e.id} className="flex items-center gap-2 text-xs">
@@ -132,7 +146,7 @@ export function DailyBriefing() {
                   Tomorrow
                 </p>
                 <ul className="space-y-1">
-                  {tomorrowEvents.map(e => {
+                  {tomorrowEvents.map((e) => {
                     const Icon = CATEGORY_ICONS[e.category];
                     return (
                       <li key={e.id} className="flex items-center gap-2 text-xs">
@@ -150,8 +164,8 @@ export function DailyBriefing() {
 
             {tomorrowEvents.length > 0 && (
               <p className="mt-3 text-xs text-muted-foreground">
-                You have {tomorrowEvents.length} event{tomorrowEvents.length > 1 ? "s" : ""} tomorrow.
-                Would you like to prepare?
+                You have {tomorrowEvents.length} event{tomorrowEvents.length > 1 ? "s" : ""}{" "}
+                tomorrow. Would you like to prepare?
               </p>
             )}
           </div>

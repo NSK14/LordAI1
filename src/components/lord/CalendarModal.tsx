@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Calendar as CalendarIcon, 
-  X, 
-  Plus, 
-  ChevronLeft, 
+import {
+  Calendar as CalendarIcon,
+  X,
+  Plus,
+  ChevronLeft,
   ChevronRight,
   Clock,
   MapPin,
@@ -22,12 +22,23 @@ import {
   Users,
   Heart,
   Target,
-  MoreHorizontal
+  MoreHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCalendar } from "@/components/lord/CalendarProvider";
 import { type CalendarEvent, type EventCategory, type EventPriority, uid } from "@/lib/lord-store";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, parseISO, addMonths, subMonths, startOfWeek, endOfWeek } from "date-fns";
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  isSameDay,
+  parseISO,
+  addMonths,
+  subMonths,
+  startOfWeek,
+  endOfWeek,
+} from "date-fns";
 
 const CATEGORIES: { id: EventCategory; label: string; icon: typeof BookOpen }[] = [
   { id: "study", label: "Study", icon: BookOpen },
@@ -84,7 +95,7 @@ export function CalendarModal({ open, onClose }: CalendarModalProps) {
   // Get events for today, tomorrow, upcoming
   const todayEvents = useMemo(() => {
     const today = new Date();
-    return events.filter(e => {
+    return events.filter((e) => {
       const eventDate = parseISO(e.date);
       return isSameDay(eventDate, today) && !e.completed;
     });
@@ -93,7 +104,7 @@ export function CalendarModal({ open, onClose }: CalendarModalProps) {
   const tomorrowEvents = useMemo(() => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    return events.filter(e => {
+    return events.filter((e) => {
       const eventDate = parseISO(e.date);
       return isSameDay(eventDate, tomorrow) && !e.completed;
     });
@@ -103,21 +114,23 @@ export function CalendarModal({ open, onClose }: CalendarModalProps) {
     const today = new Date();
     const nextWeek = new Date();
     nextWeek.setDate(today.getDate() + 7);
-    return events.filter(e => {
-      const eventDate = parseISO(e.date);
-      return eventDate > today && eventDate <= nextWeek && !e.completed;
-    }).sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
+    return events
+      .filter((e) => {
+        const eventDate = parseISO(e.date);
+        return eventDate > today && eventDate <= nextWeek && !e.completed;
+      })
+      .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
   }, [events]);
 
   const completedEvents = useMemo(() => {
-    return events.filter(e => e.completed).sort((a, b) => 
-      parseISO(b.date).getTime() - parseISO(a.date).getTime()
-    );
+    return events
+      .filter((e) => e.completed)
+      .sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
   }, [events]);
 
   const handleSaveEvent = () => {
     if (!newEvent.title || !newEvent.date) return;
-    
+
     const event: CalendarEvent = {
       id: editingEvent?.id ?? uid(),
       title: newEvent.title,
@@ -143,7 +156,7 @@ export function CalendarModal({ open, onClose }: CalendarModalProps) {
     } else {
       addEvent(event);
     }
-    
+
     setShowNewEvent(false);
     setEditingEvent(null);
     setNewEvent({ priority: "med", category: "other", recurrence: "none" });
@@ -171,7 +184,7 @@ export function CalendarModal({ open, onClose }: CalendarModalProps) {
   }, [selectedDate]);
 
   const hasEventsOnDate = (date: Date) => {
-    return events.some(e => {
+    return events.some((e) => {
       const eventDate = parseISO(e.date);
       return isSameDay(eventDate, date) && !e.completed;
     });
@@ -189,7 +202,7 @@ export function CalendarModal({ open, onClose }: CalendarModalProps) {
             onClick={onClose}
             className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
           />
-          
+
           {/* Modal */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -206,15 +219,15 @@ export function CalendarModal({ open, onClose }: CalendarModalProps) {
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="flex rounded-md border border-white/10 p-1">
-                    {(["month", "week", "day", "agenda"] as const).map(v => (
+                    {(["month", "week", "day", "agenda"] as const).map((v) => (
                       <button
                         key={v}
                         onClick={() => setView(v)}
                         className={cn(
                           "px-2 py-1 text-xs font-medium transition",
-                          view === v 
-                            ? "bg-cyan-400/20 text-cyan-200" 
-                            : "text-white/60 hover:text-white"
+                          view === v
+                            ? "bg-cyan-400/20 text-cyan-200"
+                            : "text-white/60 hover:text-white",
                         )}
                       >
                         {v.charAt(0).toUpperCase() + v.slice(1)}
@@ -242,10 +255,10 @@ export function CalendarModal({ open, onClose }: CalendarModalProps) {
                       <p className="text-xs text-muted-foreground">No events today</p>
                     ) : (
                       <ul className="space-y-1">
-                        {todayEvents.map(e => (
-                          <EventItem 
-                            key={e.id} 
-                            event={e} 
+                        {todayEvents.map((e) => (
+                          <EventItem
+                            key={e.id}
+                            event={e}
                             onEdit={openEditEvent}
                             onDelete={handleDeleteEvent}
                             onToggleComplete={handleToggleComplete}
@@ -264,10 +277,10 @@ export function CalendarModal({ open, onClose }: CalendarModalProps) {
                       <p className="text-xs text-muted-foreground">No events tomorrow</p>
                     ) : (
                       <ul className="space-y-1">
-                        {tomorrowEvents.map(e => (
-                          <EventItem 
-                            key={e.id} 
-                            event={e} 
+                        {tomorrowEvents.map((e) => (
+                          <EventItem
+                            key={e.id}
+                            event={e}
                             onEdit={openEditEvent}
                             onDelete={handleDeleteEvent}
                             onToggleComplete={handleToggleComplete}
@@ -286,10 +299,10 @@ export function CalendarModal({ open, onClose }: CalendarModalProps) {
                       <p className="text-xs text-muted-foreground">No upcoming events</p>
                     ) : (
                       <ul className="space-y-1">
-                        {upcomingEvents.map(e => (
-                          <EventItem 
-                            key={e.id} 
-                            event={e} 
+                        {upcomingEvents.map((e) => (
+                          <EventItem
+                            key={e.id}
+                            event={e}
                             onEdit={openEditEvent}
                             onDelete={handleDeleteEvent}
                             onToggleComplete={handleToggleComplete}
@@ -308,10 +321,10 @@ export function CalendarModal({ open, onClose }: CalendarModalProps) {
                       <p className="text-xs text-muted-foreground">No completed events</p>
                     ) : (
                       <ul className="space-y-1">
-                        {completedEvents.slice(0, 5).map(e => (
-                          <EventItem 
-                            key={e.id} 
-                            event={e} 
+                        {completedEvents.slice(0, 5).map((e) => (
+                          <EventItem
+                            key={e.id}
+                            event={e}
                             onEdit={openEditEvent}
                             onDelete={handleDeleteEvent}
                             onToggleComplete={handleToggleComplete}
@@ -379,14 +392,14 @@ export function CalendarModal({ open, onClose }: CalendarModalProps) {
                     type="text"
                     placeholder="Title"
                     value={newEvent.title ?? ""}
-                    onChange={e => setNewEvent({ ...newEvent, title: e.target.value })}
+                    onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
                     className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-cyan-400"
                   />
-                  
+
                   <textarea
                     placeholder="Description"
                     value={newEvent.description ?? ""}
-                    onChange={e => setNewEvent({ ...newEvent, description: e.target.value })}
+                    onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
                     rows={2}
                     className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-cyan-400"
                   />
@@ -395,13 +408,13 @@ export function CalendarModal({ open, onClose }: CalendarModalProps) {
                     <input
                       type="date"
                       value={newEvent.date ?? format(new Date(), "yyyy-MM-dd")}
-                      onChange={e => setNewEvent({ ...newEvent, date: e.target.value })}
+                      onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })}
                       className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-cyan-400"
                     />
                     <input
                       type="time"
                       value={newEvent.startTime ?? ""}
-                      onChange={e => setNewEvent({ ...newEvent, startTime: e.target.value })}
+                      onChange={(e) => setNewEvent({ ...newEvent, startTime: e.target.value })}
                       className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-cyan-400"
                     />
                   </div>
@@ -410,7 +423,7 @@ export function CalendarModal({ open, onClose }: CalendarModalProps) {
                     type="time"
                     placeholder="End Time"
                     value={newEvent.endTime ?? ""}
-                    onChange={e => setNewEvent({ ...newEvent, endTime: e.target.value })}
+                    onChange={(e) => setNewEvent({ ...newEvent, endTime: e.target.value })}
                     className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-cyan-400"
                   />
 
@@ -418,38 +431,54 @@ export function CalendarModal({ open, onClose }: CalendarModalProps) {
                     type="text"
                     placeholder="Location (optional)"
                     value={newEvent.location ?? ""}
-                    onChange={e => setNewEvent({ ...newEvent, location: e.target.value })}
+                    onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
                     className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-cyan-400"
                   />
 
                   <div className="grid grid-cols-3 gap-2">
                     <select
                       value={newEvent.priority ?? "med"}
-                      onChange={e => setNewEvent({ ...newEvent, priority: e.target.value as EventPriority })}
+                      onChange={(e) =>
+                        setNewEvent({ ...newEvent, priority: e.target.value as EventPriority })
+                      }
                       className="rounded-md border border-white/10 bg-white/5 px-2 py-1.5 text-xs outline-none"
                     >
-                      {PRIORITIES.map(p => (
-                        <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
+                      {PRIORITIES.map((p) => (
+                        <option key={p} value={p}>
+                          {p.charAt(0).toUpperCase() + p.slice(1)}
+                        </option>
                       ))}
                     </select>
 
                     <select
                       value={newEvent.category ?? "other"}
-                      onChange={e => setNewEvent({ ...newEvent, category: e.target.value as EventCategory })}
+                      onChange={(e) =>
+                        setNewEvent({ ...newEvent, category: e.target.value as EventCategory })
+                      }
                       className="rounded-md border border-white/10 bg-white/5 px-2 py-1.5 text-xs outline-none"
                     >
-                      {CATEGORIES.map(c => (
-                        <option key={c.id} value={c.id}>{c.label}</option>
+                      {CATEGORIES.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.label}
+                        </option>
                       ))}
                     </select>
 
                     <select
                       value={newEvent.recurrence ?? "none"}
-                      onChange={e => setNewEvent({ ...newEvent, recurrence: e.target.value as "none" | "daily" | "weekly" | "monthly" | "yearly" })}
+                      onChange={(e) =>
+                        setNewEvent({
+                          ...newEvent,
+                          recurrence: e.target.value as
+                            "none" | "daily" | "weekly" | "monthly" | "yearly",
+                        })
+                      }
                       className="rounded-md border border-white/10 bg-white/5 px-2 py-1.5 text-xs outline-none"
                     >
-                      {RECURRENCE.map(r => (
-                        <option key={r.id} value={r.id}>{r.label}</option>
+                      {RECURRENCE.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.label}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -457,7 +486,7 @@ export function CalendarModal({ open, onClose }: CalendarModalProps) {
                   <textarea
                     placeholder="Notes (optional)"
                     value={newEvent.notes ?? ""}
-                    onChange={e => setNewEvent({ ...newEvent, notes: e.target.value })}
+                    onChange={(e) => setNewEvent({ ...newEvent, notes: e.target.value })}
                     rows={2}
                     className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm outline-none focus:border-cyan-400"
                   />
@@ -479,20 +508,20 @@ export function CalendarModal({ open, onClose }: CalendarModalProps) {
   );
 }
 
-function EventItem({ 
-  event, 
-  onEdit, 
-  onDelete, 
-  onToggleComplete 
-}: { 
+function EventItem({
+  event,
+  onEdit,
+  onDelete,
+  onToggleComplete,
+}: {
   event: CalendarEvent;
   onEdit: (e: CalendarEvent) => void;
   onDelete: (id: string) => void;
   onToggleComplete: (id: string) => void;
 }) {
-  const categoryInfo = CATEGORIES.find(c => c.id === event.category);
+  const categoryInfo = CATEGORIES.find((c) => c.id === event.category);
   const Icon = categoryInfo?.icon ?? MoreHorizontal;
-  
+
   return (
     <li className="flex items-center justify-between rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm">
       <div className="flex min-w-0 items-center gap-2">
@@ -501,9 +530,7 @@ function EventItem({
           <p className={cn("truncate font-medium", event.completed && "line-through opacity-60")}>
             {event.title}
           </p>
-          {event.startTime && (
-            <p className="text-xs text-muted-foreground">{event.startTime}</p>
-          )}
+          {event.startTime && <p className="text-xs text-muted-foreground">{event.startTime}</p>}
         </div>
       </div>
       <div className="flex items-center gap-1">
@@ -511,7 +538,7 @@ function EventItem({
           onClick={() => onToggleComplete(event.id)}
           className={cn(
             "rounded p-1 transition",
-            event.completed ? "text-cyan-400" : "text-white/40 hover:text-cyan-400"
+            event.completed ? "text-cyan-400" : "text-white/40 hover:text-cyan-400",
           )}
         >
           <Check className="h-3 w-3" />

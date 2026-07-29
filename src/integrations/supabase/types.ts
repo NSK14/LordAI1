@@ -321,6 +321,721 @@ export type Database = {
         };
         Relationships: [];
       };
+      learning_concepts: {
+        Row: {
+          id: string;
+          standard_code: string;
+          framework: string;
+          subject: string;
+          grade_band: string;
+          title: string;
+          description: string;
+          prerequisites: string[];
+          version: number;
+          source_url: string | null;
+          license: string;
+          reviewed: boolean;
+          chapter: string | null;
+          misconception_tags: string[];
+          created_at: string;
+        };
+        Insert: {
+          id: string;
+          standard_code: string;
+          framework: string;
+          subject: string;
+          grade_band: string;
+          title: string;
+          description: string;
+          prerequisites?: string[];
+          version?: number;
+          source_url?: string | null;
+          license?: string;
+          reviewed?: boolean;
+          chapter?: string | null;
+          misconception_tags?: string[];
+        };
+        Update: {
+          id?: string;
+          standard_code?: string;
+          framework?: string;
+          subject?: string;
+          grade_band?: string;
+          title?: string;
+          description?: string;
+          prerequisites?: string[];
+          version?: number;
+          source_url?: string | null;
+          license?: string;
+          reviewed?: boolean;
+          chapter?: string | null;
+          misconception_tags?: string[];
+        };
+        Relationships: [];
+      };
+      learning_profiles: {
+        Row: {
+          user_id: string;
+          grade_band: string;
+          curriculum: string;
+          subjects: string[];
+          goals: string[];
+          interests: string[];
+          preferred_language: string;
+          explanation_depth: string;
+          reminders_enabled: boolean;
+          weekly_minutes: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          grade_band?: string;
+          curriculum?: string;
+          subjects?: string[];
+          goals?: string[];
+          interests?: string[];
+          preferred_language?: string;
+          explanation_depth?: string;
+          reminders_enabled?: boolean;
+          weekly_minutes?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          grade_band?: string;
+          curriculum?: string;
+          subjects?: string[];
+          goals?: string[];
+          interests?: string[];
+          preferred_language?: string;
+          explanation_depth?: string;
+          reminders_enabled?: boolean;
+          weekly_minutes?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      learning_mastery: {
+        Row: {
+          user_id: string;
+          concept_id: string;
+          score: number;
+          confidence: number;
+          evidence_count: number;
+          last_practiced_at: string | null;
+          next_review_at: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          concept_id: string;
+          score?: number;
+          confidence?: number;
+          evidence_count?: number;
+          last_practiced_at?: string | null;
+          next_review_at?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          concept_id?: string;
+          score?: number;
+          confidence?: number;
+          evidence_count?: number;
+          last_practiced_at?: string | null;
+          next_review_at?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "learning_mastery_concept_id_fkey";
+            columns: ["concept_id"];
+            isOneToOne: false;
+            referencedRelation: "learning_concepts";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      learning_attempts: {
+        Row: {
+          id: string;
+          user_id: string;
+          concept_id: string;
+          question: Json;
+          answer: Json;
+          correct: boolean | null;
+          score: number | null;
+          misconception: string | null;
+          feedback: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          concept_id: string;
+          question: Json;
+          answer?: Json;
+          correct?: boolean | null;
+          score?: number | null;
+          misconception?: string | null;
+          feedback?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          concept_id?: string;
+          question?: Json;
+          answer?: Json;
+          correct?: boolean | null;
+          score?: number | null;
+          misconception?: string | null;
+          feedback?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "learning_attempts_concept_id_fkey";
+            columns: ["concept_id"];
+            isOneToOne: false;
+            referencedRelation: "learning_concepts";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      learning_plans: {
+        Row: {
+          id: string;
+          user_id: string;
+          title: string;
+          starts_on: string;
+          ends_on: string;
+          status: string;
+          generated_from: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          title: string;
+          starts_on: string;
+          ends_on: string;
+          status?: string;
+          generated_from?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          title?: string;
+          starts_on?: string;
+          ends_on?: string;
+          status?: string;
+          generated_from?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      learning_plan_tasks: {
+        Row: {
+          id: string;
+          plan_id: string;
+          user_id: string;
+          concept_id: string | null;
+          title: string;
+          task_type: string;
+          due_at: string;
+          estimated_minutes: number;
+          status: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          plan_id: string;
+          user_id: string;
+          concept_id?: string | null;
+          title: string;
+          task_type: string;
+          due_at: string;
+          estimated_minutes?: number;
+          status?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          plan_id?: string;
+          user_id?: string;
+          concept_id?: string | null;
+          title?: string;
+          task_type?: string;
+          due_at?: string;
+          estimated_minutes?: number;
+          status?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "learning_plan_tasks_plan_id_fkey";
+            columns: ["plan_id"];
+            isOneToOne: false;
+            referencedRelation: "learning_plans";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "learning_plan_tasks_concept_id_fkey";
+            columns: ["concept_id"];
+            isOneToOne: false;
+            referencedRelation: "learning_concepts";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      learning_sources: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          mime_type: string;
+          storage_path: string | null;
+          extracted_text: string | null;
+          source_kind: string;
+          provenance_url: string | null;
+          license: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          mime_type: string;
+          storage_path?: string | null;
+          extracted_text?: string | null;
+          source_kind: string;
+          provenance_url?: string | null;
+          license?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          name?: string;
+          mime_type?: string;
+          storage_path?: string | null;
+          extracted_text?: string | null;
+          source_kind?: string;
+          provenance_url?: string | null;
+          license?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      learning_resources: {
+        Row: {
+          id: string;
+          concept_id: string | null;
+          source_id: string | null;
+          user_id: string | null;
+          title: string;
+          summary: string;
+          resource_type: string;
+          url: string | null;
+          provenance: string;
+          license: string | null;
+          reviewed: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          concept_id?: string | null;
+          source_id?: string | null;
+          user_id?: string | null;
+          title: string;
+          summary: string;
+          resource_type: string;
+          url?: string | null;
+          provenance: string;
+          license?: string | null;
+          reviewed?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          concept_id?: string | null;
+          source_id?: string | null;
+          user_id?: string | null;
+          title?: string;
+          summary?: string;
+          resource_type?: string;
+          url?: string | null;
+          provenance?: string;
+          license?: string | null;
+          reviewed?: boolean;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "learning_resources_concept_id_fkey";
+            columns: ["concept_id"];
+            isOneToOne: false;
+            referencedRelation: "learning_concepts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "learning_resources_source_id_fkey";
+            columns: ["source_id"];
+            isOneToOne: false;
+            referencedRelation: "learning_sources";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      learning_boards: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          name?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      learning_board_items: {
+        Row: {
+          board_id: string;
+          resource_id: string;
+          user_id: string;
+          created_at: string;
+        };
+        Insert: {
+          board_id: string;
+          resource_id: string;
+          user_id: string;
+          created_at?: string;
+        };
+        Update: {
+          board_id?: string;
+          resource_id?: string;
+          user_id?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "learning_board_items_board_id_fkey";
+            columns: ["board_id"];
+            isOneToOne: false;
+            referencedRelation: "learning_boards";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "learning_board_items_resource_id_fkey";
+            columns: ["resource_id"];
+            isOneToOne: false;
+            referencedRelation: "learning_resources";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      learning_reminders: {
+        Row: {
+          id: string;
+          user_id: string;
+          task_id: string | null;
+          message: string;
+          scheduled_for: string;
+          delivered_at: string | null;
+          dismissed_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          task_id?: string | null;
+          message: string;
+          scheduled_for: string;
+          delivered_at?: string | null;
+          dismissed_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          task_id?: string | null;
+          message?: string;
+          scheduled_for?: string;
+          delivered_at?: string | null;
+          dismissed_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "learning_reminders_task_id_fkey";
+            columns: ["task_id"];
+            isOneToOne: false;
+            referencedRelation: "learning_plan_tasks";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      learning_sessions: {
+        Row: {
+          id: string;
+          user_id: string;
+          concept_id: string | null;
+          title: string;
+          status: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          concept_id?: string | null;
+          title: string;
+          status?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          concept_id?: string | null;
+          title?: string;
+          status?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "learning_sessions_concept_id_fkey";
+            columns: ["concept_id"];
+            isOneToOne: false;
+            referencedRelation: "learning_concepts";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      learning_messages: {
+        Row: {
+          id: string;
+          session_id: string;
+          user_id: string;
+          role: string;
+          content: string;
+          source_ids: string[];
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          session_id: string;
+          user_id: string;
+          role: string;
+          content: string;
+          source_ids?: string[];
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          session_id?: string;
+          user_id?: string;
+          role?: string;
+          content?: string;
+          source_ids?: string[];
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "learning_messages_session_id_fkey";
+            columns: ["session_id"];
+            isOneToOne: false;
+            referencedRelation: "learning_sessions";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      learning_evidence: {
+        Row: {
+          id: string;
+          user_id: string;
+          concept_id: string;
+          session_id: string | null;
+          evidence_type: string;
+          score: number | null;
+          note: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          concept_id: string;
+          session_id?: string | null;
+          evidence_type: string;
+          score?: number | null;
+          note?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          concept_id?: string;
+          session_id?: string | null;
+          evidence_type?: string;
+          score?: number | null;
+          note?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "learning_evidence_concept_id_fkey";
+            columns: ["concept_id"];
+            isOneToOne: false;
+            referencedRelation: "learning_concepts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "learning_evidence_session_id_fkey";
+            columns: ["session_id"];
+            isOneToOne: false;
+            referencedRelation: "learning_sessions";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      learning_artifacts: {
+        Row: {
+          id: string;
+          user_id: string;
+          concept_id: string | null;
+          session_id: string | null;
+          artifact_type: string;
+          title: string;
+          content: Json;
+          ai_generated: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          concept_id?: string | null;
+          session_id?: string | null;
+          artifact_type: string;
+          title: string;
+          content?: Json;
+          ai_generated?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          concept_id?: string | null;
+          session_id?: string | null;
+          artifact_type?: string;
+          title?: string;
+          content?: Json;
+          ai_generated?: boolean;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "learning_artifacts_concept_id_fkey";
+            columns: ["concept_id"];
+            isOneToOne: false;
+            referencedRelation: "learning_concepts";
+            referencedColumns: ["id"],
+          },
+          {
+            foreignKeyName: "learning_artifacts_session_id_fkey";
+            columns: ["session_id"];
+            isOneToOne: false;
+            referencedRelation: "learning_sessions";
+            referencedColumns: ["id"],
+          },
+        ];
+      };
+      learning_source_chunks: {
+        Row: {
+          id: string;
+          source_id: string;
+          user_id: string;
+          chunk_index: number;
+          content: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          source_id: string;
+          user_id: string;
+          chunk_index: number;
+          content: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          source_id?: string;
+          user_id?: string;
+          chunk_index?: number;
+          content?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "learning_source_chunks_source_id_fkey";
+            columns: ["source_id"];
+            isOneToOne: false;
+            referencedRelation: "learning_sources";
+            referencedColumns: ["id"],
+          },
+        ];
+      };
+      learning_integrations: {
+        Row: {
+          id: string;
+          user_id: string;
+          provider: string;
+          status: string;
+          display_name: string | null;
+          metadata: Json;
+          connected_at: string | null;
+          last_synced_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          provider: string;
+          status?: string;
+          display_name?: string | null;
+          metadata?: Json;
+          connected_at?: string | null;
+          last_synced_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          provider?: string;
+          status?: string;
+          display_name?: string | null;
+          metadata?: Json;
+          connected_at?: string | null;
+          last_synced_at?: string | null;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;

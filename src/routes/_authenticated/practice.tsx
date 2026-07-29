@@ -1,5 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { LearningPage } from "@/components/learning/LearningPage";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+
 export const Route = createFileRoute("/_authenticated/practice")({
-  component: () => <LearningPage view="practice" />,
+  beforeLoad: () => {
+    throw redirect({ to: "/study", search: { view: "practice" } });
+  },
 });
