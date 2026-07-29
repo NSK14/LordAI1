@@ -314,7 +314,9 @@ function ChatPage() {
     isFetching: messagesFetching,
   } = useQuery({
     queryKey: ["messages", conversationId],
-    enabled: !!conversationId,
+    // Temporary ids are UI-only. In particular, never serialize one into a
+    // PostgREST filter for the UUID conversation_id column.
+    enabled: !!conversationId && !isOptimisticId(conversationId),
     queryFn: async () => {
       console.log("[QUERY] messages fetch start", { conversationId, at: Date.now() });
       const { data, error } = await supabase
@@ -377,10 +379,8 @@ function ChatPage() {
       }
       const activeConversationId = activeConversationIdRef.current;
       const requestMode = modeRef.current;
-      // Resolve the temp id to the real id once known, so the assistant message
-      // is written against the real conversation (or migrated later if still temp).
-      const dbActiveConversationId = resolveConversationId(activeConversationId ?? "");
-      if (isError || !activeConversationId) {
+      const dbActiveConversationId = activeConversationId ?? "";
+      if (isError || !activeConversationId || isOptimisticId(dbActiveConversationId)) {
         console.warn(
           JSON.stringify({
             event: "chat_stream_finish_skipped",
@@ -447,6 +447,8 @@ function ChatPage() {
           }
         } else {
           const assistantMessageId = crypto.randomUUID();
+          const tag = createClientTag();
+          markClientTagSent(tag);
           console.info(
             JSON.stringify({
               event: "supabase_insert_start",
@@ -464,6 +466,7 @@ function ChatPage() {
             role: "assistant",
             content,
             model: requestMode,
+            client_tag: tag,
           });
           if (insertError) {
             console.error(
@@ -558,65 +561,24 @@ function ChatPage() {
   // optimistic mutation and the query stay in sync.
   const conversationsQueryKey = ["conversations", user.id] as const;
 
-  // Maps a temporary optimistic conversation id to the real Supabase id once the
-  // insert resolves. Used so that messages created *while* the conversation was
-  // still optimistic are written under the temp id, then transparently migrated
-  // to the real id — no message is ever lost.
-  const realIdByTempRef = useRef<Record<string, string>>({});
+  // Creation promises are deliberately kept outside React state. The matching
+  // temp id is only for rendering an optimistic sidebar row; callers must await
+  // this promise before issuing *any* database request that uses conversation_id.
+  const creationPromiseByTempRef = useRef<Record<string, Promise<ConversationRow>>>({});
 
-  // Captures the first user message for a conversation that was optimistically
-  // created (either via `handleNewChat` + first send, or directly via submit),
-  // so `createConversation.onSuccess` can set its title, touch `last_message_at`,
-  // and generate a title once the real id exists — without `submit` duplicating
-  // that work.
-  const pendingFirstMessageRef = useRef<Record<string, string>>({});
-
-  // Resolves the id that should actually be used for Supabase writes: if the
-  // given id is still an optimistic placeholder whose real id is already known,
-  // return the real id; otherwise return the id unchanged.
-  const resolveConversationId = (id: string): string => {
-    return realIdByTempRef.current[id] ?? id;
-  };
-
-  // Re-parents any messages written under a temporary conversation id to the real
-  // one. Idempotent: safe to call multiple times. Returns the migrated count.
-  const migrateMessages = async (tempId: string, realId: string): Promise<void> => {
-    if (tempId === realId) return;
-    const { error } = await supabase
-      .from("messages")
-      .update({ conversation_id: realId })
-      .eq("conversation_id", tempId);
-    if (error) {
-      console.error(
-        JSON.stringify({
-          event: "supabase_migrate_messages_error",
-          table: "messages",
-          tempId,
-          realId,
-          error: error.message,
-        }),
-      );
+  const ensureConversation = async (firstMessage: string): Promise<string> => {
+    if (!conversationId) {
+      createConversationOptimistic(firstMessage.slice(0, 60) || "New conversation");
     }
-  };
 
-  // Ensures a conversation exists and returns its id **immediately** (without
-  // awaiting the network). If a conversation is already active (real or
-  // optimistic), its id is returned unchanged. Otherwise we kick off an
-  // optimistic create and return the temporary id right away, so the caller can
-  // start persisting the user's message against it while Supabase catches up.
-  const ensureConversation = (firstMessage: string): string => {
-    if (conversationId) {
-      // An optimistic conversation already exists (e.g. created by "New Chat").
-      // Remember its first message so onSuccess can finalize title/touch later.
-      if (isOptimisticId(conversationId)) {
-        pendingFirstMessageRef.current[conversationId] = firstMessage;
-      }
-      return conversationId;
-    }
-    return createConversationOptimistic(
-      firstMessage.slice(0, 60) || "New conversation",
-      firstMessage,
-    );
+    const selectedId = activeConversationIdRef.current;
+    if (!selectedId) throw new Error("Conversation creation did not select a conversation.");
+    if (!isOptimisticId(selectedId)) return selectedId;
+
+    const creation = creationPromiseByTempRef.current[selectedId];
+    if (!creation) throw new Error("Conversation creation is not in progress.");
+    const created = await creation;
+    return created.id;
   };
 
   // Optimistic conversation creation.
@@ -631,22 +593,13 @@ function ChatPage() {
   //             available synchronously; onMutate only provides rollback context.
   // onError   - restore the snapshot (removes the temporary row) and surface a
   //             non-blocking toast; the optimistic id is cleared from selection.
-  // onSuccess - record the temp→real mapping, swap the temporary row for the real
-  //             Supabase record in the same array slot (no remount, no flicker),
-  //             migrate any messages written under the temp id, re-point selection
-  //             and refs at the real id, then refresh the list.
+  // onSuccess - swap the temporary row for the real Supabase record in the same
+  //             array slot (no remount, no flicker), then re-point selection and
+  //             refs at the real id. No messages exist under the temporary id.
   // onSettled - invalidate the list to reconcile with the server and emit the
   //             dashboard event so other widgets stay consistent.
   const createConversation = useMutation({
-    mutationFn: async ({
-      title,
-      tempId,
-      firstMessage,
-    }: {
-      title: string;
-      tempId: string;
-      firstMessage?: string;
-    }) => {
+    mutationFn: async ({ title, tempId }: { title: string; tempId: string }) => {
       const tag = createClientTag();
       markClientTagSent(tag);
       const { data, error } = await supabase
@@ -655,7 +608,7 @@ function ChatPage() {
         .select()
         .single();
       if (error) throw error;
-      return { row: data as ConversationRow, tempId, firstMessage };
+      return { row: data as ConversationRow, tempId };
     },
     onMutate: async () => {
       // Cancel any outgoing refetch so it can't overwrite our optimistic value.
@@ -677,7 +630,7 @@ function ChatPage() {
       qc.setQueryData<ConversationRow[]>(conversationsQueryKey, (old) =>
         (old ?? []).filter((c) => c.id !== tempId),
       );
-      delete realIdByTempRef.current[tempId];
+      delete creationPromiseByTempRef.current[tempId];
       // If the failed optimistic conversation was the active selection, reset it.
       if (conversationId === tempId || activeConversationIdRef.current === tempId) {
         startNewChat();
@@ -686,10 +639,7 @@ function ChatPage() {
         description: err instanceof Error ? err.message : undefined,
       });
     },
-    onSuccess: async ({ row: realRow, tempId, firstMessage: firstMessageArg }) => {
-      // Record the mapping so any in-flight message writes resolve to the real id.
-      realIdByTempRef.current[tempId] = realRow.id;
-
+    onSuccess: async ({ row: realRow, tempId }) => {
       // Swap the temporary id for the real one *in place* so React keeps the same
       // list element key — no remount, no flicker, scroll position preserved.
       qc.setQueryData<ConversationRow[]>(conversationsQueryKey, (old) => {
@@ -701,31 +651,6 @@ function ChatPage() {
       if (conversationId === tempId || activeConversationIdRef.current === tempId) {
         setConversationIdTraced(realRow.id);
         activeConversationIdRef.current = realRow.id;
-      }
-
-      // Migrate any messages that were already persisted under the temp id.
-      await migrateMessages(tempId, realRow.id);
-
-      // The first message may have been captured via the ref (e.g. the
-      // conversation was created by "New Chat" and the user's first send arrived
-      // before/after resolution). Prefer whichever is available.
-      const firstMessage = firstMessageArg ?? pendingFirstMessageRef.current[tempId];
-
-      // If this conversation was created from a first message, keep its title and
-      // last_message_at consistent once the real id exists.
-      if (firstMessage) {
-        const text = firstMessage.slice(0, 60) || "New conversation";
-        const { error: touchError } = await supabase
-          .from("conversations")
-          .update({
-            title: text,
-            last_message_at: new Date().toISOString(),
-          })
-          .eq("id", realRow.id);
-        if (!touchError) {
-          qc.invalidateQueries({ queryKey: conversationsQueryKey });
-          maybeGenerateTitle(realRow.id, firstMessage, text);
-        }
       }
 
       console.info(
@@ -752,16 +677,18 @@ function ChatPage() {
     },
   });
 
-  // Inserts the optimistic conversation into the cache and selects it, then fires
-  // the real insert in the background (non-blocking). Returns the temp id so the
-  // caller can associate messages with it immediately.
-  const createConversationOptimistic = (title: string, firstMessage?: string): string => {
+  // Inserts an optimistic UI row and starts the real insert. The returned temp id
+  // is never a database id: submitters await its stored promise before writing.
+  const createConversationOptimistic = (title: string): string => {
     const temp = createOptimisticConversation(user.id, title);
     qc.setQueryData<ConversationRow[]>(conversationsQueryKey, (old) => [temp, ...(old ?? [])]);
     setConversationIdTraced(temp.id);
     activeConversationIdRef.current = temp.id;
-    if (firstMessage) pendingFirstMessageRef.current[temp.id] = firstMessage;
-    createConversation.mutate({ title, tempId: temp.id, firstMessage });
+    const creation = createConversation.mutateAsync({ title, tempId: temp.id });
+    creationPromiseByTempRef.current[temp.id] = creation.then(({ row }) => row);
+    // A user may create an empty chat and never send. React Query handles the
+    // visible error; this prevents an unhandled rejected promise in that case.
+    void creation.catch(() => undefined);
     return temp.id;
   };
 
@@ -822,7 +749,7 @@ function ChatPage() {
     // Reconcile only the affected query; no full invalidation.
     onSuccess: (_d, { id }) => {
       qc.invalidateQueries({ queryKey: conversationsQueryKey, exact: true });
-      if (id === resolveConversationId(conversationId ?? "")) {
+      if (id === conversationId) {
         qc.invalidateQueries({ queryKey: ["messages", id] });
       }
     },
@@ -856,6 +783,9 @@ function ChatPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
+      // A sidebar action can race the initial insert. A temporary row has no
+      // database representation, so removing it must remain a UI-only action.
+      if (isOptimisticId(id)) return;
       const { error: messagesError } = await supabase
         .from("messages")
         .delete()
@@ -1177,7 +1107,7 @@ function ChatPage() {
   // device's own writes are self-suppressed (client_tag), so they never
   // double-apply to the local React Query cache.
   useEffect(() => {
-    const convId = resolveConversationId(activeConversationIdRef.current ?? "");
+    const convId = activeConversationIdRef.current ?? "";
     if (!convId || isOptimisticId(convId)) return;
     const last = messages[messages.length - 1];
     const isStreaming = status === "streaming" || status === "submitted";
@@ -1401,17 +1331,19 @@ function ChatPage() {
     const text = await buildMessageText(payload);
     if (!text.trim() || busy) return;
     setPersistenceError(null);
-    const isNewConversation = !conversationId;
+    // Read the ref as well as state: a New Chat click updates the ref
+    // synchronously, while React state is applied on the next render.
+    const isNewConversation =
+      !conversationId ||
+      isOptimisticId(conversationId) ||
+      isOptimisticId(activeConversationIdRef.current ?? "");
     setSavingMessage(true);
     try {
-      // Returns immediately (optimistic temp id or existing real id) — no network
-      // wait, so the user message can be persisted without blocking.
-      const convId = ensureConversation(text);
+      // The sidebar may be optimistic, but message persistence waits for the
+      // conversation insert and receives the real UUID.
+      const convId = await ensureConversation(text);
       activeConversationIdRef.current = convId;
-      // The id used for DB writes: resolves a temp id to its real id once known, so
-      // we never write against a non-existent row if the create has already landed.
-      const dbConvId = resolveConversationId(convId);
-      const isOptimistic = isOptimisticId(convId);
+      const dbConvId = convId;
       console.info(
         JSON.stringify({
           event: "chat_submit",
@@ -1419,7 +1351,7 @@ function ChatPage() {
           dbConversationId: dbConvId,
           mode,
           isNewConversation,
-          isOptimistic,
+          isOptimistic: false,
         }),
       );
       const userMsgId = crypto.randomUUID();
@@ -1491,27 +1423,24 @@ function ChatPage() {
           mode,
         }),
       );
-      // For an existing (non-optimistic) conversation, finalize title/touch here.
-      // For an optimistic one, `createConversation.onSuccess` does this once the
-      // real id exists (and migrates the message we just wrote under the temp id).
-      if (!isOptimistic) {
-        const existing = conversations.find((c) => c.id === convId);
-        maybeGenerateTitle(convId, text, existing ? existing.title : "");
-        const { error: touchError } = await supabase
-          .from("conversations")
-          .update({ last_message_at: new Date().toISOString() })
-          .eq("id", convId);
-        if (touchError) {
-          console.error(
-            JSON.stringify({
-              event: "supabase_update_error",
-              table: "conversations",
-              conversationId: convId,
-              error: touchError.message,
-            }),
-          );
-          throw touchError;
-        }
+      const existing = qc
+        .getQueryData<ConversationRow[]>(conversationsQueryKey)
+        ?.find((c) => c.id === convId);
+      maybeGenerateTitle(convId, text, existing ? existing.title : "");
+      const { error: touchError } = await supabase
+        .from("conversations")
+        .update({ last_message_at: new Date().toISOString() })
+        .eq("id", convId);
+      if (touchError) {
+        console.error(
+          JSON.stringify({
+            event: "supabase_update_error",
+            table: "conversations",
+            conversationId: convId,
+            error: touchError.message,
+          }),
+        );
+        throw touchError;
       }
       // Reconcile: refresh the affected message list and the exact conversation
       // list so the real server timestamps replace the optimistic ones. We do
@@ -1564,7 +1493,7 @@ function ChatPage() {
     try {
       setPersistenceError(null);
       setSavingMessage(true);
-      if (activeConversationId && lastAssistant) {
+      if (activeConversationId && !isOptimisticId(activeConversationId) && lastAssistant) {
         const { error: deleteError } = await supabase
           .from("messages")
           .delete()
@@ -1613,7 +1542,16 @@ function ChatPage() {
       console.error("Invalid messages: not an array", messages);
       return [];
     }
-    return messages.filter((m) => m && m.id && m.role && Array.isArray(m.parts));
+    // Every mutating path reconciles by id; retain this final defensive guard so
+    // a repeated event or StrictMode effect can never produce duplicate React
+    // keys or duplicate rendered rows.
+    const byId = new Map<string, UIMessage>();
+    for (const message of messages) {
+      if (message && message.id && message.role && Array.isArray(message.parts)) {
+        byId.set(message.id, message);
+      }
+    }
+    return [...byId.values()];
   }, [messages]);
 
   // Render messages with error boundary

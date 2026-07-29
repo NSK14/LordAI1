@@ -119,6 +119,12 @@ export function useMessageRealtime(
   useEffect(() => {
     if (!conversationId) return;
     const off = manager.on("messages", (event: RealtimeRowEvent) => {
+      // `useMessageRealtime` updates the live useChat state directly, so it
+      // must apply the same self-echo rule as the React Query cache listener
+      // above. Without this check, a locally streamed assistant UI message and
+      // its separately-IDed persisted row are both rendered.
+      const tag = (event.new?.["client_tag"] ?? event.old?.["client_tag"]) as string | undefined;
+      if (isClientTagSelf(tag)) return;
       const convId =
         (event.new?.["conversation_id"] as string | undefined) ??
         (event.old?.["conversation_id"] as string | undefined);
