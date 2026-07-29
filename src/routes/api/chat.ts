@@ -4,7 +4,6 @@ import { z } from "zod";
 import {
   createOpenRouterProvider,
   streamWithFallback,
-  generateTextWithFallback,
   LORD_MODELS,
   LORD_SYSTEM_PROMPT,
   classifyModelError,
@@ -216,33 +215,7 @@ export const Route = createFileRoute("/api/chat")({
         const modelMessages = await convertToModelMessages(uiMessages);
         let tokenUsageEvent: TokenUsageEvent | null = null;
 
-        // Diagnostic escape hatch (task 11): when LORD_DISABLE_STREAMING=true the
-        // endpoint returns a single non-streamed completion so we can confirm
-        // normal completions work before relying on streaming. Re-enable
-        // streaming by removing the env var once non-stream requests succeed.
-        const disableStreaming = process.env.LORD_DISABLE_STREAMING === "true";
-
         try {
-          if (disableStreaming) {
-            const { text, model } = await generateTextWithFallback({
-              gateway,
-              mode,
-              explicitModelId,
-              system: systemPrompt,
-              messages: modelMessages,
-              requestId,
-              maxOutputTokens: 1024,
-              timeoutMs: 45_000,
-            });
-            return Response.json({
-              note: "non-streaming mode (LORD_DISABLE_STREAMING)",
-              model,
-              mode,
-              requestId,
-              text,
-            });
-          }
-
           const { result, model } = await streamWithFallback({
             gateway,
             mode,

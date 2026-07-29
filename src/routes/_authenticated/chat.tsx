@@ -168,15 +168,6 @@ function ChatPage() {
   const [input, setInput] = useState("");
   const [conversationId, setConversationId] = useState<string | null>(null);
 
-  // [DIAG] Trace every assignment to conversationId (prev -> next + stack).
-  const setConversationIdTraced = (next: string | null) => {
-    console.log("[DIAG conversationId]", {
-      prev: conversationId,
-      next,
-      stack: new Error().stack,
-    });
-    setConversationId(next);
-  };
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [persistenceError, setPersistenceError] = useState<string | null>(null);
   const [savingMessage, setSavingMessage] = useState(false);
@@ -215,7 +206,6 @@ function ChatPage() {
   const [showNewMessages, setShowNewMessages] = useState(false);
   const STICK_BOTTOM_THRESHOLD = 120;
   const justLoadedRef = useRef(false);
-  const renderSnapRef = useRef<Record<string, unknown> | null>(null);
   // Guards automatic title generation so it runs at most ONCE per conversation.
   const titleGeneratedForRef = useRef<string | null>(null);
   // Mirror of whether the assistant is currently streaming/submitting for the
@@ -232,18 +222,22 @@ function ChatPage() {
   const streamingMsgIdRef = useRef<string | null>(null);
   const streamingConvIdRef = useRef<string | null>(null);
   const streamingContentRef = useRef<string>("");
-
-  // [DIAG] Detect ChatPage remounts (which reset all local state, incl. conversationId).
-  useEffect(() => {
-    console.log("[DIAG Mounted] ChatPage");
-    return () => console.log("[DIAG Unmounted] ChatPage");
-  }, []);
+  // Serialize streaming writes. Without this, a fast stream can issue an UPDATE
+  // before its INSERT reaches PostgREST, leaving a permanently partial row.
+  const streamingWriteRef = useRef<Promise<void>>(Promise.resolve());
+  // State updates are committed asynchronously. This ref closes the small
+  // window where two rapid clicks can both observe `busy === false` (notably
+  // while attachments are being read) and create duplicate user turns.
+  const requestInFlightRef = useRef(false);
+  const cleanupEmptyConversationRef = useRef<(id: string | null) => Promise<string | null>>(
+    async () => null,
+  );
 
   // Clean up the active conversation when the user navigates away from /chat
   // (SPA route change, sign-out) — ChatPage unmounts in all of those cases.
   useEffect(() => {
     return () => {
-      void cleanupEmptyConversation(activeConversationIdRef.current);
+      void cleanupEmptyConversationRef.current(activeConversationIdRef.current);
     };
   }, []);
 
@@ -252,7 +246,7 @@ function ChatPage() {
   // user-message count check keeps it safe across tabs; failures are swallowed.
   useEffect(() => {
     const handleBeforeUnload = () => {
-      void cleanupEmptyConversation(activeConversationIdRef.current);
+      void cleanupEmptyConversationRef.current(activeConversationIdRef.current);
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
@@ -267,6 +261,7 @@ function ChatPage() {
     mode,
     context: { page: currentRoute, workflow: activeWorkflow, metrics, history },
   };
+  modeRef.current = mode;
 
   // Conversations list (Supabase)
   const { data: conversationsData } = useQuery({
@@ -281,6 +276,8 @@ function ChatPage() {
     },
   });
   const conversations = conversationsData ?? EMPTY_CONVERSATIONS;
+  // Keep the key stable and shared by every cache mutation in this route.
+  const conversationsQueryKey = useMemo(() => ["conversations", user.id] as const, [user.id]);
 
   // Enrich conversations with their folder_id (the DB column is selected via `*`)
   // so the FolderSidebar can group them. Stable memo keeps identity across renders.
@@ -304,7 +301,7 @@ function ChatPage() {
         ) as ConversationRow[];
       });
     },
-    [qc],
+    [conversationsQueryKey, qc],
   );
 
   // Messages for active conversation
@@ -318,18 +315,11 @@ function ChatPage() {
     // PostgREST filter for the UUID conversation_id column.
     enabled: !!conversationId && !isOptimisticId(conversationId),
     queryFn: async () => {
-      console.log("[QUERY] messages fetch start", { conversationId, at: Date.now() });
       const { data, error } = await supabase
         .from("messages")
         .select("*")
         .eq("conversation_id", conversationId!)
         .order("created_at", { ascending: true });
-      console.log("[QUERY] messages fetch done", {
-        conversationId,
-        at: Date.now(),
-        error: error ? error.message : null,
-        rows: data ? data.length : "null",
-      });
       if (error) throw error;
       return data as MessageRow[];
     },
@@ -377,10 +367,31 @@ function ChatPage() {
       if (meta?.tokenUsage) {
         tokenUsageStore.record(meta.tokenUsage);
       }
-      const activeConversationId = activeConversationIdRef.current;
+      // The stream belongs to the conversation captured when its persistence
+      // row was created, not whichever conversation the user happens to view
+      // when the callback eventually fires.
+      const activeConversationId = streamingConvIdRef.current ?? activeConversationIdRef.current;
       const requestMode = modeRef.current;
       const dbActiveConversationId = activeConversationId ?? "";
-      if (isError || !activeConversationId || isOptimisticId(dbActiveConversationId)) {
+      if (isError) {
+        const partialMessageId = streamingMsgIdRef.current;
+        if (partialMessageId) {
+          await streamingWriteRef.current;
+          const tag = createClientTag();
+          markClientTagSent(tag);
+          const { error: finalizeError } = await supabase
+            .from("messages")
+            .update({ streaming: false, client_tag: tag })
+            .eq("id", partialMessageId);
+          if (finalizeError) setPersistenceError(finalizeError.message);
+        }
+        streamingMsgIdRef.current = null;
+        streamingConvIdRef.current = null;
+        streamingContentRef.current = "";
+        setPersistenceError("The response was interrupted. You can regenerate it.");
+        return;
+      }
+      if (!activeConversationId || isOptimisticId(dbActiveConversationId)) {
         console.warn(
           JSON.stringify({
             event: "chat_stream_finish_skipped",
@@ -408,6 +419,7 @@ function ChatPage() {
       // path where streaming tracking was skipped) insert the row normally.
       const streamingMsgId = streamingMsgIdRef.current;
       const wasStreaming = streamingMsgId && !isOptimisticId(dbActiveConversationId);
+      await streamingWriteRef.current;
       streamingMsgIdRef.current = null;
       streamingConvIdRef.current = null;
       streamingContentRef.current = "";
@@ -434,6 +446,16 @@ function ChatPage() {
             );
             setPersistenceError(finErr.message);
           } else {
+            // The SDK's generated message id is not guaranteed to be a UUID.
+            // Replace it with the persisted UUID so regenerate/delete target
+            // the exact database row rather than creating a second response.
+            if (assistantMessage) {
+              setMessages((prev) =>
+                prev.map((item) =>
+                  item.id === assistantMessage.id ? { ...item, id: streamingMsgId! } : item,
+                ),
+              );
+            }
             console.info(
               JSON.stringify({
                 event: "supabase_stream_finish_success",
@@ -515,51 +537,7 @@ function ChatPage() {
     },
   });
 
-  // TEMP DEBUG: per-render state snapshot to compare localhost vs Vercel.
-  {
-    const snap = {
-      t: Date.now(),
-      conversationId,
-      storedLen: storedMessagesData ? storedMessagesData.length : "undefined",
-      storedUndefined: storedMessagesData === undefined,
-      initialLen: initialMessages.length,
-      messagesLen: messages.length,
-      status,
-      messagesFetching,
-      pendingInitialSend: !!pendingInitialSend,
-      justLoaded: justLoadedRef.current,
-      useChatId: conversationId ?? "draft",
-    };
-    const prevSnap = (renderSnapRef.current ?? {}) as Record<string, unknown>;
-    const changed: Record<string, unknown> = {};
-    for (const k of Object.keys(snap)) {
-      const key = k as keyof typeof snap;
-      if (JSON.stringify(snap[key]) !== JSON.stringify(prevSnap[key])) {
-        changed[key] = snap[key];
-      }
-    }
-    if (Object.keys(changed).length > 0) {
-      console.log("[STATE]", snap.t, "changed:", changed, "full:", snap);
-    }
-    renderSnapRef.current = snap;
-  }
-
-  // TEMP DEBUG: trace every setMessages call to identify recursive callers.
-  const setMessagesTraced = (...args: Parameters<typeof setMessages>) => {
-    console.trace("[setMessages]", {
-      argIsFn: typeof args[0] === "function",
-      conversationId,
-      status,
-      justLoaded: justLoadedRef.current,
-      messagesFetching,
-      initialCount: initialMessages.length,
-    });
-    return setMessages(...args);
-  };
-
-  // React Query key for the conversations list, kept in one place so the
-  // optimistic mutation and the query stay in sync.
-  const conversationsQueryKey = ["conversations", user.id] as const;
+  isAssistantStreamingRef.current = status === "submitted" || status === "streaming";
 
   // Creation promises are deliberately kept outside React state. The matching
   // temp id is only for rendering an optimistic sidebar row; callers must await
@@ -649,7 +627,7 @@ function ChatPage() {
 
       // Re-point selection and refs at the real id.
       if (conversationId === tempId || activeConversationIdRef.current === tempId) {
-        setConversationIdTraced(realRow.id);
+        setConversationId(realRow.id);
         activeConversationIdRef.current = realRow.id;
       }
 
@@ -682,7 +660,7 @@ function ChatPage() {
   const createConversationOptimistic = (title: string): string => {
     const temp = createOptimisticConversation(user.id, title);
     qc.setQueryData<ConversationRow[]>(conversationsQueryKey, (old) => [temp, ...(old ?? [])]);
-    setConversationIdTraced(temp.id);
+    setConversationId(temp.id);
     activeConversationIdRef.current = temp.id;
     const creation = createConversation.mutateAsync({ title, tempId: temp.id });
     creationPromiseByTempRef.current[temp.id] = creation.then(({ row }) => row);
@@ -949,6 +927,7 @@ function ChatPage() {
       return null;
     }
   };
+  cleanupEmptyConversationRef.current = cleanupEmptyConversation;
 
   // Leaves the given conversation, cleaning it up first if it is empty. Used
   // whenever the user switches away from a conversation (New Chat / open another).
@@ -967,32 +946,39 @@ function ChatPage() {
     setSavingMessage(false);
     setPendingInitialSend(null);
     setPendingEvent(null);
-    setConversationIdTraced(null);
+    setConversationId(null);
     activeConversationIdRef.current = null;
     titleGeneratedForRef.current = null;
-    setMessagesTraced([]);
+    setMessages([]);
   };
 
   // "New Chat" button handler. Resets the composer state and optimistically
   // creates a conversation so it appears in the sidebar and becomes the active
   // selection instantly, before Supabase responds.
   const handleNewChat = () => {
+    if (busy) {
+      toast.info("Wait for the current response to finish before starting another chat.");
+      return;
+    }
     startNewChat();
     createConversationOptimistic("New Chat");
   };
 
   const loadConversation = (id: string) => {
-    console.log("[TRANSITION] loadConversation", { id, at: Date.now() });
+    if (busy) {
+      toast.info("Wait for the current response to finish before switching conversations.");
+      return;
+    }
     // Clean up the conversation we are switching away from (if it is empty).
     leaveConversation(activeConversationIdRef.current);
     setPersistenceError(null);
     setPendingInitialSend(null);
     setPendingEvent(null);
-    setConversationIdTraced(id);
+    setConversationId(id);
     activeConversationIdRef.current = id;
     titleGeneratedForRef.current = null;
     justLoadedRef.current = true; // signal the once-only sync effect to load stored messages
-    setMessagesTraced([]); // will be replaced by initialMessages once query loads
+    setMessages([]); // will be replaced by initialMessages once query loads
   };
 
   // Send a user message to the AI, choosing the right path for new vs. existing
@@ -1001,7 +987,14 @@ function ChatPage() {
     if (isNew) {
       setPendingInitialSend({ conversationId, message });
     } else {
-      void sendMessage(message).finally(() => setSavingMessage(false));
+      void sendMessage(message)
+        .catch((err: unknown) => {
+          setPersistenceError(err instanceof Error ? err.message : "The AI request failed.");
+        })
+        .finally(() => {
+          requestInFlightRef.current = false;
+          setSavingMessage(false);
+        });
     }
   };
 
@@ -1049,7 +1042,7 @@ function ChatPage() {
     } else if (messages.length > 0) {
       setShowNewMessages(true);
     }
-  }, [messages, status]);
+  }, [messages, status, user.id]);
 
   // ---- Cross-device live message sync -------------------------------------
   // Subscribes to realtime message events for the ACTIVE conversation only
@@ -1061,7 +1054,7 @@ function ChatPage() {
   useMessageRealtime(conversationId, (event) => {
     if (event.eventType === "DELETE") {
       const id = event.old?.["id"] as string | undefined;
-      if (id) setMessagesTraced((prev) => prev.filter((m) => m.id !== id));
+      if (id) setMessages((prev) => prev.filter((m) => m.id !== id));
       return;
     }
     const row = event.new as {
@@ -1072,7 +1065,7 @@ function ChatPage() {
     } | null;
     if (!row) return;
     const uiMessage = dbRowToUIMessage(row);
-    setMessagesTraced((prev) => {
+    setMessages((prev) => {
       const idx = prev.findIndex((m) => m.id === row.id);
       if (idx >= 0) {
         // Update existing (streaming token append or edit) in place.
@@ -1122,59 +1115,46 @@ function ChatPage() {
       streamingContentRef.current = content; // track last persisted content
       const tag = createClientTag();
       markClientTagSent(tag);
-      void supabase
-        .from("messages")
-        .insert({
-          id: msgId,
-          conversation_id: convId,
-          user_id: user.id,
-          role: "assistant",
-          content,
-          model: modeRef.current,
-          streaming: true,
-          client_tag: tag,
+      streamingWriteRef.current = streamingWriteRef.current
+        .then(async () => {
+          const { error: insertError } = await supabase.from("messages").insert({
+            id: msgId,
+            conversation_id: convId,
+            user_id: user.id,
+            role: "assistant",
+            content,
+            model: modeRef.current,
+            streaming: true,
+            client_tag: tag,
+          });
+          if (insertError) throw insertError;
+          const { error: touchError } = await supabase
+            .from("conversations")
+            .update({ last_message_at: new Date().toISOString() })
+            .eq("id", convId);
+          if (touchError) throw touchError;
         })
-        .then(({ error: insertError }) => {
-          if (insertError) {
-            console.error(
-              JSON.stringify({
-                event: "supabase_stream_insert_error",
-                table: "messages",
-                conversationId: convId,
-                messageId: msgId,
-                error: insertError.message,
-              }),
-            );
-          } else {
-            void supabase
-              .from("conversations")
-              .update({ last_message_at: new Date().toISOString() })
-              .eq("id", convId);
-          }
+        .catch((err: unknown) => {
+          setPersistenceError(err instanceof Error ? err.message : "Unable to save the response.");
         });
     } else if (content !== streamingContentRef.current) {
       streamingContentRef.current = content;
       const tag = createClientTag();
       markClientTagSent(tag);
       const msgId = streamingMsgIdRef.current;
-      void supabase
-        .from("messages")
-        .update({ content, client_tag: tag })
-        .eq("id", msgId)
-        .then(({ error: updErr }) => {
-          if (updErr) {
-            console.error(
-              JSON.stringify({
-                event: "supabase_stream_update_error",
-                table: "messages",
-                messageId: msgId,
-                error: updErr.message,
-              }),
-            );
-          }
+      streamingWriteRef.current = streamingWriteRef.current
+        .then(async () => {
+          const { error: updateError } = await supabase
+            .from("messages")
+            .update({ content, client_tag: tag })
+            .eq("id", msgId);
+          if (updateError) throw updateError;
+        })
+        .catch((err: unknown) => {
+          setPersistenceError(err instanceof Error ? err.message : "Unable to save the response.");
         });
     }
-  }, [messages, status]);
+  }, [messages, status, user.id]);
 
   // Sync the messages loaded from Supabase into the chat when a conversation is
   // opened from the sidebar. This must run EXACTLY ONCE per opened conversation,
@@ -1192,26 +1172,15 @@ function ChatPage() {
   // ensures we apply the DB snapshot once, before any streaming begins, and
   // never clobber the live conversation afterwards.
   useEffect(() => {
-    console.trace("[effect:syncLoadedMessages] run", {
-      justLoaded: justLoadedRef.current,
-      messagesFetching,
-      storedUndefined: storedMessagesData === undefined,
-      pendingInitialSend: !!pendingInitialSend,
-    });
     if (!justLoadedRef.current) return;
     if (messagesFetching) return;
     if (storedMessagesData === undefined) return;
     if (pendingInitialSend) return;
     justLoadedRef.current = false;
     const next = initialMessagesRef.current;
-    setMessagesTraced((prev) => (messagesEqual(prev, next) ? prev : next));
+    setMessages((prev) => (messagesEqual(prev, next) ? prev : next));
   }, [storedMessagesData, messagesFetching, pendingInitialSend, setMessages]);
   useEffect(() => {
-    console.trace("[effect:pendingInitialSend] run", {
-      pendingInitialSend: !!pendingInitialSend,
-      conversationId,
-      status,
-    });
     if (
       !pendingInitialSend ||
       conversationId !== pendingInitialSend.conversationId ||
@@ -1220,7 +1189,7 @@ function ChatPage() {
       return;
     }
 
-    setMessagesTraced([pendingInitialSend.message]);
+    setMessages([pendingInitialSend.message]);
     setPendingInitialSend(null);
     console.info(
       JSON.stringify({
@@ -1230,7 +1199,14 @@ function ChatPage() {
         messageId: pendingInitialSend.message.id,
       }),
     );
-    void sendMessage().finally(() => setSavingMessage(false));
+    void sendMessage()
+      .catch((err: unknown) => {
+        setPersistenceError(err instanceof Error ? err.message : "The AI request failed.");
+      })
+      .finally(() => {
+        requestInFlightRef.current = false;
+        setSavingMessage(false);
+      });
   }, [conversationId, pendingInitialSend, sendMessage, setMessages, status]);
 
   const buildMessageText = async (payload: ChatSubmitPayload): Promise<string> => {
@@ -1269,18 +1245,18 @@ function ChatPage() {
     userMessage: UIMessage,
     conversationId: string,
     isNewConversation: boolean,
-  ) => {
+  ): boolean => {
     const settings = memorySettings;
     // Memory disabled entirely → never detect.
-    if (settings && settings.memory_enabled === false) return;
+    if (settings && settings.memory_enabled === false) return false;
     // Nothing to remember if it's sensitive.
-    if (detectSensitive(text)) return;
+    if (detectSensitive(text)) return false;
 
     const detected = detectMemories(text);
-    if (detected.length === 0) return;
+    if (detected.length === 0) return false;
 
     const novel = detected.filter((d) => !memoryExists(memories, d.content));
-    if (novel.length === 0) return;
+    if (novel.length === 0) return false;
 
     const threshold = settings?.confidence_threshold ?? 0.65;
     const autoSave = settings?.auto_save ?? true;
@@ -1301,7 +1277,9 @@ function ChatPage() {
 
     if (toAsk.length > 0) {
       setPendingMemories({ detected: toAsk, userMessage, conversationId, isNewConversation });
+      return true;
     }
+    return false;
   };
 
   const resolvePendingMemories = (accept: boolean) => {
@@ -1328,17 +1306,22 @@ function ChatPage() {
   };
 
   const submit = async (payload: ChatSubmitPayload) => {
-    const text = await buildMessageText(payload);
-    if (!text.trim() || busy) return;
-    setPersistenceError(null);
+    if (requestInFlightRef.current || busy) return;
+    requestInFlightRef.current = true;
     // Read the ref as well as state: a New Chat click updates the ref
     // synchronously, while React state is applied on the next render.
-    const isNewConversation =
-      !conversationId ||
-      isOptimisticId(conversationId) ||
-      isOptimisticId(activeConversationIdRef.current ?? "");
-    setSavingMessage(true);
     try {
+      const text = await buildMessageText(payload);
+      if (!text.trim()) {
+        requestInFlightRef.current = false;
+        return;
+      }
+      setPersistenceError(null);
+      const isNewConversation =
+        !conversationId ||
+        isOptimisticId(conversationId) ||
+        isOptimisticId(activeConversationIdRef.current ?? "");
+      setSavingMessage(true);
       // The sidebar may be optimistic, but message persistence waits for the
       // conversation insert and receives the real UUID.
       const convId = await ensureConversation(text);
@@ -1452,13 +1435,18 @@ function ChatPage() {
       const detected = detectCalendarEvent(text);
       if (detected && detected.confidence > 0.5) {
         setPendingEvent({ detected, userMessage, conversationId: convId, isNewConversation });
+        requestInFlightRef.current = false;
         setSavingMessage(false);
         return;
       }
 
       // Long-Term Memory: detect anything worth remembering and react per the
       // user's memory settings (auto-save or ask). This does NOT block sending.
-      processMemoryDetection(text, userMessage, convId, isNewConversation);
+      if (processMemoryDetection(text, userMessage, convId, isNewConversation)) {
+        requestInFlightRef.current = false;
+        setSavingMessage(false);
+        return;
+      }
 
       sendToAI(userMessage, convId, isNewConversation);
     } catch (err) {
@@ -1468,6 +1456,7 @@ function ChatPage() {
           message: err instanceof Error ? err.message : "Failed to send message",
         }),
       );
+      requestInFlightRef.current = false;
       setSavingMessage(false);
       // Keep the user's message visible (only server state is rolled back via a
       // targeted refetch). Surface a retry so the user can resend.
@@ -1484,7 +1473,8 @@ function ChatPage() {
   };
 
   const regenerateLast = async () => {
-    if (busy) return;
+    if (requestInFlightRef.current || busy) return;
+    requestInFlightRef.current = true;
     const activeConversationId = activeConversationIdRef.current;
     const lastAssistant = messages
       .slice()
@@ -1530,11 +1520,48 @@ function ChatPage() {
       );
       setPersistenceError(err instanceof Error ? err.message : "Failed to regenerate response.");
     } finally {
+      requestInFlightRef.current = false;
       setSavingMessage(false);
     }
   };
 
   const streaming = status === "streaming" || status === "submitted";
+
+  // `useChat.stop()` aborts the browser request immediately. Depending on when
+  // the abort reaches the transport, `onFinish` is not guaranteed to run, so
+  // finalize the persisted partial row here as well. The id is a real UUID
+  // generated locally for the insert; a later onFinish simply performs the
+  // same idempotent update.
+  const stopStreaming = () => {
+    const messageId = streamingMsgIdRef.current;
+    stop();
+    if (!messageId) return;
+
+    void (async () => {
+      await streamingWriteRef.current;
+      const tag = createClientTag();
+      markClientTagSent(tag);
+      const { error: finalizeError } = await supabase
+        .from("messages")
+        .update({ streaming: false, client_tag: tag })
+        .eq("id", messageId);
+      if (finalizeError) {
+        setPersistenceError(finalizeError.message);
+        return;
+      }
+      streamingMsgIdRef.current = null;
+      streamingConvIdRef.current = null;
+      streamingContentRef.current = "";
+      qc.invalidateQueries({
+        queryKey: ["messages", activeConversationIdRef.current],
+        exact: true,
+      });
+    })().catch((err: unknown) => {
+      setPersistenceError(
+        err instanceof Error ? err.message : "Unable to stop the response cleanly.",
+      );
+    });
+  };
 
   // Defensive validation for messages array
   const safeMessages = useMemo(() => {
@@ -1647,7 +1674,13 @@ function ChatPage() {
                 currentId={conversationId}
                 onSelect={loadConversation}
                 onNew={handleNewChat}
-                onDelete={(id) => deleteMutation.mutate(id)}
+                onDelete={(id) => {
+                  if (busy && id === conversationId) {
+                    toast.info("Stop or wait for the current response before deleting this chat.");
+                    return;
+                  }
+                  deleteMutation.mutate(id);
+                }}
                 onRename={(id, title) => renameMutation.mutate({ id, title })}
                 onPin={(id, pinned) => pinMutation.mutate({ id, pinned })}
                 onFavorite={(id, favorite) => favoriteMutation.mutate({ id, favorite })}
@@ -1723,7 +1756,7 @@ function ChatPage() {
                   value={input}
                   onChange={setInput}
                   onSend={submit}
-                  onStop={stop}
+                  onStop={stopStreaming}
                   streaming={streaming}
                   disabled={savingMessage}
                   mode={mode}
