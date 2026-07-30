@@ -1,41 +1,126 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- database schema is defined in types and client types regenerate after migration deployment. */
 import { supabase } from "@/integrations/supabase/client";
 import { nextMastery } from "./mastery";
-import type { LearningConcept, Mastery, Question } from "./types";
+import type {
+  LearningConcept,
+  Mastery,
+  Question,
+  LearningSnapshot,
+  LearningProfile,
+  LearningSource,
+  LearningResource,
+  LearningBoard,
+  LearningSession,
+  TutorMessage,
+  LearningArtifact,
+  LearningAttempt,
+  LearningPlan,
+  LearningPlanTask,
+  LearningReminder,
+  Flashcard,
+  FlashcardReview,
+  LearningNote,
+  Exam,
+  ExamQuestion,
+  ExamAnswer,
+  RevisionSchedule,
+  LearningMemory,
+  VoiceSession,
+  OCRJob,
+  Whiteboard,
+  DailyGoal,
+  WeeklyGoal,
+  LearningAnalytics,
+  LearningHistory,
+} from "./types";
 
 const db = supabase;
 
-export async function getLearningSnapshot(userId: string) {
-  const [concepts, mastery, tasks, boards, resources, profile, sources, integrations] =
-    await Promise.all([
-      db.from("learning_concepts").select("*").order("framework").order("title"),
-      db.from("learning_mastery").select("*").eq("user_id", userId),
-      db
-        .from("learning_plan_tasks")
-        .select("*, learning_concepts(title)")
-        .eq("user_id", userId)
-        .eq("status", "pending")
-        .order("due_at")
-        .limit(8),
-      db
-        .from("learning_boards")
-        .select("*, learning_board_items(count)")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false }),
-      db
-        .from("learning_resources")
-        .select("*, learning_concepts(title)")
-        .order("created_at", { ascending: false })
-        .limit(12),
-      db.from("learning_profiles").select("*").eq("user_id", userId).maybeSingle(),
-      db
-        .from("learning_sources")
-        .select("id,name,mime_type,source_kind,extracted_text,created_at")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(5),
-      db.from("learning_integrations").select("*").eq("user_id", userId),
-    ]);
+export async function getLearningSnapshot(userId: string): Promise<LearningSnapshot> {
+  const [
+    concepts,
+    mastery,
+    tasks,
+    boards,
+    resources,
+    profile,
+    sources,
+    integrations,
+    sessions,
+    artifacts,
+    attempts,
+    flashcards,
+    notes,
+    exams,
+    revisionSchedule,
+    memory,
+    voiceSessions,
+    ocrJobs,
+    whiteboards,
+    dailyGoals,
+    weeklyGoals,
+    analytics,
+    history,
+  ] = await Promise.all([
+    db.from("learning_concepts").select("*").order("framework").order("title"),
+    db.from("learning_mastery").select("*").eq("user_id", userId),
+    db
+      .from("learning_plan_tasks")
+      .select("*, learning_concepts(title)")
+      .eq("user_id", userId)
+      .eq("status", "pending")
+      .order("due_at")
+      .limit(8),
+    db
+      .from("learning_boards")
+      .select("*, learning_board_items(count)")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false }),
+    db
+      .from("learning_resources")
+      .select("*, learning_concepts(title)")
+      .order("created_at", { ascending: false })
+      .limit(12),
+    db.from("learning_profiles").select("*").eq("user_id", userId).maybeSingle(),
+    db
+      .from("learning_sources")
+      .select("id,name,mime_type,source_kind,extracted_text,created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(5),
+    db.from("learning_integrations").select("*").eq("user_id", userId),
+    db
+      .from("learning_sessions")
+      .select("id,concept_id,title,status,created_at,updated_at")
+      .eq("user_id", userId)
+      .order("updated_at", { ascending: false })
+      .limit(20),
+    db
+      .from("learning_artifacts")
+      .select("id,concept_id,session_id,artifact_type,title,content,ai_generated,created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(50),
+    db
+      .from("learning_attempts")
+      .select("id,concept_id,correct,score,created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(100),
+    db.from("learning_flashcards").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(50),
+    db.from("learning_notes").select("*").eq("user_id", userId).order("updated_at", { ascending: false }).limit(20),
+    db.from("learning_exams").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(20),
+    db.from("learning_revision_schedule").select("*").eq("user_id", userId).order("next_review_at").limit(50),
+    db.from("learning_memory").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(50),
+    db.from("learning_voice_sessions").select("*").eq("user_id", userId).order("started_at", { ascending: false }).limit(20),
+    db.from("learning_ocr_jobs").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(20),
+    db.from("learning_whiteboards").select("*").eq("user_id", userId).order("updated_at", { ascending: false }).limit(20),
+    db.from("learning_daily_goals").select("*").eq("user_id", userId).order("date", { ascending: false }).limit(30),
+    db.from("learning_weekly_goals").select("*").eq("user_id", userId).order("week_start", { ascending: false }).limit(12),
+    db.from("learning_analytics").select("*").eq("user_id", userId).order("date", { ascending: false }).limit(30),
+    db.from("learning_history").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(50),
+  ]);
+
   for (const result of [
     concepts,
     mastery,
@@ -45,8 +130,25 @@ export async function getLearningSnapshot(userId: string) {
     profile,
     sources,
     integrations,
-  ])
+    sessions,
+    artifacts,
+    attempts,
+    flashcards,
+    notes,
+    exams,
+    revisionSchedule,
+    memory,
+    voiceSessions,
+    ocrJobs,
+    whiteboards,
+    dailyGoals,
+    weeklyGoals,
+    analytics,
+    history,
+  ]) {
     if (result.error) throw result.error;
+  }
+
   return {
     concepts: (concepts.data ?? []).map((concept) => ({
       ...concept,
@@ -60,6 +162,21 @@ export async function getLearningSnapshot(userId: string) {
     profile: profile.data,
     sources: sources.data ?? [],
     integrations: integrations.data ?? [],
+    sessions: sessions.data ?? [],
+    artifacts: artifacts.data ?? [],
+    attempts: attempts.data ?? [],
+    flashcards: flashcards.data ?? [],
+    notes: notes.data ?? [],
+    exams: exams.data ?? [],
+    revision_schedule: revisionSchedule.data ?? [],
+    memory: memory.data ?? [],
+    voice_sessions: voiceSessions.data ?? [],
+    ocr_jobs: ocrJobs.data ?? [],
+    whiteboards: whiteboards.data ?? [],
+    daily_goals: dailyGoals.data ?? [],
+    weekly_goals: weeklyGoals.data ?? [],
+    analytics: analytics.data ?? [],
+    history: history.data ?? [],
   };
 }
 
@@ -88,6 +205,12 @@ export async function saveTutorMessage(
     source_ids: sourceIds,
   });
   if (error) throw error;
+  const { error: sessionError } = await db
+    .from("learning_sessions")
+    .update({ updated_at: new Date().toISOString() })
+    .eq("id", sessionId)
+    .eq("user_id", userId);
+  if (sessionError) throw sessionError;
 }
 
 export async function getSessionMessages(userId: string, sessionId: string) {
@@ -99,6 +222,20 @@ export async function getSessionMessages(userId: string, sessionId: string) {
     .order("created_at", { ascending: true });
   if (error) throw error;
   return data ?? [];
+}
+
+export async function getLatestTutorSession(userId: string, conceptId: string | null) {
+  let query = db
+    .from("learning_sessions")
+    .select("id,concept_id,title,status,created_at,updated_at")
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .order("updated_at", { ascending: false })
+    .limit(1);
+  if (conceptId) query = query.eq("concept_id", conceptId);
+  const { data, error } = await query.maybeSingle();
+  if (error) throw error;
+  return data;
 }
 
 export async function saveArtifact(
@@ -222,4 +359,361 @@ export async function completePlanTask(userId: string, taskId: string) {
     .eq("id", taskId)
     .eq("user_id", userId);
   if (error) throw error;
+}
+
+export async function addConceptToPlan(userId: string, concept: { id: string; title: string }) {
+  const { data: existing, error: existingError } = await db
+    .from("learning_plans")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (existingError) throw existingError;
+  let planId = existing?.id as string | undefined;
+  if (!planId) {
+    const today = new Date();
+    const { data, error } = await db
+      .from("learning_plans")
+      .insert({
+        user_id: userId,
+        title: "My adaptive study plan",
+        starts_on: today.toISOString().slice(0, 10),
+        ends_on: new Date(today.getTime() + 6 * 86_400_000).toISOString().slice(0, 10),
+        generated_from: { source: "learning-dock" },
+      })
+      .select("id")
+      .single();
+    if (error) throw error;
+    planId = data.id as string;
+  }
+  const { error } = await db.from("learning_plan_tasks").insert({
+    user_id: userId,
+    plan_id: planId,
+    concept_id: concept.id,
+    title: `Practice: ${concept.title}`,
+    task_type: "practice",
+    due_at: new Date().toISOString(),
+    estimated_minutes: 20,
+  });
+  if (error) throw error;
+}
+
+// Flashcards
+export async function generateFlashcards(userId: string, conceptId: string, count: number, sourceText?: string) {
+  const response = await fetch(`${getApiBaseUrl()}/api/learning/flashcards`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "generate", conceptId, count, sourceText }),
+  });
+  if (!response.ok) throw new Error("Failed to generate flashcards");
+  return response.json();
+}
+
+export async function reviewFlashcard(flashcardId: string, quality: number, responseTimeMs?: number) {
+  const response = await fetch(`${getApiBaseUrl()}/api/learning/flashcards`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "review", flashcardId, quality, responseTimeMs }),
+  });
+  if (!response.ok) throw new Error("Failed to review flashcard");
+  return response.json();
+}
+
+export async function getDueFlashcards(userId: string, limit = 20) {
+  const response = await fetch(`${getApiBaseUrl()}/api/learning/flashcards`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "due", limit }),
+  });
+  if (!response.ok) throw new Error("Failed to get due flashcards");
+  return response.json();
+}
+
+export async function listFlashcards(userId: string, conceptId?: string, limit = 50) {
+  const response = await fetch(`${getApiBaseUrl()}/api/learning/flashcards`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "list", conceptId, limit }),
+  });
+  if (!response.ok) throw new Error("Failed to list flashcards");
+  return response.json();
+}
+
+// Exams
+export async function createExam(userId: string, input: {
+  conceptIds: string[];
+  examType: "mock" | "chapter" | "full_syllabus" | "custom" | "timed_quiz";
+  questionCount: number;
+  timeLimitMinutes?: number;
+  difficulty: number;
+}) {
+  const response = await fetch(`${getApiBaseUrl()}/api/learning/exams`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "create", ...input }),
+  });
+  if (!response.ok) throw new Error("Failed to create exam");
+  return response.json();
+}
+
+export async function submitExamAnswer(examId: string, questionId: string, userAnswer: Record<string, unknown>, timeSpentSeconds?: number) {
+  const response = await fetch(`${getApiBaseUrl()}/api/learning/exams`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "submit_answer", examId, questionId, userAnswer, timeSpentSeconds }),
+  });
+  if (!response.ok) throw new Error("Failed to submit answer");
+  return response.json();
+}
+
+export async function completeExam(examId: string) {
+  const response = await fetch(`${getApiBaseUrl()}/api/learning/exams`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "complete", examId }),
+  });
+  if (!response.ok) throw new Error("Failed to complete exam");
+  return response.json();
+}
+
+export async function getExam(examId: string) {
+  const response = await fetch(`${getApiBaseUrl()}/api/learning/exams`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "get", examId }),
+  });
+  if (!response.ok) throw new Error("Failed to get exam");
+  return response.json();
+}
+
+export async function listExams(status?: string, limit = 20) {
+  const response = await fetch(`${getApiBaseUrl()}/api/learning/exams`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "list", status, limit }),
+  });
+  if (!response.ok) throw new Error("Failed to list exams");
+  return response.json();
+}
+
+// Revision
+export async function scheduleRevision(userId: string, conceptIds: string[]) {
+  const response = await fetch(`${getApiBaseUrl()}/api/learning/revision`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "schedule", conceptIds }),
+  });
+  if (!response.ok) throw new Error("Failed to schedule revision");
+  return response.json();
+}
+
+export async function getDueRevision(userId: string, limit = 20) {
+  const response = await fetch(`${getApiBaseUrl()}/api/learning/revision`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "due", limit }),
+  });
+  if (!response.ok) throw new Error("Failed to get due revision");
+  return response.json();
+}
+
+export async function completeRevision(userId: string, conceptId: string, quality: number) {
+  const response = await fetch(`${getApiBaseUrl()}/api/learning/revision`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "complete", conceptId, quality }),
+  });
+  if (!response.ok) throw new Error("Failed to complete revision");
+  return response.json();
+}
+
+// Voice
+export async function startVoiceSession(userId: string, conceptId: string | undefined, mode: "stt" | "tts" | "conversational", language = "en") {
+  const response = await fetch(`${getApiBaseUrl()}/api/learning/voice`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "start_session", conceptId, mode, language }),
+  });
+  if (!response.ok) throw new Error("Failed to start voice session");
+  return response.json();
+}
+
+export async function endVoiceSession(sessionId: string, transcript?: string, durationSeconds?: number) {
+  const response = await fetch(`${getApiBaseUrl()}/api/learning/voice`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "end_session", sessionId, transcript, durationSeconds }),
+  });
+  if (!response.ok) throw new Error("Failed to end voice session");
+  return response.json();
+}
+
+// OCR
+export async function processOCR(sourceId: string, mimeType: string, fileBase64: string) {
+  const response = await fetch(`${getApiBaseUrl()}/api/learning/ocr`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "process", sourceId, mimeType, fileBase64 }),
+  });
+  if (!response.ok) throw new Error("Failed to process OCR");
+  return response.json();
+}
+
+// Whiteboard
+export async function createWhiteboard(userId: string, input: {
+  conceptId?: string;
+  sessionId?: string;
+  title: string;
+  canvasData: Record<string, unknown>;
+}) {
+  const response = await fetch(`${getApiBaseUrl()}/api/learning/whiteboard`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "create", ...input }),
+  });
+  if (!response.ok) throw new Error("Failed to create whiteboard");
+  return response.json();
+}
+
+export async function updateWhiteboard(whiteboardId: string, canvasData: Record<string, unknown>, aiAnnotations?: Record<string, unknown>[]) {
+  const response = await fetch(`${getApiBaseUrl()}/api/learning/whiteboard`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "update", whiteboardId, canvasData, aiAnnotations }),
+  });
+  if (!response.ok) throw new Error("Failed to update whiteboard");
+  return response.json();
+}
+
+export async function annotateWhiteboard(whiteboardId: string, canvasData: Record<string, unknown>, instruction: string) {
+  const response = await fetch(`${getApiBaseUrl()}/api/learning/whiteboard`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "annotate", whiteboardId, canvasData, instruction }),
+  });
+  if (!response.ok) throw new Error("Failed to annotate whiteboard");
+  return response.json();
+}
+
+export async function getWhiteboard(whiteboardId: string) {
+  const response = await fetch(`${getApiBaseUrl()}/api/learning/whiteboard`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "get", whiteboardId }),
+  });
+  if (!response.ok) throw new Error("Failed to get whiteboard");
+  return response.json();
+}
+
+export async function listWhiteboards(conceptId?: string, limit = 20) {
+  const response = await fetch(`${getApiBaseUrl()}/api/learning/whiteboard`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "list", conceptId, limit }),
+  });
+  if (!response.ok) throw new Error("Failed to list whiteboards");
+  return response.json();
+}
+
+// Notes
+export async function createNote(userId: string, input: {
+  title: string;
+  content?: Record<string, unknown>;
+  contentText?: string;
+  conceptId?: string;
+  sessionId?: string;
+  tags?: string[];
+  isAiGenerated?: boolean;
+}) {
+  const response = await fetch(`${getApiBaseUrl()}/api/learning/notes`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "create", ...input }),
+  });
+  if (!response.ok) throw new Error("Failed to create note");
+  return response.json();
+}
+
+export async function generateNoteSummary(noteId: string, format: "summary" | "key_points" | "cheat_sheet" | "flashcards") {
+  const response = await fetch(`${getApiBaseUrl()}/api/learning/notes`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "generate", noteId, format }),
+  });
+  if (!response.ok) throw new Error("Failed to generate note summary");
+  return response.json();
+}
+
+export async function listNotes(conceptId?: string, sessionId?: string, limit = 20) {
+  const response = await fetch(`${getApiBaseUrl()}/api/learning/notes`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "list", conceptId, sessionId, limit }),
+  });
+  if (!response.ok) throw new Error("Failed to list notes");
+  return response.json();
+}
+
+// Memory
+export async function storeMemory(userId: string, input: {
+  memoryType: "conversation" | "mistake" | "strength" | "preference" | "goal" | "misconception";
+  conceptId?: string;
+  sessionId?: string;
+  content: Record<string, unknown>;
+  summary?: string;
+  importance?: number;
+  confidence?: number;
+  tags?: string[];
+}) {
+  const response = await fetch(`${getApiBaseUrl()}/api/learning/memory`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "store", ...input }),
+  });
+  if (!response.ok) throw new Error("Failed to store memory");
+  return response.json();
+}
+
+export async function retrieveMemories(userId: string, options: {
+  memoryType?: string;
+  conceptId?: string;
+  limit?: number;
+} = {}) {
+  const response = await fetch(`${getApiBaseUrl()}/api/learning/memory`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "retrieve", ...options }),
+  });
+  if (!response.ok) throw new Error("Failed to retrieve memories");
+  return response.json();
+}
+
+// Analytics
+export async function recordAnalytics(userId: string, input: {
+  date: string;
+  studyTimeSeconds: number;
+  conceptsStudied: number;
+  questionsAnswered: number;
+  correctAnswers: number;
+  tutorMessages: number;
+  flashcardsReviewed: number;
+  notesCreated: number;
+  examsCompleted: number;
+  voiceMinutes: number;
+  whiteboardSessions: number;
+  xpEarned: number;
+}) {
+  const response = await fetch(`${getApiBaseUrl()}/api/learning/analytics`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "record", ...input }),
+  });
+  if (!response.ok) throw new Error("Failed to record analytics");
+  return response.json();
+}
+
+function getApiBaseUrl() {
+  return import.meta.env.VITE_API_BASE_URL || "";
 }

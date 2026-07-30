@@ -75,7 +75,7 @@ const TIME_PATTERNS = [
 // Date patterns
 const DATE_PATTERNS = [
   /(\w+)\s+(\d{1,2})(?:st|nd|rd|th)?\s*(?:,?\s*(\d{4}))?/i, // Month day, year
-  /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/i, // MM/DD/YYYY or DD/MM/YYYY
+  /(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/i, // MM/DD/YYYY or DD/MM/YYYY
   /next\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i,
   /next\s+(week)/i,
   /in\s+(\d+)\s*(days?|weeks?|months?)/i,
@@ -200,7 +200,7 @@ function detectDate(text: string): string | null {
   }
 
   // Check for date patterns like MM/DD/YYYY
-  const dateMatch = text.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+  const dateMatch = text.match(/(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/);
   if (dateMatch) {
     const month = parseInt(dateMatch[1]);
     const day = parseInt(dateMatch[2]);

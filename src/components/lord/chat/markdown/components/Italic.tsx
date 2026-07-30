@@ -1,0 +1,21 @@
+/// <reference types="react/jsx-runtime" />
+/** @jsxImportSource react */
+
+"use client";
+
+import { cn } from "@/lib/utils";
+
+interface ItalicProps extends React.HTMLAttributes<HTMLElement> {
+  children: React.ReactNode;
+}
+
+export function Italic({ children, className, ...props }: ItalicProps) {
+  return (
+    <em
+      className={cn("italic text-primary/80", className)}
+      {...props}
+    >
+      {children}
+    </em>
+  );
+}

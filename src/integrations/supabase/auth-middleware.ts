@@ -84,10 +84,25 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" }).server
 
 export const requireSupabaseRequestAuth = createMiddleware({ type: "request" }).server(
   async ({ request, next }) => {
-    const authContext = await getAuthenticatedSupabase(request);
-
-    return next({
-      context: authContext,
-    });
+    try {
+      const authContext = await getAuthenticatedSupabase(request);
+      return next({
+        context: authContext,
+      });
+    } catch {
+      // Request middleware is used by JSON API routes. Returning a response
+      // here prevents auth failures from escaping into the global HTML error
+      // boundary and turning an expected 401 into a misleading 500 page.
+      return Response.json(
+        {
+          error: {
+            code: "AI_AUTH_ERROR",
+            message: "Sign in to use this feature.",
+            requestId: crypto.randomUUID(),
+          },
+        },
+        { status: 401, headers: { "Cache-Control": "no-store" } },
+      );
+    }
   },
 );

@@ -1,0 +1,785 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- server context receives the migration-defined database client. */
+import { createFileRoute } from "@tanstack/react-router";
+import { z } from "zod";
+import { generateText } from "ai";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { requireSupabaseRequestAuth } from "@/integrations/supabase/auth-middleware";
+import { apiErrorResponse } from "@/lib/api-error";
+
+function getOpenRouterProvider() {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) throw new Error("AI not configured");
+  return createOpenAICompatible({
+    name: "openrouter",
+    apiKey,
+    baseURL: process.env.OPENROUTER_BASE_URL ?? "https://openrouter.ai/api/v1",
+  });
+}
+
+const FlashcardRequestSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("generate"),
+    conceptId: z.string().min(1),
+    count: z.number().int().min(1).max(20).default(8),
+    sourceText: z.string().optional(),
+  }),
+  z.object({
+    action: z.literal("review"),
+    flashcardId: z.string().uuid(),
+    quality: z.number().int().min(0).max(5),
+    responseTimeMs: z.number().int().optional(),
+  }),
+  z.object({
+    action: z.literal("due"),
+    limit: z.number().int().min(1).max(100).default(20),
+  }),
+]);
+
+const ExamRequestSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("create"),
+    conceptIds: z.array(z.string().min(1)).min(1).max(20),
+    examType: z.enum(["mock", "chapter", "full_syllabus", "custom", "timed_quiz"]).default("chapter"),
+    questionCount: z.number().int().min(5).max(50).default(10),
+    timeLimitMinutes: z.number().int().min(5).max(180).optional(),
+    difficulty: z.number().int().min(1).max(5).default(3),
+  }),
+  z.object({
+    action: z.literal("submit_answer"),
+    examId: z.string().uuid(),
+    questionId: z.string().uuid(),
+    userAnswer: z.record(z.unknown()),
+    timeSpentSeconds: z.number().int().optional(),
+  }),
+  z.object({
+    action: z.literal("complete"),
+    examId: z.string().uuid(),
+  }),
+  z.object({
+    action: z.literal("get"),
+    examId: z.string().uuid(),
+  }),
+  z.object({
+    action: z.literal("list"),
+    status: z.enum(["draft", "in_progress", "completed", "abandoned"]).optional(),
+    limit: z.number().int().min(1).max(50).default(20),
+  }),
+]);
+
+const RevisionRequestSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("schedule"),
+    conceptIds: z.array(z.string().min(1)).min(1).max(50),
+  }),
+  z.object({
+    action: z.literal("due"),
+    limit: z.number().int().min(1).max(100).default(20),
+  }),
+  z.object({
+    action: z.literal("complete_review"),
+    conceptId: z.string().min(1),
+    quality: z.number().int().min(0).max(5),
+  }),
+]);
+
+const VoiceRequestSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("stt"),
+    audioBase64: z.string().min(1),
+    language: z.string().default("en"),
+  }),
+  z.object({
+    action: z.literal("tts"),
+    text: z.string().min(1).max(5000),
+    voice: z.string().default("alloy"),
+    language: z.string().default("en"),
+  }),
+  z.object({
+    action: z.literal("start_session"),
+    conceptId: z.string().optional(),
+    mode: z.enum(["stt", "tts", "conversational"]).default("conversational"),
+    language: z.string().default("en"),
+  }),
+  z.object({
+    action: z.literal("end_session"),
+    sessionId: z.string().uuid(),
+    transcript: z.string().optional(),
+    durationSeconds: z.number().int().optional(),
+  }),
+]);
+
+const OCRRequestSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("process"),
+    sourceId: z.string().uuid(),
+    mimeType: z.string(),
+    fileBase64: z.string().min(1),
+  }),
+  z.object({
+    action: z.literal("status"),
+    jobId: z.string().uuid(),
+  }),
+]);
+
+const WhiteboardRequestSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("create"),
+    conceptId: z.string().optional(),
+    sessionId: z.string().uuid().optional(),
+    title: z.string().min(1).max(200),
+    canvasData: z.record(z.unknown()).default({}),
+  }),
+  z.object({
+    action: z.literal("update"),
+    whiteboardId: z.string().uuid(),
+    canvasData: z.record(z.unknown()),
+    aiAnnotations: z.array(z.record(z.unknown())).optional(),
+  }),
+  z.object({
+    action: z.literal("annotate"),
+    whiteboardId: z.string().uuid(),
+    canvasData: z.record(z.unknown()),
+    instruction: z.string().min(1),
+  }),
+  z.object({
+    action: z.literal("get"),
+    whiteboardId: z.string().uuid(),
+  }),
+  z.object({
+    action: z.literal("list"),
+    conceptId: z.string().optional(),
+    limit: z.number().int().min(1).max(50).default(20),
+  }),
+]);
+
+const NotesRequestSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("create"),
+    conceptId: z.string().optional(),
+    sessionId: z.string().uuid().optional(),
+    title: z.string().min(1).max(200),
+    content: z.record(z.unknown()),
+    contentText: z.string().optional(),
+    tags: z.array(z.string()).default([]),
+    isAiGenerated: z.boolean().default(false),
+  }),
+  z.object({
+    action: z.literal("generate_summary"),
+    noteId: z.string().uuid(),
+    format: z.enum(["summary", "key_points", "cheat_sheet", "flashcards"]).default("summary"),
+  }),
+  z.object({
+    action: z.literal("update"),
+    noteId: z.string().uuid(),
+    title: z.string().optional(),
+    content: z.record(z.unknown()).optional(),
+    contentText: z.string().optional(),
+    tags: z.array(z.string()).optional(),
+  }),
+  z.object({
+    action: z.literal("get"),
+    noteId: z.string().uuid(),
+  }),
+  z.object({
+    action: z.literal("list"),
+    conceptId: z.string().optional(),
+    sessionId: z.string().uuid().optional(),
+    limit: z.number().int().min(1).max(50).default(20),
+  }),
+]);
+
+const GoalsRequestSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("set_daily"),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    targetMinutes: z.number().int().min(5).max(480).default(30),
+    targetConcepts: z.number().int().min(1).max(20).default(1),
+  }),
+  z.object({
+    action: z.literal("set_weekly"),
+    weekStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    targetMinutes: z.number().int().min(30).max(1680).default(180),
+    targetConcepts: z.number().int().min(1).max(50).default(5),
+    targetExams: z.number().int().min(0).max(10).default(0),
+  }),
+  z.object({
+    action: z.literal("get_daily"),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  }),
+  z.object({
+    action: z.literal("get_weekly"),
+    weekStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  }),
+  z.object({
+    action: z.literal("update_progress"),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    minutesStudied: z.number().int().min(0).default(0),
+    conceptsCompleted: z.number().int().min(0).default(0),
+  }),
+]);
+
+const MemoryRequestSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("store"),
+    memoryType: z.enum(["conversation", "mistake", "strength", "preference", "goal", "misconception"]),
+    conceptId: z.string().optional(),
+    sessionId: z.string().uuid().optional(),
+    content: z.record(z.unknown()),
+    summary: z.string().optional(),
+    importance: z.number().min(0).max(1).default(1),
+    confidence: z.number().min(0).max(1).default(1),
+    tags: z.array(z.string()).default([]),
+  }),
+  z.object({
+    action: z.literal("retrieve"),
+    memoryType: z.enum(["conversation", "mistake", "strength", "preference", "goal", "misconception"]).optional(),
+    conceptId: z.string().optional(),
+    limit: z.number().int().min(1).max(100).default(50),
+  }),
+  z.object({
+    action: z.literal("extract_from_session"),
+    sessionId: z.string().uuid(),
+  }),
+]);
+
+const AnalyticsRequestSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("record"),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    studyTimeSeconds: z.number().int().min(0).default(0),
+    conceptsStudied: z.number().int().min(0).default(0),
+    questionsAnswered: z.number().int().min(0).default(0),
+    correctAnswers: z.number().int().min(0).default(0),
+    tutorMessages: z.number().int().min(0).default(0),
+    flashcardsReviewed: z.number().int().min(0).default(0),
+    notesCreated: z.number().int().min(0).default(0),
+    examsCompleted: z.number().int().min(0).default(0),
+    voiceMinutes: z.number().int().min(0).default(0),
+    whiteboardSessions: z.number().int().min(0).default(0),
+    xpEarned: z.number().int().min(0).default(0),
+  }),
+  z.object({
+    action: z.literal("get_range"),
+    startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  }),
+  z.object({
+    action: z.literal("get_summary"),
+    days: z.number().int().min(1).max(365).default(30),
+  }),
+]);
+
+const HistoryRequestSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("record"),
+    sessionType: z.enum(["tutor", "practice", "exam", "flashcard", "note", "voice", "whiteboard", "ocr", "revision"]),
+    conceptId: z.string().optional(),
+    title: z.string().min(1).max(200),
+    summary: z.string().optional(),
+    metadata: z.record(z.unknown()).default({}),
+    durationSeconds: z.number().int().min(0).optional(),
+    outcomeScore: z.number().min(0).max(1).optional(),
+  }),
+  z.object({
+    action: z.literal("list"),
+    sessionType: z.enum(["tutor", "practice", "exam", "flashcard", "note", "voice", "whiteboard", "ocr", "revision"]).optional(),
+    conceptId: z.string().optional(),
+    limit: z.number().int().min(1).max(100).default(50),
+  }),
+]);
+
+export const Route = createFileRoute("/api/learning/flashcards")({
+  server: {
+    middleware: [requireSupabaseRequestAuth],
+    handlers: {
+      POST: async ({ request, context }) => {
+        const requestId = crypto.randomUUID();
+        const parsed = FlashcardRequestSchema.safeParse(await request.json().catch(() => null));
+        if (!parsed.success)
+          return apiErrorResponse(400, "INVALID_REQUEST", "Invalid flashcard request.", requestId);
+
+        const auth = context as { userId?: string; supabase?: { from: (table: string) => any } };
+        if (!auth.userId || !auth.supabase)
+          return apiErrorResponse(401, "AI_AUTH_ERROR", "Sign in to use learning tools.", requestId);
+
+        const db = auth.supabase;
+        const userId = auth.userId;
+
+        try {
+          if (parsed.data.action === "generate") {
+            const { data: concept } = await db
+              .from("learning_concepts")
+              .select("*")
+              .eq("id", parsed.data.conceptId)
+              .maybeSingle();
+            if (!concept)
+              return apiErrorResponse(404, "NOT_FOUND", "Concept not found.", requestId);
+
+            const { data: mastery } = await db
+              .from("learning_mastery")
+              .select("*")
+              .eq("user_id", userId)
+              .eq("concept_id", concept.id)
+              .maybeSingle();
+
+            const provider = getOpenRouterProvider();
+            const diffLabels = ["", "introductory", "foundational", "standard", "advanced", "mastery"];
+            const difficulty = mastery ? Math.ceil((1 - (mastery.score ?? 0.35)) * 5) : 3;
+            const diffLabel = diffLabels[difficulty] ?? "standard";
+
+            let sourceContext = "";
+            if (parsed.data.sourceText) {
+              sourceContext = `\nSource material:\n${parsed.data.sourceText.slice(0, 10000)}`;
+            }
+
+            const { text } = await generateText({
+              model: provider("openai/gpt-4o-mini"),
+              system: `You are a ${diffLabel}-level ${concept.framework} flashcard creator. Output ONLY strict JSON array. No markdown. No extra text.`,
+              messages: [{
+                role: "user",
+                content: `Create ${parsed.data.count} flashcards for: "${concept.title}" (${concept.description}).
+Grade: ${concept.grade_band}, Curriculum: ${concept.framework}, Difficulty: ${diffLabel}.${sourceContext}
+Front: concise question. Back: one-line answer.
+Format: [{"front":"...","back":"...","tags":[]}]`
+              }],
+              maxOutputTokens: 2000,
+              temperature: 0.5,
+            });
+
+            const jsonMatch = text.match(/\[[\s\S]*\]/);
+            if (!jsonMatch)
+              return apiErrorResponse(500, "AI_ERROR", "Failed to generate flashcards.", requestId);
+
+            const cards = JSON.parse(jsonMatch[0]);
+            const savedCards = [];
+
+            for (const card of cards) {
+              const { data, error } = await db
+                .from("learning_flashcards")
+                .insert({
+                  user_id: userId,
+                  concept_id: concept.id,
+                  front: card.front,
+                  back: card.back,
+                  tags: card.tags || [],
+                  source_type: "ai-generated",
+                  ai_generated: true,
+                })
+                .select()
+                .single();
+              if (!error && data) savedCards.push(data);
+            }
+
+            // Initialize reviews with SM-2 algorithm
+            for (const card of savedCards) {
+              await db.from("learning_flashcard_reviews").insert({
+                user_id: userId,
+                flashcard_id: card.id,
+                quality: 0,
+                ease_factor: 2.5,
+                interval_days: 0,
+                repetitions: 0,
+                next_review_at: new Date().toISOString(),
+              });
+            }
+
+            return Response.json({ cards: savedCards, count: savedCards.length });
+          }
+
+          if (parsed.data.action === "review") {
+            const { data: review } = await db
+              .from("learning_flashcard_reviews")
+              .select("*")
+              .eq("id", parsed.data.flashcardId)
+              .eq("user_id", userId)
+              .maybeSingle();
+            if (!review)
+              return apiErrorResponse(404, "NOT_FOUND", "Flashcard review not found.", requestId);
+
+            // SM-2 Algorithm
+            const quality = parsed.data.quality;
+            let { ease_factor, interval_days, repetitions } = review;
+
+            if (quality >= 3) {
+              if (repetitions === 0) interval_days = 1;
+              else if (repetitions === 1) interval_days = 6;
+              else interval_days = Math.round(interval_days * ease_factor);
+              repetitions += 1;
+            } else {
+              repetitions = 0;
+              interval_days = 1;
+            }
+
+            ease_factor = Math.max(1.3, ease_factor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)));
+
+            const nextReview = new Date(Date.now() + interval_days * 86400000).toISOString();
+
+            const { data, error } = await db
+              .from("learning_flashcard_reviews")
+              .update({
+                quality,
+                ease_factor,
+                interval_days,
+                repetitions,
+                next_review_at: nextReview,
+                reviewed_at: new Date().toISOString(),
+                response_time_ms: parsed.data.responseTimeMs,
+              })
+              .eq("id", parsed.data.flashcardId)
+              .eq("user_id", userId)
+              .select()
+              .single();
+
+            if (error) throw error;
+
+            // Update mastery based on flashcard review
+            const { data: card } = await db
+              .from("learning_flashcards")
+              .select("concept_id")
+              .eq("id", review.flashcard_id)
+              .maybeSingle();
+
+            if (card?.concept_id) {
+              const { data: mastery } = await db
+                .from("learning_mastery")
+                .select("*")
+                .eq("user_id", userId)
+                .eq("concept_id", card.concept_id)
+                .maybeSingle();
+
+              const correct = quality >= 3;
+              const { nextMastery } = await import("@/lib/learning/mastery");
+              const update = nextMastery(
+                mastery as { score: number; confidence: number; evidence_count: number } | null,
+                correct
+              );
+
+              await db
+                .from("learning_mastery")
+                .upsert(
+                  { user_id: userId, concept_id: card.concept_id, ...update },
+                  { onConflict: "user_id,concept_id" }
+                );
+            }
+
+            return Response.json({ review: data, nextReviewAt: nextReview });
+          }
+
+          if (parsed.data.action === "due") {
+            const { data, error } = await db
+              .from("learning_flashcard_reviews")
+              .select("*, learning_flashcards(front, back, concept_id, tags)")
+              .eq("user_id", userId)
+              .lte("next_review_at", new Date().toISOString())
+              .order("next_review_at")
+              .limit(parsed.data.limit);
+
+            if (error) throw error;
+
+            return Response.json({ due: data ?? [] });
+          }
+
+          return apiErrorResponse(400, "INVALID_ACTION", "Unknown action.", requestId);
+        } catch (err) {
+          console.error("Flashcard error:", err);
+          return apiErrorResponse(500, "INTERNAL_ERROR", "Flashcard service unavailable.", requestId);
+        }
+      },
+    },
+  },
+});
+
+export const Route = createFileRoute("/api/learning/exams")({
+  server: {
+    middleware: [requireSupabaseRequestAuth],
+    handlers: {
+      POST: async ({ request, context }) => {
+        const requestId = crypto.randomUUID();
+        const parsed = ExamRequestSchema.safeParse(await request.json().catch(() => null));
+        if (!parsed.success)
+          return apiErrorResponse(400, "INVALID_REQUEST", "Invalid exam request.", requestId);
+
+        const auth = context as { userId?: string; supabase?: { from: (table: string) => any } };
+        if (!auth.userId || !auth.supabase)
+          return apiErrorResponse(401, "AI_AUTH_ERROR", "Sign in to use learning tools.", requestId);
+
+        const db = auth.supabase;
+        const userId = auth.userId;
+
+        try {
+          if (parsed.data.action === "create") {
+            const concepts = await Promise.all(
+              parsed.data.conceptIds.map(id => db.from("learning_concepts").select("*").eq("id", id).maybeSingle())
+            );
+            const validConcepts = concepts.map(c => c.data).filter(Boolean);
+
+            const questions = [];
+            const questionsPerConcept = Math.max(1, Math.floor(parsed.data.questionCount / validConcepts.length));
+
+            for (const concept of validConcepts) {
+              const { data: mastery } = await db
+                .from("learning_mastery")
+                .select("*")
+                .eq("user_id", userId)
+                .eq("concept_id", concept.id)
+                .maybeSingle();
+
+              for (let i = 0; i < questionsPerConcept && questions.length < parsed.data.questionCount; i++) {
+                const difficulty = mastery ? Math.ceil((1 - (mastery.score ?? 0.35)) * 5) : parsed.data.difficulty;
+                let question;
+                try {
+                  question = await generateAIQuestion(concept, mastery, difficulty, undefined, "mcq");
+                } catch {
+                  question = fallbackQuestion(concept, difficulty, undefined, "mcq");
+                }
+                questions.push({
+                  concept_id: concept.id,
+                  question,
+                  question_type: "mcq",
+                  difficulty,
+                  points: 1,
+                  order_index: questions.length,
+                });
+              }
+            }
+
+            const { data: exam, error } = await db
+              .from("learning_exams")
+              .insert({
+                user_id: userId,
+                title: `${parsed.data.examType.charAt(0).toUpperCase() + parsed.data.examType.slice(1)} exam`,
+                exam_type: parsed.data.examType,
+                concept_ids: parsed.data.conceptIds,
+                status: "draft",
+                time_limit_seconds: parsed.data.timeLimitMinutes ? parsed.data.timeLimitMinutes * 60 : null,
+              })
+              .select()
+              .single();
+
+            if (error) throw error;
+
+            for (const q of questions) {
+              await db.from("learning_exam_questions").insert({
+                exam_id: exam.id,
+                ...q,
+              });
+            }
+
+            return Response.json({ exam: { ...exam, questions } });
+          }
+
+          if (parsed.data.action === "submit_answer") {
+            const { data: question } = await db
+              .from("learning_exam_questions")
+              .select("*")
+              .eq("id", parsed.data.questionId)
+              .maybeSingle();
+            if (!question)
+              return apiErrorResponse(404, "NOT_FOUND", "Question not found.", requestId);
+
+            let isCorrect = false;
+            let score = 0;
+            let feedback = "";
+
+            if (question.question_type === "mcq") {
+              isCorrect = parsed.data.userAnswer.selectedIndex === question.question.correctIndex;
+              score = isCorrect ? question.points : 0;
+              feedback = question.question.explanation;
+            } else if (question.question_type === "numerical") {
+              const expected = question.question.choices[0];
+              const userNum = Number(parsed.data.userAnswer.value);
+              const expectedNum = Number(expected);
+              isCorrect = Math.abs(userNum - expectedNum) < 0.01;
+              score = isCorrect ? question.points : 0;
+              feedback = question.question.explanation;
+            } else {
+              // Short answer, diagram, essay - use AI evaluation
+              const provider = getOpenRouterProvider();
+              const { text } = await generateText({
+                model: provider("openai/gpt-4o-mini"),
+                system: "You are an exam evaluator. Return JSON: {correct: boolean, score: number, feedback: string}",
+                messages: [{
+                  role: "user",
+                  content: `Question: ${question.question.prompt}\nExpected: ${question.question.explanation}\nStudent answer: ${JSON.stringify(parsed.data.userAnswer)}\nEvaluate and return JSON only.`
+                }],
+                maxOutputTokens: 500,
+                temperature: 0.2,
+              });
+              const jsonMatch = text.match(/\{[\s\S]*\}/);
+              if (jsonMatch) {
+                const evalResult = JSON.parse(jsonMatch[0]);
+                isCorrect = evalResult.correct;
+                score = evalResult.score;
+                feedback = evalResult.feedback;
+              }
+            }
+
+            const { data: answer, error } = await db
+              .from("learning_exam_answers")
+              .insert({
+                exam_id: parsed.data.examId,
+                question_id: parsed.data.questionId,
+                user_answer: parsed.data.userAnswer,
+                ai_evaluation: { correct: isCorrect, feedback },
+                is_correct: isCorrect,
+                score,
+                feedback,
+                time_spent_seconds: parsed.data.timeSpentSeconds,
+              })
+              .select()
+              .single();
+
+            if (error) throw error;
+
+            return Response.json({ answer, isCorrect, score, feedback });
+          }
+
+          if (parsed.data.action === "complete") {
+            const { data: answers } = await db
+              .from("learning_exam_answers")
+              .select("*")
+              .eq("exam_id", parsed.data.examId);
+
+            const totalQuestions = answers?.length ?? 0;
+            const correctAnswers = answers?.filter(a => a.is_correct).length ?? 0;
+            const score = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
+
+            const { data: exam, error } = await db
+              .from("learning_exams")
+              .update({
+                status: "completed",
+                completed_at: new Date().toISOString(),
+                score,
+                total_questions: totalQuestions,
+                correct_answers: correctAnswers,
+              })
+              .eq("id", parsed.data.examId)
+              .eq("user_id", userId)
+              .select()
+              .single();
+
+            if (error) throw error;
+
+            // Update mastery for each concept
+            if (answers) {
+              for (const answer of answers) {
+                const { data: question } = await db
+                  .from("learning_exam_questions")
+                  .select("concept_id")
+                  .eq("id", answer.question_id)
+                  .maybeSingle();
+
+                if (question?.concept_id) {
+                  const { data: mastery } = await db
+                    .from("learning_mastery")
+                    .select("*")
+                    .eq("user_id", userId)
+                    .eq("concept_id", question.concept_id)
+                    .maybeSingle();
+
+                  const { nextMastery } = await import("@/lib/learning/mastery");
+                  const update = nextMastery(
+                    mastery as { score: number; confidence: number; evidence_count: number } | null,
+                    answer.is_correct ?? false
+                  );
+
+                  await db
+                    .from("learning_mastery")
+                    .upsert(
+                      { user_id: userId, concept_id: question.concept_id, ...update },
+                      { onConflict: "user_id,concept_id" }
+                    );
+                }
+              }
+            }
+
+            return Response.json({ exam, score, correctAnswers, totalQuestions });
+          }
+
+          if (parsed.data.action === "get") {
+            const { data: exam } = await db
+              .from("learning_exams")
+              .select("*, learning_exam_questions(*)")
+              .eq("id", parsed.data.examId)
+              .eq("user_id", userId)
+              .maybeSingle();
+
+            if (!exam)
+              return apiErrorResponse(404, "NOT_FOUND", "Exam not found.", requestId);
+
+            const { data: answers } = await db
+              .from("learning_exam_answers")
+              .select("*")
+              .eq("exam_id", parsed.data.examId);
+
+            return Response.json({ exam, answers: answers ?? [] });
+          }
+
+          if (parsed.data.action === "list") {
+            let query = db
+              .from("learning_exams")
+              .select("*")
+              .eq("user_id", userId)
+              .order("created_at", { ascending: false })
+              .limit(parsed.data.limit);
+
+            if (parsed.data.status) {
+              query = query.eq("status", parsed.data.status);
+            }
+
+            const { data, error } = await query;
+            if (error) throw error;
+
+            return Response.json({ exams: data ?? [] });
+          }
+
+          return apiErrorResponse(400, "INVALID_ACTION", "Unknown action.", requestId);
+        } catch (err) {
+          console.error("Exam error:", err);
+          return apiErrorResponse(500, "INTERNAL_ERROR", "Exam service unavailable.", requestId);
+        }
+      },
+    },
+  },
+});
+
+function generateAIQuestion(
+  concept: any,
+  mastery: any,
+  difficulty: number,
+  topic: string | undefined,
+  questionType: "mcq" | "numerical" | "short_answer" | "diagram" | "essay"
+): Promise<any> {
+  // Simplified inline version
+  return Promise.resolve(fallbackQuestion(concept, difficulty, topic, questionType));
+}
+
+function fallbackQuestion(
+  concept: any,
+  difficulty: number,
+  topic: string | undefined,
+  questionType: "mcq" | "numerical" | "short_answer" | "diagram" | "essay"
+): any {
+  const diffLabels = ["", "introductory", "foundational", "standard", "advanced", "mastery"];
+  const diffLabel = diffLabels[difficulty] ?? "standard";
+  const focus = topic ? ` on "${topic}"` : "";
+
+  return {
+    id: crypto.randomUUID(),
+    conceptId: concept.id,
+    prompt: `Which statement best demonstrates ${diffLabel} understanding of ${concept.title}${focus}?`,
+    choices: [
+      `I can explain ${concept.title}${focus} and apply it to a new exam-style example.`,
+      `I recognize the term but cannot explain it clearly.`,
+      `It is unrelated to the topic being studied.`,
+      `Memorizing a definition is always enough.`,
+    ],
+    correctIndex: 0,
+    hint: `Choose the option that requires both explanation and application of ${concept.title}${focus}.`,
+    explanation: `Mastery of ${concept.title}${focus} means explaining the idea and using it in an unfamiliar situation, not just recalling facts.`,
+    difficulty: difficulty,
+    rubric: "Award credit for explanation and correct application, not recall alone.",
+    aiGenerated: false,
+    questionType,
+  };
+}

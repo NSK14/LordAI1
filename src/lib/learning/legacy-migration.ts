@@ -1,7 +1,6 @@
 import { store } from "@/lib/lord-store";
 import { saveArtifact, saveProfile } from "./client";
 
-const STUDY_PREFIX = "lord:study:";
 const FLASHCARD_DECKS_PREFIX = "lord:flashcard:decks";
 const FLASHCARD_MASTERY_PREFIX = "lord:flashcard:mastery";
 

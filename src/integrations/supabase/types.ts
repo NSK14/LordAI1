@@ -957,14 +957,14 @@ export type Database = {
             columns: ["concept_id"];
             isOneToOne: false;
             referencedRelation: "learning_concepts";
-            referencedColumns: ["id"],
+            referencedColumns: ["id"];
           },
           {
             foreignKeyName: "learning_artifacts_session_id_fkey";
             columns: ["session_id"];
             isOneToOne: false;
             referencedRelation: "learning_sessions";
-            referencedColumns: ["id"],
+            referencedColumns: ["id"];
           },
         ];
       };
@@ -999,7 +999,7 @@ export type Database = {
             columns: ["source_id"];
             isOneToOne: false;
             referencedRelation: "learning_sources";
-            referencedColumns: ["id"],
+            referencedColumns: ["id"];
           },
         ];
       };

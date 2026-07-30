@@ -26,7 +26,7 @@ interface OpenRouterModel {
     max_completion_tokens?: number;
     is_moderated: boolean;
   };
-  per_request_limits?: any;
+  per_request_limits?: Record<string, unknown>;
   supported_parameters?: string[];
 }
 

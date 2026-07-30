@@ -1,14 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- database schema is defined in types and client types regenerate after migration deployment. */
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Route, useSearch } from "@tanstack/react-router";
+import { useSearch } from "@tanstack/react-router";
 import {
   BookOpen,
   BrainCircuit,
   CheckCircle2,
   ChevronRight,
   Compass,
+  FileText,
   FileUp,
+  Flame,
+  Library,
   Lightbulb,
   LayoutList,
   MessageSquare,
@@ -16,15 +19,22 @@ import {
   Send,
   Sparkles,
   Target,
+  Trophy,
 } from "lucide-react";
 import { AppShell } from "@/components/lord/AppShell";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { authenticatedFetch } from "@/lib/authenticated-fetch";
+import { getApiBaseUrl } from "@/lib/api-config";
 import {
+  addConceptToPlan,
   createBoard,
   completePlanTask,
   createTutorSession,
+  getLatestTutorSession,
   getLearningSnapshot,
+  getSessionMessages,
   recordAttempt,
+  saveArtifact,
   saveProfile,
   saveTutorMessage,
   saveToBoard,
@@ -46,7 +56,7 @@ const labels: Record<LearningView, string> = {
 };
 
 async function getSession(body: unknown) {
-  const response = await fetch(`/api/learning/session`, {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/learning/session`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -58,7 +68,7 @@ async function getSession(body: unknown) {
 type TutorMessage = { id: string; role: "user" | "assistant"; text: string };
 
 async function streamTutorReply(body: unknown, onDelta: (text: string) => void) {
-  const response = await fetch("/api/chat", {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -108,8 +118,27 @@ export function StudyShell() {
   });
   const data = snapshot.data;
   const next = useMemo(() => data && selectNextConcept(data.concepts, data.mastery), [data]);
-  if (!user || !data) return null;
   const activeConcept = data?.concepts.find((concept) => concept.id === selectedConceptId) ?? next;
+
+  if (!user) return null;
+  if (snapshot.isLoading)
+    return (
+      <AppShell>
+        <main className="mx-auto max-w-6xl p-6 text-muted-foreground">
+          Loading your learning space…
+        </main>
+      </AppShell>
+    );
+  if (snapshot.error || !data)
+    return (
+      <AppShell>
+        <main className="mx-auto max-w-6xl p-6">
+          <p className="rounded-md bg-destructive/10 p-3 text-destructive">
+            Your learning data could not be loaded. Please refresh and try again.
+          </p>
+        </main>
+      </AppShell>
+    );
 
   const renderView = () => {
     switch (view) {
@@ -172,9 +201,11 @@ export function StudyShell() {
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-              LORD Learning
+              LORD AI Academy
             </p>
-            <h1 className="font-display text-3xl gradient-text">{labels[view]}</h1>
+            <h1 className="font-display text-3xl gradient-text">
+              {view === "learn" ? "Your adaptive learning workspace" : labels[view]}
+            </h1>
           </div>
           <nav className="flex flex-wrap gap-2 text-xs">
             {(["learn", "practice", "plan", "feed", "boards", "progress"] as LearningView[]).map(
@@ -190,17 +221,10 @@ export function StudyShell() {
             )}
           </nav>
         </header>
+        <AcademyProgress data={data} />
         <p className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
           {AI_GENERATED_NOTICE}
         </p>
-        {snapshot.isLoading && (
-          <p className="text-muted-foreground">Loading your learning space…</p>
-        )}
-        {snapshot.error && (
-          <p className="rounded-md bg-destructive/10 p-3 text-destructive">
-            Your learning data could not be loaded. Please retry.
-          </p>
-        )}
         {data && (
           <div className="space-y-6">
             <MasteryMap
@@ -210,26 +234,29 @@ export function StudyShell() {
               onSelect={(concept) => setSelectedConceptId(concept.id)}
             />
             {view === "learn" ? (
-              <div className="grid gap-6 lg:grid-cols-3">
-                <div className="lg:col-span-2 space-y-6">
-                  <LearnView
-                    data={data}
-                    next={activeConcept}
-                    userId={user.id}
-                    refresh={() => qc.invalidateQueries({ queryKey: ["learning", user.id] })}
-                    notify={setNotice}
-                  />
+              <>
+                <div className="grid gap-6 lg:grid-cols-3">
+                  <div className="lg:col-span-2 space-y-6">
+                    <LearnView
+                      data={data}
+                      next={activeConcept}
+                      userId={user.id}
+                      refresh={() => qc.invalidateQueries({ queryKey: ["learning", user.id] })}
+                      notify={setNotice}
+                    />
+                  </div>
+                  <div className="space-y-6">
+                    <LearningDock
+                      next={activeConcept}
+                      userId={user.id}
+                      sources={data.sources}
+                      notify={setNotice}
+                      refresh={() => qc.invalidateQueries({ queryKey: ["learning", user.id] })}
+                    />
+                  </div>
                 </div>
-                <div className="space-y-6">
-                  <LearningDock
-                    next={activeConcept}
-                    userId={user.id}
-                    sources={data.sources}
-                    notify={setNotice}
-                    refresh={() => qc.invalidateQueries({ queryKey: ["learning", user.id] })}
-                  />
-                </div>
-              </div>
+                <ResourceLibrary data={data} />
+              </>
             ) : (
               <div>{renderView()}</div>
             )}
@@ -245,6 +272,127 @@ export function StudyShell() {
         )}
       </main>
     </AppShell>
+  );
+}
+
+function AcademyProgress({ data }: { data: Awaited<ReturnType<typeof getLearningSnapshot>> }) {
+  const mastered = data.mastery.filter((item) => Number(item.score) >= 0.7).length;
+  const total = Math.max(data.concepts.length, 1);
+  const mastery = Math.round((mastered / total) * 100);
+  const xp = data.mastery.reduce((sum, item) => sum + item.evidence_count * 25, 0);
+  const today = new Date().toDateString();
+  const dailyAttempts = data.attempts.filter(
+    (attempt) => new Date(attempt.created_at).toDateString() === today,
+  ).length;
+  const dailyGoal = Math.min(100, Math.round((dailyAttempts / 3) * 100));
+  const activeDays = new Set(
+    [...data.sessions, ...data.attempts].map((item) => new Date(item.created_at).toDateString()),
+  );
+  let streak = 0;
+  const cursor = new Date();
+  while (activeDays.has(cursor.toDateString())) {
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return (
+    <section className="grid gap-3 rounded-xl border border-primary/20 bg-card/70 p-4 sm:grid-cols-2 xl:grid-cols-4">
+      <ProgressMetric
+        icon={<Target />}
+        label="Today’s goal"
+        value={`${dailyGoal}%`}
+        detail={`${dailyAttempts}/3 validated practice attempts today`}
+      />
+      <ProgressMetric
+        icon={<Flame />}
+        label="Study streak"
+        value={`${streak} day${streak === 1 ? "" : "s"}`}
+        detail={streak ? "Based on persisted learning activity" : "Complete a focused session today"}
+      />
+      <ProgressMetric
+        icon={<Trophy />}
+        label="Mastery"
+        value={`${mastery}%`}
+        detail={`${mastered} of ${total} concepts secure`}
+      />
+      <ProgressMetric
+        icon={<Sparkles />}
+        label="Academy XP"
+        value={String(xp)}
+        detail="Earned from validated learning evidence"
+      />
+    </section>
+  );
+}
+
+function ProgressMetric({
+  icon,
+  label,
+  value,
+  detail,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-lg bg-background/40 p-3">
+      <span className="text-primary">{icon}</span>
+      <div>
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="font-display text-xl">{value}</p>
+        <p className="text-[11px] text-muted-foreground">{detail}</p>
+      </div>
+    </div>
+  );
+}
+
+function ResourceLibrary({ data }: { data: Awaited<ReturnType<typeof getLearningSnapshot>> }) {
+  const items = [
+    ...data.sources.map((source) => ({
+      id: source.id,
+      title: source.name,
+      type: source.mime_type,
+      detail: "Private study material",
+    })),
+    ...data.resources.map((resource: any) => ({
+      id: resource.id,
+      title: resource.title,
+      type: resource.resource_type,
+      detail: resource.provenance,
+    })),
+  ].slice(0, 8);
+  return (
+    <section className="rounded-xl border border-primary/20 bg-card/80 p-5">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+            Resources & evidence
+          </p>
+          <h2 className="mt-1 font-display text-xl">Your grounded learning library</h2>
+        </div>
+        <Library className="h-5 w-5 text-primary" />
+      </div>
+      {items.length ? (
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {items.map((item) => (
+            <div key={item.id} className="rounded-lg border border-border bg-background/40 p-3">
+              <div className="mb-2 flex items-center gap-2 text-primary">
+                <FileText className="h-4 w-4" />
+                <span className="text-xs uppercase tracking-wider">{item.type}</span>
+              </div>
+              <p className="font-medium text-sm">{item.title}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{item.detail}</p>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          Add a private school resource or save a reviewed learning item to ground your tutor
+          sessions with evidence.
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -462,6 +610,7 @@ function LearningDock({
   refresh: () => void;
 }) {
   const [hint, setHint] = useState("");
+  const [coachResponse, setCoachResponse] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [flashcardTitle, setFlashcardTitle] = useState("");
   const [isCreatingFlashcards, setIsCreatingFlashcards] = useState(false);
@@ -490,12 +639,47 @@ function LearningDock({
         (text) => setHint(text),
       );
       if (answer.trim()) {
-        void saveTutorMessage(userId, crypto.randomUUID(), "assistant", answer).catch(
-          () => undefined,
-        );
+        void createTutorSession(
+          userId,
+          next?.id ?? null,
+          `Hint: ${next?.title ?? "learning concept"}`,
+        )
+          .then((sessionId) => saveTutorMessage(userId, sessionId, "assistant", answer))
+          .catch(() => undefined);
       }
     } catch {
       notify("Could not generate a hint right now.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const runCoachAction = async (instruction: string) => {
+    if (!next) return;
+    setIsGenerating(true);
+    setCoachResponse("");
+    try {
+      await streamTutorReply(
+        {
+          mode: "balanced",
+          context: { page: "study", workflow: "learning-dock" },
+          messages: [
+            {
+              id: crypto.randomUUID(),
+              role: "user",
+              parts: [
+                {
+                  type: "text",
+                  text: `${instruction} for ${next.title}. Keep it suitable for CBSE middle/high school, clear, and concise. Label examples as AI-generated.`,
+                },
+              ],
+            },
+          ],
+        },
+        setCoachResponse,
+      );
+    } catch {
+      notify("Could not prepare that learning aid right now.");
     } finally {
       setIsGenerating(false);
     }
@@ -552,13 +736,9 @@ function LearningDock({
   const addToPlan = async () => {
     if (!next?.id) return;
     try {
-      await import("@/lib/learning/client").then(({ saveProfile }) =>
-        saveProfile(userId, {
-          goals: [`Practice and review ${next.title}`],
-          subjects: [next.subject],
-        }),
-      );
-      notify(`${next.title} added to your learning goals.`);
+      await addConceptToPlan(userId, next);
+      notify(`${next.title} was added to your active study plan.`);
+      refresh();
     } catch {
       notify("Could not update your plan.");
     }
@@ -586,7 +766,7 @@ function LearningDock({
             Give me a hint
           </button>
           <button
-            onClick={() => {}}
+            onClick={() => void runCoachAction("Give one short worked example")}
             disabled={!next}
             className="rounded-md border border-border px-3 py-1.5 text-xs hover:border-primary/50 hover:text-primary disabled:opacity-50"
           >
@@ -594,14 +774,20 @@ function LearningDock({
             Worked example
           </button>
           <button
-            onClick={() => {}}
+            onClick={() =>
+              void runCoachAction("Explain this in simpler language with an everyday analogy")
+            }
             disabled={!next}
             className="rounded-md border border-border px-3 py-1.5 text-xs hover:border-primary/50 hover:text-primary disabled:opacity-50"
           >
             Explain simpler
           </button>
           <button
-            onClick={() => {}}
+            onClick={() =>
+              void runCoachAction(
+                "Ask one diagnostic mini-check question without giving its answer",
+              )
+            }
             disabled={!next}
             className="rounded-md border border-border px-3 py-1.5 text-xs hover:border-primary/50 hover:text-primary disabled:opacity-50"
           >
@@ -619,6 +805,14 @@ function LearningDock({
           <div className="rounded-md border border-primary/20 bg-primary/5 p-3 text-sm">
             <p className="text-xs font-semibold uppercase tracking-wider text-primary mb-1">Hint</p>
             <p className="text-muted-foreground">{hint}</p>
+          </div>
+        )}
+        {coachResponse && (
+          <div className="rounded-md border border-primary/20 bg-primary/5 p-3 text-sm">
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-primary">
+              AI-generated learning aid
+            </p>
+            <p className="whitespace-pre-wrap text-muted-foreground">{coachResponse}</p>
           </div>
         )}
       </section>
@@ -678,6 +872,36 @@ function TutorStudio({
   const [isThinking, setIsThinking] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
 
+  useEffect(() => {
+    let active = true;
+    const welcome: TutorMessage = {
+      id: "welcome",
+      role: "assistant",
+      text: `Hi — I'm LORD, your ${subject} learning coach. What would you like to understand? I'll guide you with questions and hints before I reveal an answer.`,
+    };
+    setSessionId(null);
+    setMessages([welcome]);
+    void getLatestTutorSession(userId, next?.id ?? null)
+      .then(async (session) => {
+        if (!active || !session) return;
+        const saved = await getSessionMessages(userId, session.id);
+        if (!active) return;
+        setSessionId(session.id);
+        if (saved.length)
+          setMessages(
+            saved.map((message) => ({
+              id: message.id,
+              role: message.role === "assistant" ? "assistant" : "user",
+              text: message.content,
+            })),
+          );
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [next?.id, subject, userId]);
+
   const send = async (event?: FormEvent, prompt = draft) => {
     event?.preventDefault();
     const text = prompt.trim();
@@ -720,6 +944,12 @@ function TutorStudio({
       sourceContext
         ? `PRIVATE STUDENT MATERIALS (use only when relevant and cite the source name):\n${sourceContext}`
         : "No private study material is selected for this answer.",
+      messages.length > 1
+        ? `RECENT CONVERSATION:\n${messages
+            .slice(-8)
+            .map((message) => `${message.role.toUpperCase()}: ${message.text}`)
+            .join("\n")}`
+        : "",
       `Student message: ${text}`,
     ].join("\n");
     try {
@@ -799,7 +1029,12 @@ function TutorStudio({
       </div>
       <div className="border-t border-border/70 p-4">
         <div className="mb-3 flex flex-wrap gap-2">
-          {["Give me a hint", "Explain it more simply", "Check my understanding"].map((prompt) => (
+          {[
+            "Give me a hint",
+            "Explain it more simply",
+            "Show a worked example",
+            "Ask another diagnostic question",
+          ].map((prompt) => (
             <button
               key={prompt}
               type="button"
@@ -811,6 +1046,26 @@ function TutorStudio({
               {prompt}
             </button>
           ))}
+          <button
+            type="button"
+            disabled={!next?.id || isThinking}
+            onClick={() => void addConceptToPlan(userId, next).then(() => notify(`${next.title} added to your study plan.`)).catch(() => notify("Could not add this concept to your plan."))}
+            className="rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground hover:border-primary/50 hover:text-primary"
+          >
+            Add to plan
+          </button>
+          <button
+            type="button"
+            disabled={!messages.some((message) => message.role === "assistant")}
+            onClick={() => {
+              const latest = [...messages].reverse().find((message) => message.role === "assistant" && message.id !== "welcome");
+              if (!latest) return;
+              void saveArtifact(userId, { conceptId: next?.id ?? null, sessionId, type: "notes", title: `Tutor note: ${next?.title ?? subject}`, content: { text: latest.text }, aiGenerated: true }).then(() => notify("Tutor explanation saved to My Boards.")).catch(() => notify("Could not save this note."));
+            }}
+            className="rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground hover:border-primary/50 hover:text-primary"
+          >
+            Save note
+          </button>
         </div>
         <form onSubmit={(event) => void send(event)} className="flex gap-2">
           <input
@@ -1009,12 +1264,23 @@ function PlanView({ data, next, userId, notify, refresh }: any) {
 
 function FeedView({ data, userId, notify, refresh }: any) {
   const [boardId, setBoardId] = useState("");
+  const masteryByConcept = new Map(data.mastery.map((item: any) => [item.concept_id, item]));
+  const resources = [...data.resources].sort(
+    (a: any, b: any) =>
+      Number(masteryByConcept.get(a.concept_id)?.score ?? 0.35) -
+      Number(masteryByConcept.get(b.concept_id)?.score ?? 0.35),
+  );
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      {data.resources.length ? (
-        data.resources.map((resource: any) => (
+      {resources.length ? (
+        resources.map((resource: any) => (
           <Panel key={resource.id} icon={<Compass />} title={resource.title}>
             <p className="text-sm text-muted-foreground">{resource.summary}</p>
+            {resource.concept_id && (
+              <p className="mt-2 text-xs text-primary">
+                Recommended for {Math.round(Number(masteryByConcept.get(resource.concept_id)?.score ?? 0.35) * 100)}% mastery
+              </p>
+            )}
             <p className="mt-3 text-xs text-muted-foreground">
               Source: {resource.provenance} · {resource.license ?? "license not supplied"}
             </p>
@@ -1099,20 +1365,55 @@ function BoardsView({ data, userId, notify, refresh }: any) {
           </Panel>
         ))}
       </div>
+      <Panel icon={<FileText />} title="Saved notes & learning artifacts">
+        {data.artifacts.length ? (
+          <ul className="space-y-2">
+            {data.artifacts.map((artifact: any) => (
+              <li key={artifact.id} className="rounded border p-3 text-sm">
+                <p className="font-medium">{artifact.title}</p>
+                <p className="text-xs text-muted-foreground">
+                  {artifact.artifact_type} · {new Date(artifact.created_at).toLocaleDateString()}
+                </p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Save a tutor explanation or generate flashcards to build your personal study library.
+          </p>
+        )}
+      </Panel>
     </div>
   );
 }
 
 function ProgressView({ data }: any) {
   const ready = isReadyForTest(data.mastery);
+  const attempts = data.attempts.length;
+  const correct = data.attempts.filter((attempt: any) => attempt.correct).length;
+  const accuracy = attempts ? Math.round((correct / attempts) * 100) : 0;
+  const weak = data.concepts
+    .map((concept: any) => ({ concept, score: Number(data.mastery.find((item: any) => item.concept_id === concept.id)?.score ?? 0.35) }))
+    .sort((a: any, b: any) => a.score - b.score)
+    .slice(0, 3);
   return (
     <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Panel icon={<Target />} title="Practice accuracy"><p className="font-display text-3xl text-primary">{accuracy}%</p><p className="text-sm text-muted-foreground">{correct} correct from {attempts} persisted attempts</p></Panel>
+        <Panel icon={<MessageSquare />} title="Tutor history"><p className="font-display text-3xl text-primary">{data.sessions.length}</p><p className="text-sm text-muted-foreground">Persisted learning sessions</p></Panel>
+        <Panel icon={<Sparkles />} title="Study artifacts"><p className="font-display text-3xl text-primary">{data.artifacts.length}</p><p className="text-sm text-muted-foreground">Notes, cards, and generated aids</p></Panel>
+      </div>
       <Panel icon={<Sparkles />} title="Reflection">
         <p className="text-sm text-muted-foreground">
           {ready
             ? "You are on track for a readiness check. Keep reviewing the concepts scheduled for today."
             : "Focus on the concepts below; LORD will schedule short reviews as your evidence grows."}
         </p>
+      </Panel>
+      <Panel icon={<Target />} title="Priority review concepts">
+        <ul className="space-y-2 text-sm">
+          {weak.map(({ concept, score }: any) => <li key={concept.id} className="flex justify-between rounded border p-3"><span>{concept.title}</span><span className="text-primary">{Math.round(score * 100)}%</span></li>)}
+        </ul>
       </Panel>
       <div className="grid gap-3 md:grid-cols-2">
         {data.concepts.map((concept: any) => {
