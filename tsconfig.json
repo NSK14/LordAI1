@@ -5,7 +5,7 @@
     "vite.config.ts",
     "capacitor.config.ts",
     "eslint.config.js"
-  ],
+, "study-backup/study/study.tsx"  ],
   "compilerOptions": {
     "target": "ES2022",
     "jsx": "react-jsx",
