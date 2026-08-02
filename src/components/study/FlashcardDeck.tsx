@@ -12,6 +12,8 @@ import type {
   CardMastery,
   Rating,
 } from "./flashcard-types";
+import type { StudyActivityInput } from "@/hooks/study/study-activity-types";
+
 import {
   loadDecks,
   loadDeck,
@@ -29,9 +31,19 @@ interface FlashcardDeckProps {
   onImport: () => void;
   /** Current study streak from dashboard */
   streak?: number;
+  /** Record an activity to the dashboard */
+  recordActivity?: (activity: StudyActivityInput) => string;
+  /** When true, the deck list emphasizes mnemonic generation */
+  focusMnemonics?: boolean;
 }
 
-export function FlashcardDeckView({ onGenerate, onImport, streak = 0 }: FlashcardDeckProps) {
+export function FlashcardDeckView({
+  onGenerate,
+  onImport,
+  streak = 0,
+  recordActivity,
+  focusMnemonics,
+}: FlashcardDeckProps) {
   const [decks, setDecks] = useState<FlashcardDeckType[]>(() => loadDecks());
   const [activeDeckId, setActiveDeckId] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);

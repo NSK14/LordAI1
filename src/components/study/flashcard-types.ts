@@ -10,8 +10,10 @@ export interface FlashcardCard {
   explanation?: string;
   realWorldExample?: string;
   memoryTip?: string;
+  mnemonic?: string;
   relatedConcepts?: string[];
-  masteryLevel: number; // 0–100 based on spaced repetition
+  masteryLevel: number;
+  interests?: string[];
 }
 
 export interface FlashcardDeck {
@@ -123,6 +125,7 @@ export function parseFlashcardsFromAI(raw: string): FlashcardCard[] {
   let currentExplanation = "";
   let currentExample = "";
   let currentMemoryTip = "";
+  let currentMnemonic = "";
   let currentRelated: string[] = [];
   let expectAnswer = false;
   let expectQuestion = true;
@@ -140,12 +143,14 @@ export function parseFlashcardsFromAI(raw: string): FlashcardCard[] {
             currentExplanation,
             currentExample,
             currentMemoryTip,
+            currentMnemonic,
             currentRelated,
           ),
         );
         currentExplanation = "";
         currentExample = "";
         currentMemoryTip = "";
+        currentMnemonic = "";
         currentRelated = [];
       }
       currentQ = qMatch[1].replace(/\*\*/g, "").trim();
@@ -182,10 +187,17 @@ export function parseFlashcardsFromAI(raw: string): FlashcardCard[] {
       continue;
     }
 
-    // Memory tip / mnemonic
-    if (currentA && /memory|mnemonic|tip/i.test(line.slice(0, 20))) {
-      const val = line.replace(/^(?:\*\*)?(?:Memory|Mnemonic|Tip)\s*:?\s*\*?\*?/i, "").trim();
+    // Memory tip
+    if (currentA && /memory|tip/i.test(line.slice(0, 15)) && !/mnemonic/i.test(line.slice(0, 15))) {
+      const val = line.replace(/^(?:\*\*)?(?:Memory|Tip)\s*:?\s*\*?\*?/i, "").trim();
       if (val) currentMemoryTip = val;
+      continue;
+    }
+
+    // Mnemonic
+    if (currentA && /mnemonic/i.test(line.slice(0, 15))) {
+      const val = line.replace(/^(?:\*\*)?Mnemonic\s*:?\s*\*?\*?/i, "").trim();
+      if (val) currentMnemonic = val;
       continue;
     }
 
@@ -212,6 +224,7 @@ export function parseFlashcardsFromAI(raw: string): FlashcardCard[] {
         currentExplanation,
         currentExample,
         currentMemoryTip,
+        currentMnemonic,
         currentRelated,
       ),
     );
@@ -226,6 +239,7 @@ function makeCard(
   explanation: string,
   example: string,
   memoryTip: string,
+  mnemonic: string,
   related: string[],
 ): FlashcardCard {
   return {
@@ -235,6 +249,7 @@ function makeCard(
     explanation: explanation || undefined,
     realWorldExample: example || undefined,
     memoryTip: memoryTip || undefined,
+    mnemonic: mnemonic || undefined,
     relatedConcepts: related.length > 0 ? related : undefined,
     masteryLevel: 0,
   };

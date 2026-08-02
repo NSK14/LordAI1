@@ -1,10 +1,16 @@
 import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Loader2, CalendarDays, Sparkles } from "lucide-react";
+import { Loader2, CalendarDays, Sparkles, Home } from "lucide-react";
 import { StudyWorkspaceShell } from "@/components/study/StudyWorkspaceShell";
 import { streamChat } from "@/lib/study-chat";
+import type { StudyActivityInput } from "@/hooks/study/study-activity-types";
 
-export function RevisionWorkspace() {
+interface RevisionWorkspaceProps {
+  recordActivity?: (activity: StudyActivityInput) => string;
+  onReturnHome?: () => void;
+}
+
+export function RevisionWorkspace({ recordActivity, onReturnHome }: RevisionWorkspaceProps) {
   const [topic, setTopic] = useState("");
   const [output, setOutput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -12,6 +18,7 @@ export function RevisionWorkspace() {
   const generatePlan = useCallback(async () => {
     const subject = topic.trim();
     if (!subject || busy) return;
+    const start = Date.now();
     setBusy(true);
     setOutput("");
     try {
@@ -33,12 +40,19 @@ export function RevisionWorkspace() {
         },
         setOutput,
       );
+      const durationMinutes = Math.round((Date.now() - start) / 60000);
+      recordActivity?.({
+        type: "started_revision",
+        subject,
+        title: `Revision plan: ${subject}`,
+        durationMinutes,
+      });
     } catch {
       setOutput("Connection error. Please retry.");
     } finally {
       setBusy(false);
     }
-  }, [topic, busy]);
+  }, [topic, busy, recordActivity]);
 
   return (
     <StudyWorkspaceShell
@@ -46,6 +60,15 @@ export function RevisionWorkspace() {
       title="Revision Planner"
       subtitle="Mission Timeline for your next study cycle"
     >
+      {onReturnHome && (
+        <button
+          onClick={onReturnHome}
+          className="mb-3 inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-background/50 px-3 py-1.5 text-xs text-cyan-200/70 hover:border-cyan-300/40 hover:text-cyan-300"
+        >
+          <Home className="h-3 w-3" />
+          Back to Dashboard
+        </button>
+      )}
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <motion.div
           initial={{ opacity: 0, x: 8 }}

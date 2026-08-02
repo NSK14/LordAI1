@@ -1,13 +1,15 @@
 /**
- * MCQProgress — progress bar showing current question, total, and completion percentage.
+ * MCQProgress — progress bar showing current question, total, answered count,
+ * and confidence tracking dots.
  */
 
-import type { MCQAnswerMap } from "./mcq-types";
+import type { MCQAnswerMap, ConfidenceMap } from "./mcq-types";
 
 interface MCQProgressProps {
   currentIndex: number;
   totalQuestions: number;
   answers: MCQAnswerMap;
+  confidence: ConfidenceMap;
   submitted: boolean;
 }
 
@@ -15,6 +17,7 @@ export function MCQProgress({
   currentIndex,
   totalQuestions,
   answers,
+  confidence,
   submitted,
 }: MCQProgressProps) {
   if (totalQuestions === 0) return null;
@@ -44,23 +47,33 @@ export function MCQProgress({
         />
       </div>
 
-      {/* Mini dots for each question */}
+      {/* Mini dots for each question — color by confidence if answered */}
       {!submitted && (
         <div className="flex flex-wrap gap-1.5 pt-1">
           {Array.from({ length: Math.min(totalQuestions, 30) }).map((_, i) => {
             const qId = `q-${i}`;
             const answered = answers[qId] !== undefined;
+            const conf = confidence[qId] ?? 0;
             const isCurrent = i === currentIndex;
+
+            let dotClass = "w-1.5 bg-white/10";
+            if (answered) {
+              if (conf >= 4) {
+                dotClass = "w-2.5 bg-emerald-400/60 shadow-[0_0_6px_rgba(0,255,200,0.6)]";
+              } else if (conf >= 2) {
+                dotClass = "w-2 bg-cyan-400/50 shadow-[0_0_6px_rgba(0,255,255,0.4)]";
+              } else {
+                dotClass = "w-2 bg-amber-400/40 shadow-[0_0_6px_rgba(255,200,0,0.4)]";
+              }
+            }
+            if (isCurrent) {
+              dotClass = "w-5 bg-cyan-400 shadow-[0_0_8px_rgba(0,255,255,0.6)]";
+            }
+
             return (
               <div
                 key={i}
-                className={`h-1.5 rounded-full transition-all duration-200 ${
-                  isCurrent
-                    ? "w-5 bg-cyan-400 shadow-[0_0_8px_rgba(0,255,255,0.6)]"
-                    : answered
-                      ? "w-1.5 bg-cyan-400/50"
-                      : "w-1.5 bg-white/10"
-                }`}
+                className={`h-1.5 rounded-full transition-all duration-200 ${dotClass}`}
               />
             );
           })}

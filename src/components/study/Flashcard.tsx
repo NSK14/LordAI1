@@ -1,6 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
+import { Sparkles, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { streamChat } from "@/lib/study-chat";
 import type { FlashcardCard } from "./flashcard-types";
 
 interface FlashcardProps {
@@ -23,6 +25,35 @@ export function Flashcard({
   totalCards,
 }: FlashcardProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const generateMnemonic = useCallback(async () => {
+    setIsGenerating(true);
+    try {
+      await streamChat(
+        {
+          mode: "reasoning",
+          messages: [
+            {
+              id: crypto.randomUUID(),
+              role: "user",
+              parts: [
+                {
+                  type: "text",
+                  text: `Create a memorable mnemonic device for this flashcard:\nQ: ${card.question}\nA: ${card.answer}\nMake it personalized and creative. Keep it concise — one short sentence or phrase.`,
+                },
+              ],
+            },
+          ],
+        },
+        () => {},
+      );
+    } catch {
+      /* ignore — mnemonic is best-effort */
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [card.question, card.answer]);
 
   return (
     <div className="flex flex-col items-center justify-center gap-6">
@@ -233,6 +264,30 @@ export function Flashcard({
                 </div>
               )}
 
+              {/* Mnemonic */}
+              {card.mnemonic && (
+                <div className="rounded-xl border border-[rgba(136,0,255,0.12)] bg-[rgba(136,0,255,0.04)] p-3">
+                  <div className="mb-1.5 flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-violet-300" />
+                    <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-violet-300/70">
+                      Mnemonic
+                    </span>
+                  </div>
+                  <p className="text-sm text-violet-200/80">{card.mnemonic}</p>
+                </div>
+              )}
+
+              {/* Generate Mnemonic button (only if no mnemonic yet) */}
+              {!card.mnemonic && !isGenerating && (
+                <MnemonicButton card={card} onGenerate={() => void generateMnemonic()} />
+              )}
+              {isGenerating && (
+                <div className="flex items-center gap-2 rounded-xl border border-[rgba(136,0,255,0.12)] bg-[rgba(136,0,255,0.04)] p-3">
+                  <Loader2 className="h-4 w-4 animate-spin text-violet-300" />
+                  <span className="text-xs text-violet-300/70">Generating mnemonic…</span>
+                </div>
+              )}
+
               {/* Related Concepts */}
               {card.relatedConcepts && card.relatedConcepts.length > 0 && (
                 <div className="flex flex-wrap gap-2">
@@ -254,6 +309,20 @@ export function Flashcard({
         </motion.div>
       </div>
     </div>
+  );
+}
+
+function MnemonicButton({ card, onGenerate }: { card: FlashcardCard; onGenerate: () => void }) {
+  return (
+    <motion.button
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      onClick={onGenerate}
+      className="inline-flex items-center gap-2 rounded-xl border border-[rgba(136,0,255,0.15)] bg-[rgba(136,0,255,0.06)] px-3 py-2 text-xs font-medium text-violet-300/80 transition hover:border-violet-400/40 hover:text-violet-300 hover:shadow-[0_0_20px_rgba(136,0,255,0.2)]"
+    >
+      <Sparkles className="h-3 w-3" />
+      Generate Mnemonic
+    </motion.button>
   );
 }
 

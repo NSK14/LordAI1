@@ -14,7 +14,10 @@ export type ActivityType =
   | "created_test"
   | "completed_test"
   | "voice_session"
-  | "deep_tutor_session";
+  | "deep_tutor_session"
+  | "homework_help";
+
+export type StudyNavigationMode = "tutor" | "tasks" | "test";
 
 export interface StudyActivity {
   id: string;
@@ -29,6 +32,8 @@ export interface StudyActivity {
   metadata?: Record<string, unknown>;
   createdAt: number; // timestamp ms
 }
+
+export type StudyActivityInput = Omit<StudyActivity, "id" | "userId" | "createdAt">;
 
 export interface SubjectProgress {
   subject: string;

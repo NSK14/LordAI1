@@ -5,8 +5,8 @@
 
 import { useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, X } from "lucide-react";
-import type { MCQQuestion, MCQAnswerMap } from "./mcq-types";
+import { Check, X, Smile, Frown, Meh, Angry, ThumbsUp } from "lucide-react";
+import type { MCQQuestion, MCQAnswerMap, ConfidenceMap } from "./mcq-types";
 
 interface MCQQuestionCardProps {
   question: MCQQuestion;
@@ -16,7 +16,19 @@ interface MCQQuestionCardProps {
   onSelect: (questionId: string, optionId: string) => void;
   questionIndex: number;
   totalQuestions: number;
+  /** Called when the user selects a confidence level (1-5) */
+  onConfidenceSelect?: (questionId: string, level: number) => void;
+  /** Current confidence rating for this question */
+  selectedConfidence?: number;
 }
+
+const CONFIDENCE_OPTIONS = [
+  { label: "Guessing", icon: Frown, color: "text-rose-300", value: 1 },
+  { label: "Unsure", icon: Meh, color: "text-amber-300", value: 2 },
+  { label: "Neutral", icon: Smile, color: "text-cyan-300", value: 3 },
+  { label: "Confident", icon: ThumbsUp, color: "text-emerald-300", value: 4 },
+  { label: "Certain", icon: Angry, color: "text-violet-300", value: 5 },
+] as const;
 
 export function MCQQuestionCard({
   question,
@@ -24,6 +36,8 @@ export function MCQQuestionCard({
   correctAnswer,
   showResult,
   onSelect,
+  onConfidenceSelect,
+  selectedConfidence,
   questionIndex,
   totalQuestions,
 }: MCQQuestionCardProps) {
@@ -172,6 +186,51 @@ export function MCQQuestionCard({
           );
         })}
       </div>
+
+      {/* Confidence slider — shown after an answer is selected but before submission */}
+      <AnimatePresence>
+        {selectedAnswer && onConfidenceSelect && !showResult && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="mt-5 rounded-xl border border-[rgba(255,200,0,0.12)] bg-[rgba(255,200,0,0.03)] p-4"
+          >
+            <div className="mb-2 flex items-center justify-between">
+              <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-amber-300/70">
+                How confident are you?
+              </span>
+              {selectedConfidence && (
+                <span className="font-mono text-xs text-amber-300/80">
+                  {CONFIDENCE_OPTIONS[selectedConfidence - 1]?.label ?? "Select"}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center justify-between gap-1">
+              {CONFIDENCE_OPTIONS.map((opt) => {
+                const Icon = opt.icon;
+                const isSelected = selectedConfidence === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    onClick={() => onConfidenceSelect(question.id, opt.value)}
+                    className={`flex flex-col items-center gap-1 rounded-lg border px-2 py-1.5 text-xs transition-all ${
+                      isSelected
+                        ? `${opt.color} border-amber-400/50 shadow-[0_0_15px_rgba(255,200,0,0.3)]`
+                        : "border-[rgba(255,255,255,0.06)] text-cyan-200/40 hover:border-cyan-400/30"
+                    }`}
+                    aria-label={`Confidence: ${opt.label}`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{opt.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Explanation (revealed after submit) */}
       <AnimatePresence>

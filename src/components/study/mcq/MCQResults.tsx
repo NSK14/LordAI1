@@ -1,14 +1,16 @@
 /**
- * MCQResults — final score display with per-question summary.
+ * MCQResults — final score display with per-question summary and
+ * confidence calibration insights.
  */
 
 import { motion } from "framer-motion";
-import { Check, X, Trophy, Target, Brain } from "lucide-react";
-import type { MCQQuestion, MCQAnswerMap } from "./mcq-types";
+import { Check, X, Trophy, Target, Brain, Gauge } from "lucide-react";
+import type { MCQQuestion, MCQAnswerMap, ConfidenceMap } from "./mcq-types";
 
 interface MCQResultsProps {
   questions: MCQQuestion[];
   answers: MCQAnswerMap;
+  confidence: ConfidenceMap;
   score: number;
   totalQuestions: number;
   onRestart: () => void;
@@ -17,6 +19,7 @@ interface MCQResultsProps {
 export function MCQResults({
   questions,
   answers,
+  confidence,
   score,
   totalQuestions,
   onRestart,
@@ -48,6 +51,47 @@ export function MCQResults({
       icon: <Brain className="h-6 w-6" />,
     };
   }
+
+  const answeredCount = Object.keys(answers).length;
+
+  type CalibrationLabel = "Overconfident" | "Underconfident" | "Well-calibrated" | "No data";
+  const calibrationSummary = (): { label: CalibrationLabel; score: number; color: string } => {
+    const reviewed = questions.filter((q) => confidence[q.id] !== undefined);
+    if (reviewed.length === 0) {
+      return { label: "No data", score: 0, color: "text-cyan-300/40" };
+    }
+    const correctHigh = reviewed.filter(
+      (q) => answers[q.id] === q.answer && (confidence[q.id] ?? 0) >= 4,
+    ).length;
+    const wrongHigh = reviewed.filter(
+      (q) => answers[q.id] !== q.answer && (confidence[q.id] ?? 0) >= 4,
+    ).length;
+    const correctLow = reviewed.filter(
+      (q) => answers[q.id] === q.answer && (confidence[q.id] ?? 0) <= 2,
+    ).length;
+
+    if (wrongHigh > correctHigh) {
+      return {
+        label: "Overconfident",
+        score: Math.round((correctHigh / reviewed.length) * 100),
+        color: "text-rose-300",
+      };
+    }
+    if (correctLow > 0) {
+      return {
+        label: "Underconfident",
+        score: Math.round((correctLow / reviewed.length) * 100),
+        color: "text-amber-300",
+      };
+    }
+    return {
+      label: "Well-calibrated",
+      score: Math.round((answeredCount / totalQuestions) * 100),
+      color: "text-emerald-300",
+    };
+  };
+
+  const cal = calibrationSummary();
 
   return (
     <motion.div
@@ -89,6 +133,32 @@ export function MCQResults({
         <div className="mt-2 font-mono text-xs text-cyan-300/50">{percentage}% Correct</div>
       </div>
 
+      {/* Calibration Insights */}
+      <div className="rounded-3xl border border-[rgba(255,200,0,0.12)] bg-[rgba(255,200,0,0.03)] p-6">
+        <div className="mb-4 flex items-center gap-3">
+          <Gauge className="h-5 w-5 text-amber-300" />
+          <h3 className="font-display text-sm font-bold uppercase tracking-wider text-amber-300/80">
+            Calibration Insights
+          </h3>
+        </div>
+        <div className="space-y-3 text-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-cyan-200/70">Your confidence pattern:</span>
+            <span className={`font-bold ${cal.color}`}>{cal.label}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-cyan-200/70">Questions with confidence recorded:</span>
+            <span className="text-white">
+              {questions.filter((q) => confidence[q.id] !== undefined).length} / {totalQuestions}
+            </span>
+          </div>
+          <p className="text-xs text-cyan-200/50">
+            Confidence helps calibrate your self-assessment. Aim to rate high when you truly know
+            the answer, and low when you're guessing.
+          </p>
+        </div>
+      </div>
+
       {/* Per-question summary */}
       <div className="space-y-2">
         <h3 className="font-display text-sm font-bold uppercase tracking-wider text-white/70">
@@ -99,6 +169,7 @@ export function MCQResults({
             const userAnswer = answers[q.id];
             const isCorrect = userAnswer === q.answer;
             const isAnswered = userAnswer !== undefined;
+            const conf = confidence[q.id];
 
             return (
               <div
@@ -109,21 +180,28 @@ export function MCQResults({
                   <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-cyan-300/50">
                     Q{i + 1}
                   </span>
-                  {isAnswered ? (
-                    isCorrect ? (
-                      <span className="inline-flex items-center gap-0.5 font-mono text-[10px] text-emerald-400">
-                        <Check className="h-3 w-3" />
-                        Correct
+                  <div className="flex items-center gap-1.5">
+                    {conf !== undefined && (
+                      <span className="font-mono text-[10px] text-amber-300/60">
+                        Conf: {conf}/5
                       </span>
+                    )}
+                    {isAnswered ? (
+                      isCorrect ? (
+                        <span className="inline-flex items-center gap-0.5 font-mono text-[10px] text-emerald-400">
+                          <Check className="h-3 w-3" />
+                          Correct
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-0.5 font-mono text-[10px] text-rose-400">
+                          <X className="h-3 w-3" />
+                          Incorrect
+                        </span>
+                      )
                     ) : (
-                      <span className="inline-flex items-center gap-0.5 font-mono text-[10px] text-rose-400">
-                        <X className="h-3 w-3" />
-                        Incorrect
-                      </span>
-                    )
-                  ) : (
-                    <span className="font-mono text-[10px] text-cyan-300/30">Unanswered</span>
-                  )}
+                      <span className="font-mono text-[10px] text-cyan-300/30">Unanswered</span>
+                    )}
+                  </div>
                 </div>
                 <p className="mt-1 truncate text-xs text-white/70">{q.question}</p>
                 {isAnswered && !isCorrect && (

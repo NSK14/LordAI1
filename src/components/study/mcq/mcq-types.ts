@@ -20,3 +20,4 @@ export interface ParsedMCQResult {
 }
 
 export type MCQAnswerMap = Record<string, string>;
+export type ConfidenceMap = Record<string, number>; // questionId → 1–5

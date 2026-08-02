@@ -41,6 +41,7 @@ import {
 } from "@/lib/learning/client";
 import { isReadyForTest, selectNextConcept } from "@/lib/learning/mastery";
 import type { Question } from "@/lib/learning/types";
+import type { TutorMode } from "@/lib/learning/types";
 import { AI_GENERATED_NOTICE } from "@/lib/learning/types";
 import { MasteryMap } from "./MasteryMap";
 
@@ -54,6 +55,34 @@ const labels: Record<LearningView, string> = {
   boards: "My Boards",
   progress: "Progress & Reflection",
 };
+
+const TUTOR_MODE_LABELS: Record<TutorMode, string> = {
+  socratic: "Socratic (Guided)",
+  direct: "Direct Answer",
+  hint: "Hint Focus",
+  worked_example: "Worked Example",
+  simplified: "Simplified",
+  analogy: "Analogy Mode",
+  diagnostic: "Diagnostic",
+};
+
+const TUTOR_MODE_INSTRUCTIONS: Record<TutorMode, string> = {
+  socratic:
+    "Guide the student through questions and hints before revealing answers. Ask one useful question at a time.",
+  direct:
+    "Provide a clear, direct answer to the student's question without unnecessary scaffolding.",
+  hint: "Give a focused hint that nudges the student toward the answer without giving it away entirely.",
+  worked_example:
+    "Walk through a fully worked example step-by-step, explaining each stage as you go.",
+  simplified:
+    "Explain the concept in very simple language, avoiding jargon and breaking it into tiny pieces.",
+  analogy:
+    "Explain the concept using a relatable everyday analogy. Connect the analogy back to the concept explicitly.",
+  diagnostic:
+    "Ask a targeted diagnostic mini-question to probe the student's understanding. Do not reveal the answer.",
+};
+
+const DEFAULT_TUTOR_MODE: TutorMode = "socratic";
 
 async function getSession(body: unknown) {
   const response = await authenticatedFetch(`${getApiBaseUrl()}/api/learning/session`, {
@@ -306,7 +335,9 @@ function AcademyProgress({ data }: { data: Awaited<ReturnType<typeof getLearning
         icon={<Flame />}
         label="Study streak"
         value={`${streak} day${streak === 1 ? "" : "s"}`}
-        detail={streak ? "Based on persisted learning activity" : "Complete a focused session today"}
+        detail={
+          streak ? "Based on persisted learning activity" : "Complete a focused session today"
+        }
       />
       <ProgressMetric
         icon={<Trophy />}
@@ -871,6 +902,7 @@ function TutorStudio({
   const [draft, setDraft] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [tutorMode, setTutorMode] = useState<TutorMode>(DEFAULT_TUTOR_MODE);
 
   useEffect(() => {
     let active = true;
@@ -936,10 +968,10 @@ function TutorStudio({
       .map((source) => `[${source.name}] ${source.extracted_text!.slice(0, 2500)}`)
       .join("\n\n");
     const tutorInstruction = [
-      "You are LORD, a safe and encouraging middle/high-school Socratic tutor.",
+      "You are LORD, a safe and encouraging middle/high-school tutor.",
       `Student subject: ${subject}. Current target concept: ${next?.title ?? "not selected"}.`,
-      "Use short, clear chunks. Ask one useful question before giving a final answer unless the student explicitly asks to check work.",
-      "Offer a hint, concrete example, and a one-question understanding check. Never claim certainty when it is unwarranted.",
+      `TUTOR MODE: ${TUTOR_MODE_LABELS[tutorMode]}. ${TUTOR_MODE_INSTRUCTIONS[tutorMode]}`,
+      "Use short, clear chunks.",
       "Label any worked example as AI-generated and encourage the student to check course-specific requirements.",
       sourceContext
         ? `PRIVATE STUDENT MATERIALS (use only when relevant and cite the source name):\n${sourceContext}`
@@ -1009,7 +1041,21 @@ function TutorStudio({
             <p className="text-xs text-muted-foreground">Guided help · {next?.title ?? subject}</p>
           </div>
         </div>
-        <span className="text-xs text-primary">Adaptive session</span>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-primary">Adaptive session</span>
+          <select
+            value={tutorMode}
+            onChange={(e) => setTutorMode(e.target.value as TutorMode)}
+            className="rounded-md border border-border/40 bg-background/60 px-2 py-1 text-xs text-cyan-200/70 focus:border-cyan-300/60 focus:outline-none focus:ring-1 focus:ring-cyan-400/40"
+            aria-label="Tutor mode"
+          >
+            {(Object.keys(TUTOR_MODE_LABELS) as TutorMode[]).map((mode) => (
+              <option key={mode} value={mode}>
+                {TUTOR_MODE_LABELS[mode]}
+              </option>
+            ))}
+          </select>
+        </div>
       </header>
       <div className="flex-1 space-y-4 overflow-y-auto p-5" aria-live="polite">
         {messages.map((message) => (
@@ -1049,7 +1095,11 @@ function TutorStudio({
           <button
             type="button"
             disabled={!next?.id || isThinking}
-            onClick={() => void addConceptToPlan(userId, next).then(() => notify(`${next.title} added to your study plan.`)).catch(() => notify("Could not add this concept to your plan."))}
+            onClick={() =>
+              void addConceptToPlan(userId, next)
+                .then(() => notify(`${next.title} added to your study plan.`))
+                .catch(() => notify("Could not add this concept to your plan."))
+            }
             className="rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground hover:border-primary/50 hover:text-primary"
           >
             Add to plan
@@ -1058,9 +1108,20 @@ function TutorStudio({
             type="button"
             disabled={!messages.some((message) => message.role === "assistant")}
             onClick={() => {
-              const latest = [...messages].reverse().find((message) => message.role === "assistant" && message.id !== "welcome");
+              const latest = [...messages]
+                .reverse()
+                .find((message) => message.role === "assistant" && message.id !== "welcome");
               if (!latest) return;
-              void saveArtifact(userId, { conceptId: next?.id ?? null, sessionId, type: "notes", title: `Tutor note: ${next?.title ?? subject}`, content: { text: latest.text }, aiGenerated: true }).then(() => notify("Tutor explanation saved to My Boards.")).catch(() => notify("Could not save this note."));
+              void saveArtifact(userId, {
+                conceptId: next?.id ?? null,
+                sessionId,
+                type: "notes",
+                title: `Tutor note: ${next?.title ?? subject}`,
+                content: { text: latest.text },
+                aiGenerated: true,
+              })
+                .then(() => notify("Tutor explanation saved to My Boards."))
+                .catch(() => notify("Could not save this note."));
             }}
             className="rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground hover:border-primary/50 hover:text-primary"
           >
@@ -1278,7 +1339,9 @@ function FeedView({ data, userId, notify, refresh }: any) {
             <p className="text-sm text-muted-foreground">{resource.summary}</p>
             {resource.concept_id && (
               <p className="mt-2 text-xs text-primary">
-                Recommended for {Math.round(Number(masteryByConcept.get(resource.concept_id)?.score ?? 0.35) * 100)}% mastery
+                Recommended for{" "}
+                {Math.round(Number(masteryByConcept.get(resource.concept_id)?.score ?? 0.35) * 100)}
+                % mastery
               </p>
             )}
             <p className="mt-3 text-xs text-muted-foreground">
@@ -1393,15 +1456,31 @@ function ProgressView({ data }: any) {
   const correct = data.attempts.filter((attempt: any) => attempt.correct).length;
   const accuracy = attempts ? Math.round((correct / attempts) * 100) : 0;
   const weak = data.concepts
-    .map((concept: any) => ({ concept, score: Number(data.mastery.find((item: any) => item.concept_id === concept.id)?.score ?? 0.35) }))
+    .map((concept: any) => ({
+      concept,
+      score: Number(
+        data.mastery.find((item: any) => item.concept_id === concept.id)?.score ?? 0.35,
+      ),
+    }))
     .sort((a: any, b: any) => a.score - b.score)
     .slice(0, 3);
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-3">
-        <Panel icon={<Target />} title="Practice accuracy"><p className="font-display text-3xl text-primary">{accuracy}%</p><p className="text-sm text-muted-foreground">{correct} correct from {attempts} persisted attempts</p></Panel>
-        <Panel icon={<MessageSquare />} title="Tutor history"><p className="font-display text-3xl text-primary">{data.sessions.length}</p><p className="text-sm text-muted-foreground">Persisted learning sessions</p></Panel>
-        <Panel icon={<Sparkles />} title="Study artifacts"><p className="font-display text-3xl text-primary">{data.artifacts.length}</p><p className="text-sm text-muted-foreground">Notes, cards, and generated aids</p></Panel>
+        <Panel icon={<Target />} title="Practice accuracy">
+          <p className="font-display text-3xl text-primary">{accuracy}%</p>
+          <p className="text-sm text-muted-foreground">
+            {correct} correct from {attempts} persisted attempts
+          </p>
+        </Panel>
+        <Panel icon={<MessageSquare />} title="Tutor history">
+          <p className="font-display text-3xl text-primary">{data.sessions.length}</p>
+          <p className="text-sm text-muted-foreground">Persisted learning sessions</p>
+        </Panel>
+        <Panel icon={<Sparkles />} title="Study artifacts">
+          <p className="font-display text-3xl text-primary">{data.artifacts.length}</p>
+          <p className="text-sm text-muted-foreground">Notes, cards, and generated aids</p>
+        </Panel>
       </div>
       <Panel icon={<Sparkles />} title="Reflection">
         <p className="text-sm text-muted-foreground">
@@ -1412,7 +1491,12 @@ function ProgressView({ data }: any) {
       </Panel>
       <Panel icon={<Target />} title="Priority review concepts">
         <ul className="space-y-2 text-sm">
-          {weak.map(({ concept, score }: any) => <li key={concept.id} className="flex justify-between rounded border p-3"><span>{concept.title}</span><span className="text-primary">{Math.round(score * 100)}%</span></li>)}
+          {weak.map(({ concept, score }: any) => (
+            <li key={concept.id} className="flex justify-between rounded border p-3">
+              <span>{concept.title}</span>
+              <span className="text-primary">{Math.round(score * 100)}%</span>
+            </li>
+          ))}
         </ul>
       </Panel>
       <div className="grid gap-3 md:grid-cols-2">
