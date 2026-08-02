@@ -1,0 +1,442 @@
+import { useState, useCallback, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Send,
+  MessageSquare,
+  Bot,
+  User,
+  Lightbulb,
+  History,
+  Copy,
+  Check,
+  PauseCircle,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { streamChat } from "@/lib/study-chat";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import {
+  createTutorSession,
+  getLatestTutorSession,
+  getSessionMessages,
+  saveTutorMessage,
+} from "@/lib/learning/client";
+import { StudyHeader } from "../StudyHeader";
+import { DifficultyStars } from "../ui/DifficultyStars";
+import { selectNextConcept } from "@/lib/learning/mastery";
+import type { LearningSnapshot, StudyView, TutorMode } from "../types";
+
+interface TutorViewProps {
+  snapshot: LearningSnapshot | undefined;
+  userId: string | null;
+  conceptId?: string;
+  onNavigate: (view: StudyView) => void;
+  onBack: () => void;
+  refresh: () => void;
+}
+
+type TutorMessage = {
+  id: string;
+  role: "user" | "assistant";
+  text: string;
+};
+
+const TUTOR_MODES: TutorMode[] = [
+  "socratic",
+  "direct",
+  "hint",
+  "worked_example",
+  "simplified",
+  "analogy",
+  "diagnostic",
+];
+
+const MODE_LABELS: Record<TutorMode, string> = {
+  socratic: "Socratic (Guided)",
+  direct: "Direct Answer",
+  hint: "Hint Focus",
+  worked_example: "Worked Example",
+  simplified: "Simplified",
+  analogy: "Analogy Mode",
+  diagnostic: "Diagnostic",
+};
+
+const SUGGESTED_PROMPTS = [
+  "Explain photosynthesis step by step",
+  "What's the difference between weather and climate?",
+  "Give me a hint for solving quadratic equations",
+  "Show me a worked example of Newton's second law",
+];
+
+export function TutorView({ snapshot, userId, conceptId, onBack }: TutorViewProps) {
+  const { user } = useCurrentUser();
+  const [messages, setMessages] = useState<TutorMessage[]>([]);
+  const [draft, setDraft] = useState("");
+  const [isThinking, setIsThinking] = useState(false);
+  const [tutorMode, setTutorMode] = useState<TutorMode>("socratic");
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const activeConcept = conceptId
+    ? snapshot?.concepts.find((c) => c.id === conceptId)
+    : (selectNextConcept(snapshot?.concepts ?? [], snapshot?.mastery ?? []) ?? undefined);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const welcomeMsg: TutorMessage = {
+      id: "welcome",
+      role: "assistant",
+      text: `Hi — I'm LORD, your AI learning coach. I'm here to help you understand ${
+        activeConcept?.subject ?? "your subject"
+      }. What would you like to learn about?`,
+    };
+    setMessages([welcomeMsg]);
+    setSessionId(null);
+
+    if (activeConcept) {
+      void getLatestTutorSession(user.id, activeConcept.id)
+        .then(async (session) => {
+          if (!session) return;
+          setSessionId(session.id);
+          const saved = await getSessionMessages(user.id, session.id);
+          if (saved.length) {
+            setMessages(
+              saved.map((msg) => ({
+                id: msg.id,
+                role: msg.role === "assistant" ? "assistant" : "user",
+                text: msg.content,
+              })),
+            );
+          }
+        })
+        .catch(() => undefined);
+    }
+  }, [user?.id, conceptId, activeConcept]);
+
+  const sendMessage = useCallback(async () => {
+    if (!draft.trim() || isThinking || !user?.id) return;
+
+    const text = draft.trim();
+    const userMessage: TutorMessage = {
+      id: crypto.randomUUID(),
+      role: "user",
+      text,
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setDraft("");
+    setIsThinking(true);
+
+    let persistedSessionId = sessionId;
+
+    if (!persistedSessionId && activeConcept) {
+      try {
+        persistedSessionId = await createTutorSession(
+          user.id,
+          activeConcept.id,
+          `Learning ${activeConcept.title}`,
+        );
+        setSessionId(persistedSessionId);
+      } catch {
+        // Continue without persistence if session creation fails
+      }
+    }
+
+    if (persistedSessionId) {
+      void saveTutorMessage(user.id, persistedSessionId, "user", text).catch(() => undefined);
+    }
+
+    const sourceContext = snapshot?.sources
+      .filter((s) => s.extracted_text?.trim())
+      .slice(0, 2)
+      .map((s) => `[${s.name}] ${s.extracted_text!.slice(0, 2500)}`)
+      .join("\n\n");
+
+    const conversationHistory = messages.slice(-8).map((msg) => ({
+      role: msg.role,
+      content: msg.text,
+    }));
+
+    const systemPrompt = [
+      `You are LORD, a safe and encouraging middle/high-school tutor.`,
+      `Subject: ${activeConcept?.subject ?? "General"}.`,
+      `Current concept: ${activeConcept?.title ?? "any topic"} - ${activeConcept?.description ?? ""}.`,
+      `Teaching mode: ${MODE_LABELS[tutorMode]} - Guide the student with questions and hints before revealing answers.`,
+      `Guidelines: Use short, clear chunks. Offer a hint, concrete example, and a one-question understanding check. Label worked examples as AI-generated.`,
+      sourceContext
+        ? `PRIVATE STUDENT MATERIALS:\n${sourceContext}`
+        : "No private study material selected for this answer.",
+      conversationHistory.length > 0
+        ? `RECENT CONVERSATION:\n${conversationHistory.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join("\n")}`
+        : "",
+      `Student message: ${text}`,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+
+    const assistantId = crypto.randomUUID();
+    setMessages((prev) => [...prev, { id: assistantId, role: "assistant", text: "" }]);
+
+    try {
+      const answer = await streamChat(
+        {
+          mode: "reasoning",
+          context: {
+            page: "study",
+            workflow: "tutor",
+            conceptId: activeConcept?.id,
+          },
+          messages: [
+            {
+              id: userMessage.id,
+              role: "user",
+              parts: [{ type: "text", text: systemPrompt }],
+            },
+          ],
+        },
+        (acc) => {
+          setMessages((prev) =>
+            prev.map((msg) => (msg.id === assistantId ? { ...msg, text: acc } : msg)),
+          );
+        },
+      );
+
+      if (answer.trim() && persistedSessionId) {
+        void saveTutorMessage(user.id, persistedSessionId, "assistant", answer).catch(
+          () => undefined,
+        );
+      }
+    } catch {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === assistantId
+            ? { ...msg, text: "I'm unable to respond right now. Please try again in a moment." }
+            : msg,
+        ),
+      );
+    } finally {
+      setIsThinking(false);
+    }
+  }, [
+    draft,
+    isThinking,
+    messages,
+    tutorMode,
+    sessionId,
+    activeConcept,
+    user?.id,
+    snapshot?.sources,
+  ]);
+
+  const handleCopy = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  if (!snapshot || !user) {
+    return (
+      <div className="p-6">
+        <StudyHeader
+          view="tutor"
+          title="AI Tutor"
+          onBack={onBack}
+          showBack
+          icon={<MessageSquare className="h-6 w-6 text-primary" />}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6">
+      <StudyHeader
+        view="tutor"
+        title="LORD AI Tutor"
+        subtitle={
+          activeConcept ? `${activeConcept.title} · ${activeConcept.subject}` : "Adaptive tutoring"
+        }
+        icon={<MessageSquare className="h-6 w-6 text-primary" />}
+        onBack={onBack}
+        showBack
+        action={
+          <select
+            value={tutorMode}
+            onChange={(e) => setTutorMode(e.target.value as TutorMode)}
+            className="rounded-md border border-border/40 bg-background/60 px-2 py-1 text-xs text-foreground focus:border-primary/50 focus:outline-none"
+          >
+            {TUTOR_MODES.map((mode) => (
+              <option key={mode} value={mode}>
+                {MODE_LABELS[mode]}
+              </option>
+            ))}
+          </select>
+        }
+      />
+
+      <div className="hud-panel flex h-[500px] flex-col p-4">
+        <div className="flex-1 space-y-4 overflow-y-auto px-1">
+          <AnimatePresence initial={false}>
+            {messages.map((msg) => (
+              <motion.div
+                key={msg.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className={cn("flex gap-3", msg.role === "user" ? "justify-end" : "justify-start")}
+              >
+                <div
+                  className={cn(
+                    "max-w-[80%] rounded-2xl px-4 py-3 text-sm",
+                    msg.role === "user"
+                      ? "bg-primary text-primary-foreground"
+                      : "border border-border/40 bg-muted/20 text-foreground",
+                  )}
+                >
+                  <div className="space-y-2">
+                    {msg.text.split("\n").map((line, i) => (
+                      <p key={i} className="whitespace-pre-wrap">
+                        {line || "\u00A0"}
+                      </p>
+                    ))}
+                  </div>
+
+                  {msg.role === "assistant" && msg.text && (
+                    <button
+                      onClick={() => handleCopy(msg.text, msg.id)}
+                      className="mt-2 rounded-md px-1.5 py-0.5 text-xs text-muted-foreground/60 hover:text-muted-foreground"
+                    >
+                      {copiedId === msg.id ? (
+                        <Check className="h-3 w-3 inline" />
+                      ) : (
+                        <Copy className="h-3 w-3 inline" />
+                      )}
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full">
+                  {msg.role === "user" ? (
+                    <User className="h-4 w-4 text-primary" />
+                  ) : (
+                    <Bot className="h-4 w-4 text-cyan-300" />
+                  )}
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+
+          {isThinking && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex gap-3 justify-start"
+            >
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full">
+                <Bot className="h-4 w-4 text-cyan-300" />
+              </div>
+              <div className="rounded-2xl border border-border/40 bg-muted/20 px-4 py-3">
+                <div className="flex gap-1">
+                  <motion.span
+                    animate={{ opacity: [0.4, 1, 0.4] }}
+                    transition={{ duration: 1.2, repeat: Infinity }}
+                  >
+                    .
+                  </motion.span>
+                  <motion.span
+                    animate={{ opacity: [0.4, 1, 0.4] }}
+                    transition={{ duration: 1.2, repeat: Infinity, delay: 0.2 }}
+                  >
+                    .
+                  </motion.span>
+                  <motion.span
+                    animate={{ opacity: [0.4, 1, 0.4] }}
+                    transition={{ duration: 1.2, repeat: Infinity, delay: 0.4 }}
+                  >
+                    .
+                  </motion.span>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
+
+        <div className="border-t border-border/40 pt-3">
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            {SUGGESTED_PROMPTS.map((prompt) => (
+              <motion.button
+                key={prompt}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setDraft(prompt)}
+                disabled={isThinking}
+                className="rounded-full border border-border/30 bg-background/40 px-3 py-1 text-xs text-muted-foreground hover:border-primary/30 hover:text-primary disabled:opacity-50"
+              >
+                {prompt}
+              </motion.button>
+            ))}
+          </div>
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void sendMessage();
+            }}
+            className="flex gap-2"
+          >
+            <input
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  void sendMessage();
+                }
+              }}
+              placeholder="Ask about a topic, show your thinking, or paste a problem…"
+              className="flex-1 rounded-lg border border-border/40 bg-background/60 px-4 py-2.5 text-sm text-foreground placeholder-muted-foreground/50 focus:border-primary/50 focus:outline-none"
+              disabled={isThinking}
+            />
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              type="submit"
+              disabled={isThinking || !draft.trim()}
+              className={cn(
+                "flex h-10 w-10 items-center justify-center rounded-lg text-primary-foreground transition-all",
+                isThinking || !draft.trim()
+                  ? "cursor-not-allowed bg-muted/40"
+                  : "bg-primary shadow hover:bg-primary/90",
+              )}
+              aria-label="Send message"
+            >
+              <Send className="h-4 w-4" />
+            </motion.button>
+          </form>
+        </div>
+      </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 4 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.8 }}
+        className="mt-3 text-center text-xs text-muted-foreground/60"
+      >
+        <span className="inline-flex items-center gap-1">
+          <span className="h-1.5 w-1.5 rounded-full bg-primary/40" />
+          {isThinking
+            ? "LORD is thinking…"
+            : "AI-generated tutoring. Check against course materials."}
+        </span>
+      </motion.div>
+    </div>
+  );
+}

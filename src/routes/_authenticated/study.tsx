@@ -1,16 +1,29 @@
+import { z } from "zod";
 import { createFileRoute } from "@tanstack/react-router";
-import { AppShell } from "@/components/lord/AppShell";
+import { StudyPlatform } from "@/components/study/StudyPlatform";
+
+export const studySearchSchema = z.object({
+  view: z
+    .enum([
+      "dashboard",
+      "concepts",
+      "practice",
+      "tutor",
+      "flashcards",
+      "exams",
+      "planner",
+      "progress",
+    ])
+    .optional()
+    .default("dashboard"),
+  concept: z.string().optional(),
+});
 
 export const Route = createFileRoute("/_authenticated/study")({
+  validateSearch: studySearchSchema,
   component: Study,
 });
 
 function Study() {
-  return (
-    <AppShell>
-      <main className="mx-auto max-w-6xl p-6">
-        <p className="text-muted-foreground">Study is being rebuilt.</p>
-      </main>
-    </AppShell>
-  );
+  return <StudyPlatform />;
 }
