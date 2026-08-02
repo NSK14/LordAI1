@@ -1,35 +1,16 @@
-import { z } from "zod";
 import { createFileRoute } from "@tanstack/react-router";
-import { StudyRouter } from "@/components/study/StudyRouter";
-
-// eslint-disable-next-line react-refresh/only-export-components
-export const studySearchSchema = z.object({
-  view: z
-    .enum([
-      "landing",
-      "learn",
-      "practice",
-      "plan",
-      "feed",
-      "boards",
-      "progress",
-      "notes",
-      "flashcards",
-      "test",
-      "tutor",
-      "revision",
-      "help",
-      "mnemonics",
-    ])
-    .optional()
-    .default("landing"),
-});
+import { AppShell } from "@/components/lord/AppShell";
 
 export const Route = createFileRoute("/_authenticated/study")({
-  validateSearch: studySearchSchema,
   component: Study,
 });
 
 function Study() {
-  return <StudyRouter />;
+  return (
+    <AppShell>
+      <main className="mx-auto max-w-6xl p-6">
+        <p className="text-muted-foreground">Study is being rebuilt.</p>
+      </main>
+    </AppShell>
+  );
 }
