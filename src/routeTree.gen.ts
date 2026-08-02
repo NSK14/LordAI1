@@ -21,7 +21,7 @@ import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as AuthenticatedVoiceRouteImport } from './routes/_authenticated/voice'
 import { Route as AuthenticatedTasksRouteImport } from './routes/_authenticated/tasks'
-import { Route as AuthenticatedStudyRouteImport } from '../study-backup/study/study.tsx'
+import { Route as AuthenticatedStudyRouteImport } from './routes/_authenticated/study'
 import { Route as AuthenticatedStatisticsRouteImport } from './routes/_authenticated/statistics'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedProgressRouteImport } from './routes/_authenticated/progress'
@@ -37,7 +37,17 @@ import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedBoardsRouteImport } from './routes/_authenticated/boards'
 import { Route as ApiSharesTokenRouteImport } from './routes/api/shares/$token'
 import { Route as ApiSharedTokenRouteImport } from './routes/api/shared/$token'
+import { Route as ApiLearningWhiteboardRouteImport } from './routes/api/learning/whiteboard'
+import { Route as ApiLearningVoiceRouteImport } from './routes/api/learning/voice'
 import { Route as ApiLearningSessionRouteImport } from './routes/api/learning/session'
+import { Route as ApiLearningRevisionRouteImport } from './routes/api/learning/revision'
+import { Route as ApiLearningOcrRouteImport } from './routes/api/learning/ocr'
+import { Route as ApiLearningNotesRouteImport } from './routes/api/learning/notes'
+import { Route as ApiLearningMemoryRouteImport } from './routes/api/learning/memory'
+import { Route as ApiLearningGoalsRouteImport } from './routes/api/learning/goals'
+import { Route as ApiLearningFlashcardsRouteImport } from './routes/api/learning/flashcards'
+import { Route as ApiLearningFeaturesRouteImport } from './routes/api/learning/features'
+import { Route as ApiLearningAnalyticsRouteImport } from './routes/api/learning/analytics'
 import { Route as ApiLearningSourcesIngestRouteImport } from './routes/api/learning/sources/ingest'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -180,9 +190,59 @@ const ApiSharedTokenRoute = ApiSharedTokenRouteImport.update({
   path: '/api/shared/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiLearningWhiteboardRoute = ApiLearningWhiteboardRouteImport.update({
+  id: '/api/learning/whiteboard',
+  path: '/api/learning/whiteboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiLearningVoiceRoute = ApiLearningVoiceRouteImport.update({
+  id: '/api/learning/voice',
+  path: '/api/learning/voice',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiLearningSessionRoute = ApiLearningSessionRouteImport.update({
   id: '/api/learning/session',
   path: '/api/learning/session',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiLearningRevisionRoute = ApiLearningRevisionRouteImport.update({
+  id: '/api/learning/revision',
+  path: '/api/learning/revision',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiLearningOcrRoute = ApiLearningOcrRouteImport.update({
+  id: '/api/learning/ocr',
+  path: '/api/learning/ocr',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiLearningNotesRoute = ApiLearningNotesRouteImport.update({
+  id: '/api/learning/notes',
+  path: '/api/learning/notes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiLearningMemoryRoute = ApiLearningMemoryRouteImport.update({
+  id: '/api/learning/memory',
+  path: '/api/learning/memory',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiLearningGoalsRoute = ApiLearningGoalsRouteImport.update({
+  id: '/api/learning/goals',
+  path: '/api/learning/goals',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiLearningFlashcardsRoute = ApiLearningFlashcardsRouteImport.update({
+  id: '/api/learning/flashcards',
+  path: '/api/learning/flashcards',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiLearningFeaturesRoute = ApiLearningFeaturesRouteImport.update({
+  id: '/api/learning/features',
+  path: '/api/learning/features',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiLearningAnalyticsRoute = ApiLearningAnalyticsRouteImport.update({
+  id: '/api/learning/analytics',
+  path: '/api/learning/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiLearningSourcesIngestRoute =
@@ -218,7 +278,17 @@ export interface FileRoutesByFullPath {
   '/api/openrouter-test': typeof ApiOpenrouterTestRoute
   '/api/shares': typeof ApiSharesRouteWithChildren
   '/share/$token': typeof ShareTokenRoute
+  '/api/learning/analytics': typeof ApiLearningAnalyticsRoute
+  '/api/learning/features': typeof ApiLearningFeaturesRoute
+  '/api/learning/flashcards': typeof ApiLearningFlashcardsRoute
+  '/api/learning/goals': typeof ApiLearningGoalsRoute
+  '/api/learning/memory': typeof ApiLearningMemoryRoute
+  '/api/learning/notes': typeof ApiLearningNotesRoute
+  '/api/learning/ocr': typeof ApiLearningOcrRoute
+  '/api/learning/revision': typeof ApiLearningRevisionRoute
   '/api/learning/session': typeof ApiLearningSessionRoute
+  '/api/learning/voice': typeof ApiLearningVoiceRoute
+  '/api/learning/whiteboard': typeof ApiLearningWhiteboardRoute
   '/api/shared/$token': typeof ApiSharedTokenRoute
   '/api/shares/$token': typeof ApiSharesTokenRoute
   '/api/learning/sources/ingest': typeof ApiLearningSourcesIngestRoute
@@ -249,7 +319,17 @@ export interface FileRoutesByTo {
   '/api/openrouter-test': typeof ApiOpenrouterTestRoute
   '/api/shares': typeof ApiSharesRouteWithChildren
   '/share/$token': typeof ShareTokenRoute
+  '/api/learning/analytics': typeof ApiLearningAnalyticsRoute
+  '/api/learning/features': typeof ApiLearningFeaturesRoute
+  '/api/learning/flashcards': typeof ApiLearningFlashcardsRoute
+  '/api/learning/goals': typeof ApiLearningGoalsRoute
+  '/api/learning/memory': typeof ApiLearningMemoryRoute
+  '/api/learning/notes': typeof ApiLearningNotesRoute
+  '/api/learning/ocr': typeof ApiLearningOcrRoute
+  '/api/learning/revision': typeof ApiLearningRevisionRoute
   '/api/learning/session': typeof ApiLearningSessionRoute
+  '/api/learning/voice': typeof ApiLearningVoiceRoute
+  '/api/learning/whiteboard': typeof ApiLearningWhiteboardRoute
   '/api/shared/$token': typeof ApiSharedTokenRoute
   '/api/shares/$token': typeof ApiSharesTokenRoute
   '/api/learning/sources/ingest': typeof ApiLearningSourcesIngestRoute
@@ -282,7 +362,17 @@ export interface FileRoutesById {
   '/api/openrouter-test': typeof ApiOpenrouterTestRoute
   '/api/shares': typeof ApiSharesRouteWithChildren
   '/share/$token': typeof ShareTokenRoute
+  '/api/learning/analytics': typeof ApiLearningAnalyticsRoute
+  '/api/learning/features': typeof ApiLearningFeaturesRoute
+  '/api/learning/flashcards': typeof ApiLearningFlashcardsRoute
+  '/api/learning/goals': typeof ApiLearningGoalsRoute
+  '/api/learning/memory': typeof ApiLearningMemoryRoute
+  '/api/learning/notes': typeof ApiLearningNotesRoute
+  '/api/learning/ocr': typeof ApiLearningOcrRoute
+  '/api/learning/revision': typeof ApiLearningRevisionRoute
   '/api/learning/session': typeof ApiLearningSessionRoute
+  '/api/learning/voice': typeof ApiLearningVoiceRoute
+  '/api/learning/whiteboard': typeof ApiLearningWhiteboardRoute
   '/api/shared/$token': typeof ApiSharedTokenRoute
   '/api/shares/$token': typeof ApiSharesTokenRoute
   '/api/learning/sources/ingest': typeof ApiLearningSourcesIngestRoute
@@ -315,7 +405,17 @@ export interface FileRouteTypes {
     | '/api/openrouter-test'
     | '/api/shares'
     | '/share/$token'
+    | '/api/learning/analytics'
+    | '/api/learning/features'
+    | '/api/learning/flashcards'
+    | '/api/learning/goals'
+    | '/api/learning/memory'
+    | '/api/learning/notes'
+    | '/api/learning/ocr'
+    | '/api/learning/revision'
     | '/api/learning/session'
+    | '/api/learning/voice'
+    | '/api/learning/whiteboard'
     | '/api/shared/$token'
     | '/api/shares/$token'
     | '/api/learning/sources/ingest'
@@ -346,7 +446,17 @@ export interface FileRouteTypes {
     | '/api/openrouter-test'
     | '/api/shares'
     | '/share/$token'
+    | '/api/learning/analytics'
+    | '/api/learning/features'
+    | '/api/learning/flashcards'
+    | '/api/learning/goals'
+    | '/api/learning/memory'
+    | '/api/learning/notes'
+    | '/api/learning/ocr'
+    | '/api/learning/revision'
     | '/api/learning/session'
+    | '/api/learning/voice'
+    | '/api/learning/whiteboard'
     | '/api/shared/$token'
     | '/api/shares/$token'
     | '/api/learning/sources/ingest'
@@ -378,7 +488,17 @@ export interface FileRouteTypes {
     | '/api/openrouter-test'
     | '/api/shares'
     | '/share/$token'
+    | '/api/learning/analytics'
+    | '/api/learning/features'
+    | '/api/learning/flashcards'
+    | '/api/learning/goals'
+    | '/api/learning/memory'
+    | '/api/learning/notes'
+    | '/api/learning/ocr'
+    | '/api/learning/revision'
     | '/api/learning/session'
+    | '/api/learning/voice'
+    | '/api/learning/whiteboard'
     | '/api/shared/$token'
     | '/api/shares/$token'
     | '/api/learning/sources/ingest'
@@ -395,7 +515,17 @@ export interface RootRouteChildren {
   ApiOpenrouterTestRoute: typeof ApiOpenrouterTestRoute
   ApiSharesRoute: typeof ApiSharesRouteWithChildren
   ShareTokenRoute: typeof ShareTokenRoute
+  ApiLearningAnalyticsRoute: typeof ApiLearningAnalyticsRoute
+  ApiLearningFeaturesRoute: typeof ApiLearningFeaturesRoute
+  ApiLearningFlashcardsRoute: typeof ApiLearningFlashcardsRoute
+  ApiLearningGoalsRoute: typeof ApiLearningGoalsRoute
+  ApiLearningMemoryRoute: typeof ApiLearningMemoryRoute
+  ApiLearningNotesRoute: typeof ApiLearningNotesRoute
+  ApiLearningOcrRoute: typeof ApiLearningOcrRoute
+  ApiLearningRevisionRoute: typeof ApiLearningRevisionRoute
   ApiLearningSessionRoute: typeof ApiLearningSessionRoute
+  ApiLearningVoiceRoute: typeof ApiLearningVoiceRoute
+  ApiLearningWhiteboardRoute: typeof ApiLearningWhiteboardRoute
   ApiSharedTokenRoute: typeof ApiSharedTokenRoute
   ApiLearningSourcesIngestRoute: typeof ApiLearningSourcesIngestRoute
 }
@@ -598,11 +728,81 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSharedTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/learning/whiteboard': {
+      id: '/api/learning/whiteboard'
+      path: '/api/learning/whiteboard'
+      fullPath: '/api/learning/whiteboard'
+      preLoaderRoute: typeof ApiLearningWhiteboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/learning/voice': {
+      id: '/api/learning/voice'
+      path: '/api/learning/voice'
+      fullPath: '/api/learning/voice'
+      preLoaderRoute: typeof ApiLearningVoiceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/learning/session': {
       id: '/api/learning/session'
       path: '/api/learning/session'
       fullPath: '/api/learning/session'
       preLoaderRoute: typeof ApiLearningSessionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/learning/revision': {
+      id: '/api/learning/revision'
+      path: '/api/learning/revision'
+      fullPath: '/api/learning/revision'
+      preLoaderRoute: typeof ApiLearningRevisionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/learning/ocr': {
+      id: '/api/learning/ocr'
+      path: '/api/learning/ocr'
+      fullPath: '/api/learning/ocr'
+      preLoaderRoute: typeof ApiLearningOcrRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/learning/notes': {
+      id: '/api/learning/notes'
+      path: '/api/learning/notes'
+      fullPath: '/api/learning/notes'
+      preLoaderRoute: typeof ApiLearningNotesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/learning/memory': {
+      id: '/api/learning/memory'
+      path: '/api/learning/memory'
+      fullPath: '/api/learning/memory'
+      preLoaderRoute: typeof ApiLearningMemoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/learning/goals': {
+      id: '/api/learning/goals'
+      path: '/api/learning/goals'
+      fullPath: '/api/learning/goals'
+      preLoaderRoute: typeof ApiLearningGoalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/learning/flashcards': {
+      id: '/api/learning/flashcards'
+      path: '/api/learning/flashcards'
+      fullPath: '/api/learning/flashcards'
+      preLoaderRoute: typeof ApiLearningFlashcardsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/learning/features': {
+      id: '/api/learning/features'
+      path: '/api/learning/features'
+      fullPath: '/api/learning/features'
+      preLoaderRoute: typeof ApiLearningFeaturesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/learning/analytics': {
+      id: '/api/learning/analytics'
+      path: '/api/learning/analytics'
+      fullPath: '/api/learning/analytics'
+      preLoaderRoute: typeof ApiLearningAnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/learning/sources/ingest': {
@@ -679,7 +879,17 @@ const rootRouteChildren: RootRouteChildren = {
   ApiOpenrouterTestRoute: ApiOpenrouterTestRoute,
   ApiSharesRoute: ApiSharesRouteWithChildren,
   ShareTokenRoute: ShareTokenRoute,
+  ApiLearningAnalyticsRoute: ApiLearningAnalyticsRoute,
+  ApiLearningFeaturesRoute: ApiLearningFeaturesRoute,
+  ApiLearningFlashcardsRoute: ApiLearningFlashcardsRoute,
+  ApiLearningGoalsRoute: ApiLearningGoalsRoute,
+  ApiLearningMemoryRoute: ApiLearningMemoryRoute,
+  ApiLearningNotesRoute: ApiLearningNotesRoute,
+  ApiLearningOcrRoute: ApiLearningOcrRoute,
+  ApiLearningRevisionRoute: ApiLearningRevisionRoute,
   ApiLearningSessionRoute: ApiLearningSessionRoute,
+  ApiLearningVoiceRoute: ApiLearningVoiceRoute,
+  ApiLearningWhiteboardRoute: ApiLearningWhiteboardRoute,
   ApiSharedTokenRoute: ApiSharedTokenRoute,
   ApiLearningSourcesIngestRoute: ApiLearningSourcesIngestRoute,
 }
