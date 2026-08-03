@@ -69,7 +69,12 @@ export const Route = createFileRoute("/api/learning/notes")({
 
         const auth = context as { userId?: string; supabase?: { from: (table: string) => any } };
         if (!auth.userId || !auth.supabase)
-          return apiErrorResponse(401, "AI_AUTH_ERROR", "Sign in to use learning tools.", requestId);
+          return apiErrorResponse(
+            401,
+            "AI_AUTH_ERROR",
+            "Sign in to use learning tools.",
+            requestId,
+          );
 
         const db = auth.supabase;
         const userId = auth.userId;
@@ -106,19 +111,25 @@ export const Route = createFileRoute("/api/learning/notes")({
 
             const provider = getOpenRouterProvider();
             const formatInstructions = {
-              summary: "Write a clear, structured summary (3-5 paragraphs) covering main ideas, key formulas, and important concepts.",
-              key_points: "Extract 8-12 bullet-point key points. Each point should be one concise sentence.",
-              cheat_sheet: "Create a compact cheat sheet with: 1) Key formulas 2) Definitions 3) Common pitfalls 4) Quick reference table. Format in markdown.",
-              flashcards: "Generate 10 flashcards. Front: question. Back: answer. Format as JSON: [{\"front\":\"...\",\"back\":\"...\"}]",
+              summary:
+                "Write a clear, structured summary (3-5 paragraphs) covering main ideas, key formulas, and important concepts.",
+              key_points:
+                "Extract 8-12 bullet-point key points. Each point should be one concise sentence.",
+              cheat_sheet:
+                "Create a compact cheat sheet with: 1) Key formulas 2) Definitions 3) Common pitfalls 4) Quick reference table. Format in markdown.",
+              flashcards:
+                'Generate 10 flashcards. Front: question. Back: answer. Format as JSON: [{"front":"...","back":"..."}]',
             };
 
             const { text } = await generateText({
               model: provider("openai/gpt-4o-mini"),
               system: `You are a ${concept.framework} study material creator. Output only the requested format. No extra commentary.`,
-              messages: [{
-                role: "user",
-                content: `Source material:\n${parsed.data.sourceText.slice(0, 15000)}\n\nConcept: ${concept.title} (${concept.standard_code})\n${formatInstructions[parsed.data.format]}`
-              }],
+              messages: [
+                {
+                  role: "user",
+                  content: `Source material:\n${parsed.data.sourceText.slice(0, 15000)}\n\nConcept: ${concept.title} (${concept.standard_code})\n${formatInstructions[parsed.data.format]}`,
+                },
+              ],
               maxOutputTokens: 2000,
               temperature: 0.3,
             });
@@ -138,7 +149,10 @@ export const Route = createFileRoute("/api/learning/notes")({
             } else if (parsed.data.format === "summary") {
               aiSummary = text;
             } else if (parsed.data.format === "key_points") {
-              aiKeyPoints = text.split("\n").filter(l => l.trim().startsWith("-") || l.trim().startsWith("•")).map(l => l.replace(/^[-•]\s*/, "").trim());
+              aiKeyPoints = text
+                .split("\n")
+                .filter((l) => l.trim().startsWith("-") || l.trim().startsWith("•"))
+                .map((l) => l.replace(/^[-•]\s*/, "").trim());
             } else if (parsed.data.format === "cheat_sheet") {
               aiCheatSheet = text;
             }
@@ -168,7 +182,8 @@ export const Route = createFileRoute("/api/learning/notes")({
             const updates: Record<string, unknown> = {};
             if (parsed.data.title !== undefined) updates.title = parsed.data.title;
             if (parsed.data.content !== undefined) updates.content = parsed.data.content;
-            if (parsed.data.contentText !== undefined) updates.content_text = parsed.data.contentText;
+            if (parsed.data.contentText !== undefined)
+              updates.content_text = parsed.data.contentText;
             if (parsed.data.tags !== undefined) updates.tags = parsed.data.tags;
             updates.updated_at = new Date().toISOString();
 

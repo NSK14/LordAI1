@@ -8,10 +8,7 @@ interface ItalicProps extends React.HTMLAttributes<HTMLElement> {
 
 export function Italic({ children, className, ...props }: ItalicProps) {
   return (
-    <em
-      className={cn("italic text-primary/80", className)}
-      {...props}
-    >
+    <em className={cn("italic text-primary/80", className)} {...props}>
       {children}
     </em>
   );

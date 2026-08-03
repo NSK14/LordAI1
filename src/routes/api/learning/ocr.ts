@@ -34,7 +34,12 @@ export const Route = createFileRoute("/api/learning/ocr")({
 
         const auth = context as { userId?: string; supabase?: { from: (table: string) => any } };
         if (!auth.userId || !auth.supabase)
-          return apiErrorResponse(401, "AI_AUTH_ERROR", "Sign in to use learning tools.", requestId);
+          return apiErrorResponse(
+            401,
+            "AI_AUTH_ERROR",
+            "Sign in to use learning tools.",
+            requestId,
+          );
 
         const db = auth.supabase;
         const userId = auth.userId;
@@ -61,7 +66,8 @@ export const Route = createFileRoute("/api/learning/ocr")({
             setTimeout(async () => {
               try {
                 // Simulated extracted text
-                const extractedText = "[OCR processing would extract text from the uploaded image/PDF here]";
+                const extractedText =
+                  "[OCR processing would extract text from the uploaded image/PDF here]";
 
                 await db
                   .from("learning_ocr_jobs")

@@ -40,7 +40,12 @@ export const Route = createFileRoute("/api/learning/revision")({
 
         const auth = context as { userId?: string; supabase?: { from: (table: string) => any } };
         if (!auth.userId || !auth.supabase)
-          return apiErrorResponse(401, "AI_AUTH_ERROR", "Sign in to use learning tools.", requestId);
+          return apiErrorResponse(
+            401,
+            "AI_AUTH_ERROR",
+            "Sign in to use learning tools.",
+            requestId,
+          );
 
         const db = auth.supabase;
         const userId = auth.userId;
@@ -71,18 +76,21 @@ export const Route = createFileRoute("/api/learning/revision")({
 
               const { data, error } = await db
                 .from("learning_revision_schedule")
-                .upsert({
-                  user_id: userId,
-                  concept_id: conceptId,
-                  mastery_score: score,
-                  confidence,
-                  retention_estimate: retentionEstimate,
-                  next_review_at: nextReview,
-                  review_interval_days: nextInterval,
-                  ease_factor: 2.5,
-                  consecutive_successes: 0,
-                  consecutive_failures: 0,
-                }, { onConflict: "user_id,concept_id" })
+                .upsert(
+                  {
+                    user_id: userId,
+                    concept_id: conceptId,
+                    mastery_score: score,
+                    confidence,
+                    retention_estimate: retentionEstimate,
+                    next_review_at: nextReview,
+                    review_interval_days: nextInterval,
+                    ease_factor: 2.5,
+                    consecutive_successes: 0,
+                    consecutive_failures: 0,
+                  },
+                  { onConflict: "user_id,concept_id" },
+                )
                 .select()
                 .single();
 
@@ -118,7 +126,8 @@ export const Route = createFileRoute("/api/learning/revision")({
               return apiErrorResponse(404, "NOT_FOUND", "Revision schedule not found.", requestId);
 
             const quality = parsed.data.quality;
-            let { ease_factor, review_interval_days, consecutive_successes, consecutive_failures } = schedule;
+            let { ease_factor, review_interval_days, consecutive_successes, consecutive_failures } =
+              schedule;
 
             if (quality >= 3) {
               consecutive_successes += 1;
@@ -132,7 +141,10 @@ export const Route = createFileRoute("/api/learning/revision")({
               review_interval_days = 1;
             }
 
-            ease_factor = Math.max(1.3, ease_factor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)));
+            ease_factor = Math.max(
+              1.3,
+              ease_factor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)),
+            );
 
             const nextReview = new Date(Date.now() + review_interval_days * 86400000).toISOString();
 
@@ -148,25 +160,34 @@ export const Route = createFileRoute("/api/learning/revision")({
             const { nextMastery } = await import("@/lib/learning/mastery");
             const update = nextMastery(
               mastery as { score: number; confidence: number; evidence_count: number } | null,
-              correct
+              correct,
             );
 
             await Promise.all([
-              db.from("learning_revision_schedule").update({
-                mastery_score: update.score,
-                confidence: update.confidence,
-                retention_estimate: Math.max(0.1, Math.min(0.95, update.score * update.confidence * 1.2)),
-                next_review_at: nextReview,
-                review_interval_days: review_interval_days,
-                ease_factor,
-                consecutive_successes,
-                consecutive_failures,
-                last_reviewed_at: new Date().toISOString(),
-              }).eq("user_id", userId).eq("concept_id", parsed.data.conceptId),
-              db.from("learning_mastery").upsert(
-                { user_id: userId, concept_id: parsed.data.conceptId, ...update },
-                { onConflict: "user_id,concept_id" }
-              ),
+              db
+                .from("learning_revision_schedule")
+                .update({
+                  mastery_score: update.score,
+                  confidence: update.confidence,
+                  retention_estimate: Math.max(
+                    0.1,
+                    Math.min(0.95, update.score * update.confidence * 1.2),
+                  ),
+                  next_review_at: nextReview,
+                  review_interval_days: review_interval_days,
+                  ease_factor,
+                  consecutive_successes,
+                  consecutive_failures,
+                  last_reviewed_at: new Date().toISOString(),
+                })
+                .eq("user_id", userId)
+                .eq("concept_id", parsed.data.conceptId),
+              db
+                .from("learning_mastery")
+                .upsert(
+                  { user_id: userId, concept_id: parsed.data.conceptId, ...update },
+                  { onConflict: "user_id,concept_id" },
+                ),
             ]);
 
             return Response.json({ success: true, nextReviewAt: nextReview });
@@ -181,7 +202,8 @@ export const Route = createFileRoute("/api/learning/revision")({
               .maybeSingle();
 
             if (error) throw error;
-            if (!data) return apiErrorResponse(404, "NOT_FOUND", "No revision schedule.", requestId);
+            if (!data)
+              return apiErrorResponse(404, "NOT_FOUND", "No revision schedule.", requestId);
             return Response.json({ schedule: data });
           }
 
@@ -200,7 +222,12 @@ export const Route = createFileRoute("/api/learning/revision")({
           return apiErrorResponse(400, "INVALID_ACTION", "Unknown action.", requestId);
         } catch (err) {
           console.error("Revision error:", err);
-          return apiErrorResponse(500, "INTERNAL_ERROR", "Revision service unavailable.", requestId);
+          return apiErrorResponse(
+            500,
+            "INTERNAL_ERROR",
+            "Revision service unavailable.",
+            requestId,
+          );
         }
       },
     },

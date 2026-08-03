@@ -47,6 +47,7 @@ import { Route as ApiLearningMemoryRouteImport } from './routes/api/learning/mem
 import { Route as ApiLearningGoalsRouteImport } from './routes/api/learning/goals'
 import { Route as ApiLearningFlashcardsRouteImport } from './routes/api/learning/flashcards'
 import { Route as ApiLearningFeaturesRouteImport } from './routes/api/learning/features'
+import { Route as ApiLearningExamsRouteImport } from './routes/api/learning/exams'
 import { Route as ApiLearningAnalyticsRouteImport } from './routes/api/learning/analytics'
 import { Route as ApiLearningSourcesIngestRouteImport } from './routes/api/learning/sources/ingest'
 
@@ -240,6 +241,11 @@ const ApiLearningFeaturesRoute = ApiLearningFeaturesRouteImport.update({
   path: '/api/learning/features',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiLearningExamsRoute = ApiLearningExamsRouteImport.update({
+  id: '/api/learning/exams',
+  path: '/api/learning/exams',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiLearningAnalyticsRoute = ApiLearningAnalyticsRouteImport.update({
   id: '/api/learning/analytics',
   path: '/api/learning/analytics',
@@ -279,6 +285,7 @@ export interface FileRoutesByFullPath {
   '/api/shares': typeof ApiSharesRouteWithChildren
   '/share/$token': typeof ShareTokenRoute
   '/api/learning/analytics': typeof ApiLearningAnalyticsRoute
+  '/api/learning/exams': typeof ApiLearningExamsRoute
   '/api/learning/features': typeof ApiLearningFeaturesRoute
   '/api/learning/flashcards': typeof ApiLearningFlashcardsRoute
   '/api/learning/goals': typeof ApiLearningGoalsRoute
@@ -320,6 +327,7 @@ export interface FileRoutesByTo {
   '/api/shares': typeof ApiSharesRouteWithChildren
   '/share/$token': typeof ShareTokenRoute
   '/api/learning/analytics': typeof ApiLearningAnalyticsRoute
+  '/api/learning/exams': typeof ApiLearningExamsRoute
   '/api/learning/features': typeof ApiLearningFeaturesRoute
   '/api/learning/flashcards': typeof ApiLearningFlashcardsRoute
   '/api/learning/goals': typeof ApiLearningGoalsRoute
@@ -363,6 +371,7 @@ export interface FileRoutesById {
   '/api/shares': typeof ApiSharesRouteWithChildren
   '/share/$token': typeof ShareTokenRoute
   '/api/learning/analytics': typeof ApiLearningAnalyticsRoute
+  '/api/learning/exams': typeof ApiLearningExamsRoute
   '/api/learning/features': typeof ApiLearningFeaturesRoute
   '/api/learning/flashcards': typeof ApiLearningFlashcardsRoute
   '/api/learning/goals': typeof ApiLearningGoalsRoute
@@ -406,6 +415,7 @@ export interface FileRouteTypes {
     | '/api/shares'
     | '/share/$token'
     | '/api/learning/analytics'
+    | '/api/learning/exams'
     | '/api/learning/features'
     | '/api/learning/flashcards'
     | '/api/learning/goals'
@@ -447,6 +457,7 @@ export interface FileRouteTypes {
     | '/api/shares'
     | '/share/$token'
     | '/api/learning/analytics'
+    | '/api/learning/exams'
     | '/api/learning/features'
     | '/api/learning/flashcards'
     | '/api/learning/goals'
@@ -489,6 +500,7 @@ export interface FileRouteTypes {
     | '/api/shares'
     | '/share/$token'
     | '/api/learning/analytics'
+    | '/api/learning/exams'
     | '/api/learning/features'
     | '/api/learning/flashcards'
     | '/api/learning/goals'
@@ -516,6 +528,7 @@ export interface RootRouteChildren {
   ApiSharesRoute: typeof ApiSharesRouteWithChildren
   ShareTokenRoute: typeof ShareTokenRoute
   ApiLearningAnalyticsRoute: typeof ApiLearningAnalyticsRoute
+  ApiLearningExamsRoute: typeof ApiLearningExamsRoute
   ApiLearningFeaturesRoute: typeof ApiLearningFeaturesRoute
   ApiLearningFlashcardsRoute: typeof ApiLearningFlashcardsRoute
   ApiLearningGoalsRoute: typeof ApiLearningGoalsRoute
@@ -798,6 +811,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiLearningFeaturesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/learning/exams': {
+      id: '/api/learning/exams'
+      path: '/api/learning/exams'
+      fullPath: '/api/learning/exams'
+      preLoaderRoute: typeof ApiLearningExamsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/learning/analytics': {
       id: '/api/learning/analytics'
       path: '/api/learning/analytics'
@@ -880,6 +900,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSharesRoute: ApiSharesRouteWithChildren,
   ShareTokenRoute: ShareTokenRoute,
   ApiLearningAnalyticsRoute: ApiLearningAnalyticsRoute,
+  ApiLearningExamsRoute: ApiLearningExamsRoute,
   ApiLearningFeaturesRoute: ApiLearningFeaturesRoute,
   ApiLearningFlashcardsRoute: ApiLearningFlashcardsRoute,
   ApiLearningGoalsRoute: ApiLearningGoalsRoute,

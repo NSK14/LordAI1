@@ -39,7 +39,7 @@ export function CodeBlock({ children, className, language = "text" }: CodeBlockP
         setShowLanguage(codeWidth > wrapperWidth);
       }
     };
-    
+
     handleResize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
@@ -53,7 +53,7 @@ export function CodeBlock({ children, className, language = "text" }: CodeBlockP
       ref={wrapperRef}
       className={cn(
         "relative overflow-hidden rounded-xl border border-border/40 bg-[rgba(20,20,20,0.8)] my-4",
-        className
+        className,
       )}
       data-language={langLabel}
     >
@@ -67,7 +67,7 @@ export function CodeBlock({ children, className, language = "text" }: CodeBlockP
             className={cn(
               "flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-medium transition-colors",
               "hover:bg-white/10 text-foreground/60",
-              wrapped && "bg-white/10 text-foreground"
+              wrapped && "bg-white/10 text-foreground",
             )}
             title={wrapped ? "Disable line wrap" : "Enable line wrap"}
             aria-label={wrapped ? "Disable line wrap" : "Enable line wrap"}
@@ -80,7 +80,7 @@ export function CodeBlock({ children, className, language = "text" }: CodeBlockP
             className={cn(
               "flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-medium transition-colors",
               "hover:bg-white/10 text-foreground/60",
-              copied && "bg-green-500/20 text-green-400"
+              copied && "bg-green-500/20 text-green-400",
             )}
             aria-label={copied ? "Copied!" : "Copy code"}
             title={copied ? "Copied!" : "Copy code"}
@@ -102,7 +102,7 @@ export function CodeBlock({ children, className, language = "text" }: CodeBlockP
       <div
         className={cn(
           "overflow-x-auto overflow-y-hidden",
-          wrapped && "whitespace-pre-wrap break-words"
+          wrapped && "whitespace-pre-wrap break-words",
         )}
       >
         <pre
@@ -111,7 +111,7 @@ export function CodeBlock({ children, className, language = "text" }: CodeBlockP
             "shiki-code-block p-4 m-0 overflow-x-auto overflow-y-hidden",
             "text-sm sm:text-base",
             "font-mono tab-size-4",
-            wrapped && "whitespace-pre-wrap break-words"
+            wrapped && "whitespace-pre-wrap break-words",
           )}
           style={{ counterReset: "line" }}
         >

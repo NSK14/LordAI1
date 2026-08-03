@@ -19,7 +19,14 @@ function getOpenRouterProvider() {
 const MemoryRequestSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("store"),
-    memoryType: z.enum(["conversation", "mistake", "strength", "preference", "goal", "misconception"]),
+    memoryType: z.enum([
+      "conversation",
+      "mistake",
+      "strength",
+      "preference",
+      "goal",
+      "misconception",
+    ]),
     conceptId: z.string().optional(),
     sessionId: z.string().uuid().optional(),
     content: z.record(z.unknown()),
@@ -30,7 +37,9 @@ const MemoryRequestSchema = z.discriminatedUnion("action", [
   }),
   z.object({
     action: z.literal("retrieve"),
-    memoryType: z.enum(["conversation", "mistake", "strength", "preference", "goal", "misconception"]).optional(),
+    memoryType: z
+      .enum(["conversation", "mistake", "strength", "preference", "goal", "misconception"])
+      .optional(),
     conceptId: z.string().optional(),
     limit: z.number().int().min(1).max(100).default(50),
   }),
@@ -58,7 +67,12 @@ export const Route = createFileRoute("/api/learning/memory")({
 
         const auth = context as { userId?: string; supabase?: { from: (table: string) => any } };
         if (!auth.userId || !auth.supabase)
-          return apiErrorResponse(401, "AI_AUTH_ERROR", "Sign in to use learning tools.", requestId);
+          return apiErrorResponse(
+            401,
+            "AI_AUTH_ERROR",
+            "Sign in to use learning tools.",
+            requestId,
+          );
 
         const db = auth.supabase;
         const userId = auth.userId;
@@ -120,19 +134,21 @@ export const Route = createFileRoute("/api/learning/memory")({
               .eq("user_id", userId)
               .order("created_at", { ascending: true });
 
-            if (!messages || messages.length === 0)
-              return Response.json({ memories: [] });
+            if (!messages || messages.length === 0) return Response.json({ memories: [] });
 
             // Extract memories using AI
-            const conversation = messages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join("\n");
+            const conversation = messages
+              .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
+              .join("\n");
 
             const provider = getOpenRouterProvider();
             const { text } = await generateText({
               model: provider("openai/gpt-4o-mini"),
               system: `You are a learning memory extractor. Analyze the conversation and extract structured memories. Output ONLY a JSON array of memory objects. No markdown. No extra text.`,
-              messages: [{
-                role: "user",
-                content: `Conversation:\n${conversation}\n\nExtract memories as JSON array with this exact shape:
+              messages: [
+                {
+                  role: "user",
+                  content: `Conversation:\n${conversation}\n\nExtract memories as JSON array with this exact shape:
 [{
   "memory_type": "conversation|mistake|strength|preference|goal|misconception",
   "concept_id": "string|null",
@@ -141,15 +157,15 @@ export const Route = createFileRoute("/api/learning/memory")({
   "importance": 0.0-1.0,
   "confidence": 0.0-1.0,
   "tags": ["string"]
-}]`
-              }],
+}]`,
+                },
+              ],
               maxOutputTokens: 2000,
               temperature: 0.3,
             });
 
             const jsonMatch = text.match(/\[[\s\S]*\]/);
-            if (!jsonMatch)
-              return Response.json({ memories: [] });
+            if (!jsonMatch) return Response.json({ memories: [] });
 
             try {
               const memories = JSON.parse(jsonMatch[0]);

@@ -63,7 +63,12 @@ export const Route = createFileRoute("/api/learning/whiteboard")({
 
         const auth = context as { userId?: string; supabase?: { from: (table: string) => any } };
         if (!auth.userId || !auth.supabase)
-          return apiErrorResponse(401, "AI_AUTH_ERROR", "Sign in to use learning tools.", requestId);
+          return apiErrorResponse(
+            401,
+            "AI_AUTH_ERROR",
+            "Sign in to use learning tools.",
+            requestId,
+          );
 
         const db = auth.supabase;
         const userId = auth.userId;
@@ -104,7 +109,8 @@ export const Route = createFileRoute("/api/learning/whiteboard")({
               .single();
 
             if (error) throw error;
-            if (!data) return apiErrorResponse(404, "NOT_FOUND", "Whiteboard not found.", requestId);
+            if (!data)
+              return apiErrorResponse(404, "NOT_FOUND", "Whiteboard not found.", requestId);
             return Response.json({ whiteboard: data });
           }
 
@@ -128,10 +134,12 @@ export const Route = createFileRoute("/api/learning/whiteboard")({
             const { text } = await generateText({
               model: provider("openai/gpt-4o-mini"),
               system: `You are an AI whiteboard assistant for ${conceptInfo?.data?.title ?? "learning"}. Analyze the canvas and provide helpful annotations. Return JSON array of annotation objects.`,
-              messages: [{
-                role: "user",
-                content: `Canvas data: ${JSON.stringify(parsed.data.canvasData).slice(0, 5000)}\n\nInstruction: ${parsed.data.instruction}\n\nReturn annotations as: [{"type":"text|arrow|highlight|shape","position":{"x":0,"y":0},"content":"...","style":{}}]`
-              }],
+              messages: [
+                {
+                  role: "user",
+                  content: `Canvas data: ${JSON.stringify(parsed.data.canvasData).slice(0, 5000)}\n\nInstruction: ${parsed.data.instruction}\n\nReturn annotations as: [{"type":"text|arrow|highlight|shape","position":{"x":0,"y":0},"content":"...","style":{}}]`,
+                },
+              ],
               maxOutputTokens: 1000,
               temperature: 0.5,
             });
@@ -141,10 +149,17 @@ export const Route = createFileRoute("/api/learning/whiteboard")({
               const jsonMatch = text.match(/\[[\s\S]*\]/);
               if (jsonMatch) annotations = JSON.parse(jsonMatch[0]);
             } catch {
-              annotations = [{ type: "text", position: { x: 100, y: 100 }, content: "AI annotation generated", style: {} }];
+              annotations = [
+                {
+                  type: "text",
+                  position: { x: 100, y: 100 },
+                  content: "AI annotation generated",
+                  style: {},
+                },
+              ];
             }
 
-            const updatedAnnotations = [...(wb.ai_annotations as any[] || []), ...annotations];
+            const updatedAnnotations = [...((wb.ai_annotations as any[]) || []), ...annotations];
 
             const { data, error } = await db
               .from("learning_whiteboards")
@@ -170,7 +185,8 @@ export const Route = createFileRoute("/api/learning/whiteboard")({
               .maybeSingle();
 
             if (error) throw error;
-            if (!data) return apiErrorResponse(404, "NOT_FOUND", "Whiteboard not found.", requestId);
+            if (!data)
+              return apiErrorResponse(404, "NOT_FOUND", "Whiteboard not found.", requestId);
             return Response.json({ whiteboard: data });
           }
 
@@ -203,7 +219,12 @@ export const Route = createFileRoute("/api/learning/whiteboard")({
           return apiErrorResponse(400, "INVALID_ACTION", "Unknown action.", requestId);
         } catch (err) {
           console.error("Whiteboard error:", err);
-          return apiErrorResponse(500, "INTERNAL_ERROR", "Whiteboard service unavailable.", requestId);
+          return apiErrorResponse(
+            500,
+            "INTERNAL_ERROR",
+            "Whiteboard service unavailable.",
+            requestId,
+          );
         }
       },
     },

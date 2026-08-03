@@ -11,10 +11,7 @@ interface ParagraphProps extends React.HTMLAttributes<HTMLParagraphElement> {}
 
 export function Paragraph({ children, className, ...props }: ParagraphProps) {
   return (
-    <p
-      className={cn("leading-relaxed text-foreground/90 mb-4", className)}
-      {...props}
-    >
+    <p className={cn("leading-relaxed text-foreground/90 mb-4", className)} {...props}>
       {children}
     </p>
   );

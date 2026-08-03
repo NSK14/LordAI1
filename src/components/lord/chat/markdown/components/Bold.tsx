@@ -11,10 +11,7 @@ interface BoldProps extends React.HTMLAttributes<HTMLElement> {
 
 export function Bold({ children, className, ...props }: BoldProps) {
   return (
-    <strong
-      className={cn("font-semibold text-primary", className)}
-      {...props}
-    >
+    <strong className={cn("font-semibold text-primary", className)} {...props}>
       {children}
     </strong>
   );

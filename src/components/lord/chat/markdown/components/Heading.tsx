@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 
 interface HeadingProps extends React.HTMLAttributes<HTMLHeadingElement> {
   level: 1 | 2 | 3 | 4 | 5 | 6;
+  children?: React.ReactNode;
 }
 
 const headingStyles: Record<number, string> = {
@@ -20,12 +21,9 @@ const headingStyles: Record<number, string> = {
 
 export function Heading({ level, children, className, ...props }: HeadingProps) {
   const Component = `h${level}` as keyof JSX.IntrinsicElements;
-  
+
   return (
-    <Component
-      className={cn(headingStyles[level], className)}
-      {...props}
-    >
+    <Component className={cn(headingStyles[level], className)} {...props}>
       {children}
     </Component>
   );

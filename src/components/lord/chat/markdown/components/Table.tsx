@@ -65,7 +65,7 @@ export function TableHead({ children, className, ...props }: TableHeadProps) {
       className={cn(
         "px-4 py-3 text-left font-semibold text-foreground/90 border-b border-border/30",
         "bg-white/5",
-        className
+        className,
       )}
       {...props}
     >

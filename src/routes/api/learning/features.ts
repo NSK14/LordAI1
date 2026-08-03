@@ -20,7 +20,9 @@ const ExamRequestSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("create"),
     conceptIds: z.array(z.string().min(1)).min(1).max(20),
-    examType: z.enum(["mock", "chapter", "full_syllabus", "custom", "timed_quiz"]).default("chapter"),
+    examType: z
+      .enum(["mock", "chapter", "full_syllabus", "custom", "timed_quiz"])
+      .default("chapter"),
     questionCount: z.number().int().min(5).max(50).default(10),
     timeLimitMinutes: z.number().int().min(5).max(180).optional(),
     difficulty: z.number().int().min(1).max(5).default(3),
@@ -185,11 +187,17 @@ const GoalsRequestSchema = z.discriminatedUnion("action", [
   }),
   z.object({
     action: z.literal("get_daily"),
-    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
   }),
   z.object({
     action: z.literal("get_weekly"),
-    weekStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    weekStart: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
   }),
   z.object({
     action: z.literal("update_progress"),
@@ -202,7 +210,14 @@ const GoalsRequestSchema = z.discriminatedUnion("action", [
 const MemoryRequestSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("store"),
-    memoryType: z.enum(["conversation", "mistake", "strength", "preference", "goal", "misconception"]),
+    memoryType: z.enum([
+      "conversation",
+      "mistake",
+      "strength",
+      "preference",
+      "goal",
+      "misconception",
+    ]),
     conceptId: z.string().optional(),
     sessionId: z.string().uuid().optional(),
     content: z.record(z.unknown()),
@@ -213,7 +228,9 @@ const MemoryRequestSchema = z.discriminatedUnion("action", [
   }),
   z.object({
     action: z.literal("retrieve"),
-    memoryType: z.enum(["conversation", "mistake", "strength", "preference", "goal", "misconception"]).optional(),
+    memoryType: z
+      .enum(["conversation", "mistake", "strength", "preference", "goal", "misconception"])
+      .optional(),
     conceptId: z.string().optional(),
     limit: z.number().int().min(1).max(100).default(50),
   }),
@@ -253,7 +270,17 @@ const AnalyticsRequestSchema = z.discriminatedUnion("action", [
 const HistoryRequestSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("record"),
-    sessionType: z.enum(["tutor", "practice", "exam", "flashcard", "note", "voice", "whiteboard", "ocr", "revision"]),
+    sessionType: z.enum([
+      "tutor",
+      "practice",
+      "exam",
+      "flashcard",
+      "note",
+      "voice",
+      "whiteboard",
+      "ocr",
+      "revision",
+    ]),
     conceptId: z.string().optional(),
     title: z.string().min(1).max(200),
     summary: z.string().optional(),
@@ -263,7 +290,19 @@ const HistoryRequestSchema = z.discriminatedUnion("action", [
   }),
   z.object({
     action: z.literal("list"),
-    sessionType: z.enum(["tutor", "practice", "exam", "flashcard", "note", "voice", "whiteboard", "ocr", "revision"]).optional(),
+    sessionType: z
+      .enum([
+        "tutor",
+        "practice",
+        "exam",
+        "flashcard",
+        "note",
+        "voice",
+        "whiteboard",
+        "ocr",
+        "revision",
+      ])
+      .optional(),
     conceptId: z.string().optional(),
     limit: z.number().int().min(1).max(100).default(50),
   }),
@@ -281,7 +320,12 @@ export const Route = createFileRoute("/api/learning/features")({
 
         const auth = context as { userId?: string; supabase?: { from: (table: string) => any } };
         if (!auth.userId || !auth.supabase)
-          return apiErrorResponse(401, "AI_AUTH_ERROR", "Sign in to use learning tools.", requestId);
+          return apiErrorResponse(
+            401,
+            "AI_AUTH_ERROR",
+            "Sign in to use learning tools.",
+            requestId,
+          );
 
         const db = auth.supabase;
         const userId = auth.userId;
@@ -289,12 +333,17 @@ export const Route = createFileRoute("/api/learning/features")({
         try {
           if (parsed.data.action === "create") {
             const concepts = await Promise.all(
-              parsed.data.conceptIds.map(id => db.from("learning_concepts").select("*").eq("id", id).maybeSingle())
+              parsed.data.conceptIds.map((id) =>
+                db.from("learning_concepts").select("*").eq("id", id).maybeSingle(),
+              ),
             );
-            const validConcepts = concepts.map(c => c.data).filter(Boolean);
+            const validConcepts = concepts.map((c) => c.data).filter(Boolean);
 
             const questions = [];
-            const questionsPerConcept = Math.max(1, Math.floor(parsed.data.questionCount / validConcepts.length));
+            const questionsPerConcept = Math.max(
+              1,
+              Math.floor(parsed.data.questionCount / validConcepts.length),
+            );
 
             for (const concept of validConcepts) {
               const { data: mastery } = await db
@@ -304,11 +353,23 @@ export const Route = createFileRoute("/api/learning/features")({
                 .eq("concept_id", concept.id)
                 .maybeSingle();
 
-              for (let i = 0; i < questionsPerConcept && questions.length < parsed.data.questionCount; i++) {
-                const difficulty = mastery ? Math.ceil((1 - (mastery.score ?? 0.35)) * 5) : parsed.data.difficulty;
+              for (
+                let i = 0;
+                i < questionsPerConcept && questions.length < parsed.data.questionCount;
+                i++
+              ) {
+                const difficulty = mastery
+                  ? Math.ceil((1 - (mastery.score ?? 0.35)) * 5)
+                  : parsed.data.difficulty;
                 let question;
                 try {
-                  question = await generateAIQuestion(concept, mastery, difficulty, undefined, "mcq");
+                  question = await generateAIQuestion(
+                    concept,
+                    mastery,
+                    difficulty,
+                    undefined,
+                    "mcq",
+                  );
                 } catch {
                   question = fallbackQuestion(concept, difficulty, undefined, "mcq");
                 }
@@ -331,7 +392,9 @@ export const Route = createFileRoute("/api/learning/features")({
                 exam_type: parsed.data.examType,
                 concept_ids: parsed.data.conceptIds,
                 status: "draft",
-                time_limit_seconds: parsed.data.timeLimitMinutes ? parsed.data.timeLimitMinutes * 60 : null,
+                time_limit_seconds: parsed.data.timeLimitMinutes
+                  ? parsed.data.timeLimitMinutes * 60
+                  : null,
               })
               .select()
               .single();
@@ -377,11 +440,14 @@ export const Route = createFileRoute("/api/learning/features")({
               const provider = getOpenRouterProvider();
               const { text } = await generateText({
                 model: provider("openai/gpt-4o-mini"),
-                system: "You are an exam evaluator. Return JSON: {correct: boolean, score: number, feedback: string}",
-                messages: [{
-                  role: "user",
-                  content: `Question: ${question.question.prompt}\nExpected: ${question.question.explanation}\nStudent answer: ${JSON.stringify(parsed.data.userAnswer)}\nEvaluate and return JSON only.`
-                }],
+                system:
+                  "You are an exam evaluator. Return JSON: {correct: boolean, score: number, feedback: string}",
+                messages: [
+                  {
+                    role: "user",
+                    content: `Question: ${question.question.prompt}\nExpected: ${question.question.explanation}\nStudent answer: ${JSON.stringify(parsed.data.userAnswer)}\nEvaluate and return JSON only.`,
+                  },
+                ],
                 maxOutputTokens: 500,
                 temperature: 0.2,
               });
@@ -421,8 +487,9 @@ export const Route = createFileRoute("/api/learning/features")({
               .eq("exam_id", parsed.data.examId);
 
             const totalQuestions = answers?.length ?? 0;
-            const correctAnswers = answers?.filter(a => a.is_correct).length ?? 0;
-            const score = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
+            const correctAnswers = answers?.filter((a) => a.is_correct).length ?? 0;
+            const score =
+              totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
 
             const { data: exam, error } = await db
               .from("learning_exams")
@@ -460,14 +527,14 @@ export const Route = createFileRoute("/api/learning/features")({
                   const { nextMastery } = await import("@/lib/learning/mastery");
                   const update = nextMastery(
                     mastery as { score: number; confidence: number; evidence_count: number } | null,
-                    answer.is_correct ?? false
+                    answer.is_correct ?? false,
                   );
 
                   await db
                     .from("learning_mastery")
                     .upsert(
                       { user_id: userId, concept_id: question.concept_id, ...update },
-                      { onConflict: "user_id,concept_id" }
+                      { onConflict: "user_id,concept_id" },
                     );
                 }
               }
@@ -484,8 +551,7 @@ export const Route = createFileRoute("/api/learning/features")({
               .eq("user_id", userId)
               .maybeSingle();
 
-            if (!exam)
-              return apiErrorResponse(404, "NOT_FOUND", "Exam not found.", requestId);
+            if (!exam) return apiErrorResponse(404, "NOT_FOUND", "Exam not found.", requestId);
 
             const { data: answers } = await db
               .from("learning_exam_answers")
@@ -528,7 +594,7 @@ function generateAIQuestion(
   mastery: any,
   difficulty: number,
   topic: string | undefined,
-  questionType: "mcq" | "numerical" | "short_answer" | "diagram" | "essay"
+  questionType: "mcq" | "numerical" | "short_answer" | "diagram" | "essay",
 ): Promise<any> {
   // Simplified inline version
   return Promise.resolve(fallbackQuestion(concept, difficulty, topic, questionType));
@@ -538,7 +604,7 @@ function fallbackQuestion(
   concept: any,
   difficulty: number,
   topic: string | undefined,
-  questionType: "mcq" | "numerical" | "short_answer" | "diagram" | "essay"
+  questionType: "mcq" | "numerical" | "short_answer" | "diagram" | "essay",
 ): any {
   const diffLabels = ["", "introductory", "foundational", "standard", "advanced", "mastery"];
   const diffLabel = diffLabels[difficulty] ?? "standard";

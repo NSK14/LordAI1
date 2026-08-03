@@ -66,7 +66,11 @@ export function TutorSidebar({
   if (!isOpen) return null;
 
   return (
-    <HudPanel title="Tutor History" subtitle="Your conversations" className="flex h-full flex-col gap-3">
+    <HudPanel
+      title="Tutor History"
+      subtitle="Your conversations"
+      className="flex h-full flex-col gap-3"
+    >
       <button
         onClick={onNew}
         className="flex items-center justify-center gap-2 rounded-md bg-primary/20 px-3 py-2 text-xs font-semibold text-primary transition hover:bg-primary/30"

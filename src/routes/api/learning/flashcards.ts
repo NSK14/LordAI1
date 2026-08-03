@@ -51,7 +51,12 @@ export const Route = createFileRoute("/api/learning/flashcards")({
 
         const auth = context as { userId?: string; supabase?: { from: (table: string) => any } };
         if (!auth.userId || !auth.supabase)
-          return apiErrorResponse(401, "AI_AUTH_ERROR", "Sign in to use learning tools.", requestId);
+          return apiErrorResponse(
+            401,
+            "AI_AUTH_ERROR",
+            "Sign in to use learning tools.",
+            requestId,
+          );
 
         const db = auth.supabase;
         const userId = auth.userId;
@@ -74,7 +79,14 @@ export const Route = createFileRoute("/api/learning/flashcards")({
               .maybeSingle();
 
             const provider = getOpenRouterProvider();
-            const diffLabels = ["", "introductory", "foundational", "standard", "advanced", "mastery"];
+            const diffLabels = [
+              "",
+              "introductory",
+              "foundational",
+              "standard",
+              "advanced",
+              "mastery",
+            ];
             const difficulty = mastery ? Math.ceil((1 - (mastery.score ?? 0.35)) * 5) : 3;
             const diffLabel = diffLabels[difficulty] ?? "standard";
 
@@ -87,13 +99,15 @@ export const Route = createFileRoute("/api/learning/flashcards")({
             const { text } = await generateText({
               model: provider("openai/gpt-4o-mini"),
               system: `You are a ${diffLabel}-level ${concept.framework} flashcard creator. Output ONLY strict JSON array. No markdown. No extra text.`,
-              messages: [{
-                role: "user",
-                content: `Create ${parsed.data.count} flashcards for: "${concept.title}" (${concept.description}).
+              messages: [
+                {
+                  role: "user",
+                  content: `Create ${parsed.data.count} flashcards for: "${concept.title}" (${concept.description}).
 Grade: ${concept.grade_band}, Curriculum: ${concept.framework}, Difficulty: ${diffLabel}.${sourceContext}
 Front: concise question. Back: one-line answer. Tags: relevant keywords.
-Format: [{"front":"...","back":"...","tags":[]}]`
-              }],
+Format: [{"front":"...","back":"...","tags":[]}]`,
+                },
+              ],
               maxOutputTokens: 2000,
               temperature: 0.5,
             });
@@ -162,7 +176,10 @@ Format: [{"front":"...","back":"...","tags":[]}]`
               interval_days = 1;
             }
 
-            ease_factor = Math.max(1.3, ease_factor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)));
+            ease_factor = Math.max(
+              1.3,
+              ease_factor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)),
+            );
 
             const nextReview = new Date(Date.now() + interval_days * 86400000).toISOString();
 
@@ -203,14 +220,14 @@ Format: [{"front":"...","back":"...","tags":[]}]`
               const { nextMastery } = await import("@/lib/learning/mastery");
               const update = nextMastery(
                 mastery as { score: number; confidence: number; evidence_count: number } | null,
-                correct
+                correct,
               );
 
               await db
                 .from("learning_mastery")
                 .upsert(
                   { user_id: userId, concept_id: card.concept_id, ...update },
-                  { onConflict: "user_id,concept_id" }
+                  { onConflict: "user_id,concept_id" },
                 );
             }
 
@@ -250,7 +267,12 @@ Format: [{"front":"...","back":"...","tags":[]}]`
           return apiErrorResponse(400, "INVALID_ACTION", "Unknown action.", requestId);
         } catch (err) {
           console.error("Flashcard error:", err);
-          return apiErrorResponse(500, "INTERNAL_ERROR", "Flashcard service unavailable.", requestId);
+          return apiErrorResponse(
+            500,
+            "INTERNAL_ERROR",
+            "Flashcard service unavailable.",
+            requestId,
+          );
         }
       },
     },

@@ -16,7 +16,7 @@ export function Blockquote({ children, className, ...props }: BlockquoteProps) {
       className={cn(
         "relative pl-6 border-l-2 border-primary/50 bg-primary/5 rounded-r-lg py-2 my-4",
         "before:content-[''] before:absolute before:left-2 before:top-1 before:text-2xl before:text-primary/30",
-        className
+        className,
       )}
       {...props}
     >

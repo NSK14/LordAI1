@@ -2,6 +2,8 @@ import { createHighlighterCore } from "shiki/core";
 import { createJavaScriptRegexEngine } from "shiki/engine/javascript";
 import { createOnigurumaEngine } from "shiki/engine/oniguruma";
 import type { HighlighterGeneric } from "shiki";
+import type { Langs } from "shiki";
+import type { Themes } from "shiki";
 
 let highlighterPromise: Promise<HighlighterGeneric<"html">> | null = null;
 
@@ -56,9 +58,7 @@ export class ShikiHighlighter {
           import("shiki/langs/dart.mjs"),
           import("shiki/langs/xml.mjs"),
         ],
-        engine: createOnigurumaEngine(
-          import("shiki/wasm")
-        ),
+        engine: createOnigurumaEngine(import("shiki/wasm")),
       });
     }
 
@@ -94,20 +94,20 @@ export class ShikiHighlighter {
   rehypePlugin() {
     return async (tree: any) => {
       const highlighter = await this.getHighlighter();
-      
+
       const visit = (node: any) => {
         if (node.type === "element" && node.tagName === "pre") {
           const codeNode = node.children?.[0];
           if (codeNode?.type === "element" && codeNode.tagName === "code") {
             const lang = codeNode.properties?.className?.[0]?.replace("language-", "") || "text";
             const code = codeNode.children?.[0]?.value || "";
-            
+
             try {
               const highlighted = highlighter.codeToHtml(code, {
                 lang: lang as any,
                 theme: "github-dark",
               });
-              
+
               node.tagName = "div";
               node.properties = {
                 ...node.properties,
@@ -130,12 +130,12 @@ export class ShikiHighlighter {
             }
           }
         }
-        
+
         if (node.children) {
           node.children.forEach(visit);
         }
       };
-      
+
       visit(tree);
     };
   }
@@ -145,14 +145,14 @@ let rehypePluginPromise: Promise<any> | null = null;
 
 export async function getRehypePlugin() {
   const highlighter = ShikiHighlighter.getInstance();
-  
+
   if (!rehypePluginPromise) {
     rehypePluginPromise = (async () => {
       await highlighter.getHighlighter();
       return highlighter.rehypePlugin();
     })();
   }
-  
+
   return rehypePluginPromise;
 }
 

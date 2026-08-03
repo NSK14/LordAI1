@@ -46,7 +46,12 @@ export const Route = createFileRoute("/api/learning/analytics")({
 
         const auth = context as { userId?: string; supabase?: { from: (table: string) => any } };
         if (!auth.userId || !auth.supabase)
-          return apiErrorResponse(401, "AI_AUTH_ERROR", "Sign in to use learning tools.", requestId);
+          return apiErrorResponse(
+            401,
+            "AI_AUTH_ERROR",
+            "Sign in to use learning tools.",
+            requestId,
+          );
 
         const db = auth.supabase;
         const userId = auth.userId;
@@ -55,21 +60,24 @@ export const Route = createFileRoute("/api/learning/analytics")({
           if (parsed.data.action === "record") {
             const { data, error } = await db
               .from("learning_analytics")
-              .upsert({
-                user_id: userId,
-                date: parsed.data.date,
-                study_time_seconds: parsed.data.studyTimeSeconds,
-                concepts_studied: parsed.data.conceptsStudied,
-                questions_answered: parsed.data.questionsAnswered,
-                correct_answers: parsed.data.correctAnswers,
-                tutor_messages: parsed.data.tutorMessages,
-                flashcards_reviewed: parsed.data.flashcardsReviewed,
-                notes_created: parsed.data.notesCreated,
-                exams_completed: parsed.data.examsCompleted,
-                voice_minutes: parsed.data.voiceMinutes,
-                whiteboard_sessions: parsed.data.whiteboardSessions,
-                xp_earned: parsed.data.xpEarned,
-              }, { onConflict: "user_id,date" })
+              .upsert(
+                {
+                  user_id: userId,
+                  date: parsed.data.date,
+                  study_time_seconds: parsed.data.studyTimeSeconds,
+                  concepts_studied: parsed.data.conceptsStudied,
+                  questions_answered: parsed.data.questionsAnswered,
+                  correct_answers: parsed.data.correctAnswers,
+                  tutor_messages: parsed.data.tutorMessages,
+                  flashcards_reviewed: parsed.data.flashcardsReviewed,
+                  notes_created: parsed.data.notesCreated,
+                  exams_completed: parsed.data.examsCompleted,
+                  voice_minutes: parsed.data.voiceMinutes,
+                  whiteboard_sessions: parsed.data.whiteboardSessions,
+                  xp_earned: parsed.data.xpEarned,
+                },
+                { onConflict: "user_id,date" },
+              )
               .select()
               .single();
 
@@ -113,9 +121,10 @@ export const Route = createFileRoute("/api/learning/analytics")({
               totalNotes: data?.reduce((sum, d) => sum + (d.notes_created || 0), 0) || 0,
               totalExams: data?.reduce((sum, d) => sum + (d.exams_completed || 0), 0) || 0,
               totalVoiceMinutes: data?.reduce((sum, d) => sum + (d.voice_minutes || 0), 0) || 0,
-              totalWhiteboards: data?.reduce((sum, d) => sum + (d.whiteboard_sessions || 0), 0) || 0,
+              totalWhiteboards:
+                data?.reduce((sum, d) => sum + (d.whiteboard_sessions || 0), 0) || 0,
               totalXP: data?.reduce((sum, d) => sum + (d.xp_earned || 0), 0) || 0,
-              daysActive: data?.filter(d => (d.study_time_seconds || 0) > 0).length || 0,
+              daysActive: data?.filter((d) => (d.study_time_seconds || 0) > 0).length || 0,
               dailyData: data ?? [],
             };
 
@@ -136,7 +145,7 @@ export const Route = createFileRoute("/api/learning/analytics")({
             const today = new Date().toISOString().slice(0, 10);
             let checkDate = today;
 
-            const activeDays = new Set(data?.map(d => d.date) || []);
+            const activeDays = new Set(data?.map((d) => d.date) || []);
 
             while (activeDays.has(checkDate)) {
               streak++;
@@ -151,7 +160,12 @@ export const Route = createFileRoute("/api/learning/analytics")({
           return apiErrorResponse(400, "INVALID_ACTION", "Unknown action.", requestId);
         } catch (err) {
           console.error("Analytics error:", err);
-          return apiErrorResponse(500, "INTERNAL_ERROR", "Analytics service unavailable.", requestId);
+          return apiErrorResponse(
+            500,
+            "INTERNAL_ERROR",
+            "Analytics service unavailable.",
+            requestId,
+          );
         }
       },
     },

@@ -20,11 +20,17 @@ const GoalsRequestSchema = z.discriminatedUnion("action", [
   }),
   z.object({
     action: z.literal("get_daily"),
-    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
   }),
   z.object({
     action: z.literal("get_weekly"),
-    weekStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    weekStart: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
   }),
   z.object({
     action: z.literal("update_progress"),
@@ -54,7 +60,12 @@ export const Route = createFileRoute("/api/learning/goals")({
 
         const auth = context as { userId?: string; supabase?: { from: (table: string) => any } };
         if (!auth.userId || !auth.supabase)
-          return apiErrorResponse(401, "AI_AUTH_ERROR", "Sign in to use learning tools.", requestId);
+          return apiErrorResponse(
+            401,
+            "AI_AUTH_ERROR",
+            "Sign in to use learning tools.",
+            requestId,
+          );
 
         const db = auth.supabase;
         const userId = auth.userId;
@@ -63,12 +74,15 @@ export const Route = createFileRoute("/api/learning/goals")({
           if (parsed.data.action === "set_daily") {
             const { data, error } = await db
               .from("learning_daily_goals")
-              .upsert({
-                user_id: userId,
-                date: parsed.data.date,
-                target_minutes: parsed.data.targetMinutes,
-                target_concepts: parsed.data.targetConcepts,
-              }, { onConflict: "user_id,date" })
+              .upsert(
+                {
+                  user_id: userId,
+                  date: parsed.data.date,
+                  target_minutes: parsed.data.targetMinutes,
+                  target_concepts: parsed.data.targetConcepts,
+                },
+                { onConflict: "user_id,date" },
+              )
               .select()
               .single();
 
@@ -79,13 +93,16 @@ export const Route = createFileRoute("/api/learning/goals")({
           if (parsed.data.action === "set_weekly") {
             const { data, error } = await db
               .from("learning_weekly_goals")
-              .upsert({
-                user_id: userId,
-                week_start: parsed.data.weekStart,
-                target_minutes: parsed.data.targetMinutes,
-                target_concepts: parsed.data.targetConcepts,
-                target_exams: parsed.data.targetExams,
-              }, { onConflict: "user_id,week_start" })
+              .upsert(
+                {
+                  user_id: userId,
+                  week_start: parsed.data.weekStart,
+                  target_minutes: parsed.data.targetMinutes,
+                  target_concepts: parsed.data.targetConcepts,
+                  target_exams: parsed.data.targetExams,
+                },
+                { onConflict: "user_id,week_start" },
+              )
               .select()
               .single();
 
@@ -107,7 +124,8 @@ export const Route = createFileRoute("/api/learning/goals")({
           }
 
           if (parsed.data.action === "get_weekly") {
-            const weekStart = parsed.data.weekStart || getWeekStart(new Date()).toISOString().slice(0, 10);
+            const weekStart =
+              parsed.data.weekStart || getWeekStart(new Date()).toISOString().slice(0, 10);
             const { data, error } = await db
               .from("learning_weekly_goals")
               .select("*")
@@ -125,7 +143,9 @@ export const Route = createFileRoute("/api/learning/goals")({
               .update({
                 actual_minutes: db.raw(`actual_minutes + ${parsed.data.minutesStudied}`),
                 completed_concepts: db.raw(`completed_concepts + ${parsed.data.conceptsCompleted}`),
-                is_completed: db.raw(`actual_minutes + ${parsed.data.minutesStudied} >= target_minutes`),
+                is_completed: db.raw(
+                  `actual_minutes + ${parsed.data.minutesStudied} >= target_minutes`,
+                ),
               })
               .eq("user_id", userId)
               .eq("date", parsed.data.date)

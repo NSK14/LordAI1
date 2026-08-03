@@ -1,13 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Send,
-  MessageSquare,
-  Bot,
-  User,
-  Copy,
-  Check,
-} from "lucide-react";
+import { Send, MessageSquare, Bot, User, Copy, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { streamChat } from "@/lib/study-chat";
 import { useCurrentUser } from "@/hooks/use-current-user";
@@ -25,7 +18,8 @@ import { StudyHeader } from "../StudyHeader";
 import { selectNextConcept } from "@/lib/learning/mastery";
 import { generateChatTitle, shouldGenerateTitle } from "@/lib/chat-title";
 import type { LearningSnapshot, StudyView, TutorMode } from "../types";
-import { TutorSidebar } from "./TutorSidebar";
+import type { TutorSessionRow, LearningSession } from "@/lib/learning/types";
+import { TutorSidebar } from "../TutorSidebar";
 
 interface TutorViewProps {
   snapshot: LearningSnapshot | undefined;
@@ -69,7 +63,8 @@ const SUGGESTED_PROMPTS = [
   "Show me a worked example of Newton's second law",
 ];
 
-const EMPTY_SESSIONS: ReturnType<typeof listTutorSessions> extends Promise<infer T> ? T : never = [] as never;
+const EMPTY_SESSIONS: ReturnType<typeof listTutorSessions> extends Promise<infer T> ? T : never =
+  [] as never;
 
 export function TutorView({ snapshot, userId, conceptId, onBack }: TutorViewProps) {
   const { user } = useCurrentUser();
@@ -79,16 +74,7 @@ export function TutorView({ snapshot, userId, conceptId, onBack }: TutorViewProp
   const [tutorMode, setTutorMode] = useState<TutorMode>("socratic");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [sessions, setSessions] = useState<Array<{
-    id: string;
-    concept_id: string | null;
-    title: string;
-    status: string;
-    subject: string | null;
-    topic: string | null;
-    created_at: string;
-    updated_at: string;
-  }>>([]);
+  const [sessions, setSessions] = useState<TutorSessionRow[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
@@ -105,12 +91,13 @@ export function TutorView({ snapshot, userId, conceptId, onBack }: TutorViewProp
 
   useEffect(() => {
     if (!user?.id) return;
+    const uid = user.id;
     let cancelled = false;
 
     async function loadSessions() {
       setIsLoadingSessions(true);
       try {
-        const all = await listTutorSessions(user.id);
+        const all = await listTutorSessions(uid);
         if (cancelled) return;
         setSessions(all);
 
@@ -119,7 +106,7 @@ export function TutorView({ snapshot, userId, conceptId, onBack }: TutorViewProp
           if (latest && !sessionId) {
             setSessionId(latest.id);
             setIsLoadingMessages(true);
-            const saved = await getSessionMessages(user.id, latest.id);
+            const saved = await getSessionMessages(uid, latest.id);
             if (!cancelled) {
               if (saved.length) {
                 setMessages(
@@ -177,6 +164,7 @@ export function TutorView({ snapshot, userId, conceptId, onBack }: TutorViewProp
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, conceptId, activeConcept?.id]);
 
   const handleSelectSession = useCallback(
@@ -237,11 +225,14 @@ export function TutorView({ snapshot, userId, conceptId, onBack }: TutorViewProp
     ]);
   }, [activeConcept]);
 
-  const handleRename = useCallback(async (id: string, title: string) => {
-    if (!user?.id) return;
-    await renameTutorSession(user.id, id, title);
-    setSessions((prev) => prev.map((s) => (s.id === id ? { ...s, title } : s)));
-  }, [user?.id]);
+  const handleRename = useCallback(
+    async (id: string, title: string) => {
+      if (!user?.id) return;
+      await renameTutorSession(user.id, id, title);
+      setSessions((prev) => prev.map((s) => (s.id === id ? { ...s, title } : s)));
+    },
+    [user?.id],
+  );
 
   const handleDelete = useCallback(
     async (id: string) => {
@@ -321,7 +312,7 @@ export function TutorView({ snapshot, userId, conceptId, onBack }: TutorViewProp
               topic: activeConcept?.title ?? null,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
-            },
+            } as LearningSession,
             ...prev,
           ];
         });
@@ -396,9 +387,7 @@ export function TutorView({ snapshot, userId, conceptId, onBack }: TutorViewProp
         );
         setSessions((prev) =>
           prev.map((s) =>
-            s.id === persistedSessionId
-              ? { ...s, updated_at: new Date().toISOString() }
-              : s,
+            s.id === persistedSessionId ? { ...s, updated_at: new Date().toISOString() } : s,
           ),
         );
 
@@ -472,9 +461,7 @@ export function TutorView({ snapshot, userId, conceptId, onBack }: TutorViewProp
         view="tutor"
         title="LORD AI Tutor"
         subtitle={
-          activeConcept
-            ? `${activeConcept.title} · ${activeConcept.subject}`
-            : "Adaptive tutoring"
+          activeConcept ? `${activeConcept.title} · ${activeConcept.subject}` : "Adaptive tutoring"
         }
         icon={<MessageSquare className="h-6 w-6 text-primary" />}
         onBack={onBack}

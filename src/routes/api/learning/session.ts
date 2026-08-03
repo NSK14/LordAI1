@@ -41,7 +41,9 @@ const RequestSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("exam"),
     conceptIds: z.array(z.string().min(1)).min(1).max(20),
-    examType: z.enum(["mock", "chapter", "full_syllabus", "custom", "timed_quiz"]).default("chapter"),
+    examType: z
+      .enum(["mock", "chapter", "full_syllabus", "custom", "timed_quiz"])
+      .default("chapter"),
     questionCount: z.number().int().min(5).max(50).default(10),
     timeLimitMinutes: z.number().int().min(5).max(180).optional(),
     difficulty: z.number().int().min(1).max(5).default(3),
@@ -49,12 +51,19 @@ const RequestSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("tutor"),
     conceptId: z.string().optional(),
-    mode: z.enum(["socratic", "direct", "hint", "worked_example", "simplified", "analogy", "diagnostic"]).default("socratic"),
+    mode: z
+      .enum(["socratic", "direct", "hint", "worked_example", "simplified", "analogy", "diagnostic"])
+      .default("socratic"),
     userMessage: z.string().min(1),
-    conversationHistory: z.array(z.object({
-      role: z.enum(["user", "assistant"]),
-      content: z.string(),
-    })).max(20).optional(),
+    conversationHistory: z
+      .array(
+        z.object({
+          role: z.enum(["user", "assistant"]),
+          content: z.string(),
+        }),
+      )
+      .max(20)
+      .optional(),
     subject: z.string().default("Mathematics"),
     explanationDepth: z.enum(["concise", "standard", "detailed"]).default("standard"),
     gradeBand: z.enum(["middle", "high"]).default("high"),
@@ -74,10 +83,14 @@ const RequestSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("memory_extract"),
     sessionId: z.string().min(1),
-    messages: z.array(z.object({
-      role: z.enum(["user", "assistant"]),
-      content: z.string(),
-    })).min(1),
+    messages: z
+      .array(
+        z.object({
+          role: z.enum(["user", "assistant"]),
+          content: z.string(),
+        }),
+      )
+      .min(1),
   }),
 ]);
 
@@ -96,7 +109,7 @@ function buildQuestionPrompt(
   mastery: Mastery | undefined,
   difficulty: number,
   topic: string | undefined,
-  questionType: "mcq" | "numerical" | "short_answer" | "diagram" | "essay"
+  questionType: "mcq" | "numerical" | "short_answer" | "diagram" | "essay",
 ): string {
   const diffLabels = ["", "introductory", "foundational", "standard", "advanced", "mastery"];
   const diffLabel = diffLabels[difficulty] ?? "standard";
@@ -138,14 +151,19 @@ async function generateAIQuestion(
   mastery: Mastery | undefined,
   difficulty: number,
   topic: string | undefined,
-  questionType: "mcq" | "numerical" | "short_answer" | "diagram" | "essay"
+  questionType: "mcq" | "numerical" | "short_answer" | "diagram" | "essay",
 ): Promise<Question> {
   const provider = getOpenRouterProvider();
 
   const { text } = await generateText({
     model: provider("openai/gpt-4o-mini"),
     system: `You are a ${["", "introductory", "foundational", "standard", "advanced", "mastery"][difficulty] ?? "standard"}-level ${concept.framework} assessment designer. Output ONLY strict JSON. No markdown. No extra text.`,
-    messages: [{ role: "user", content: buildQuestionPrompt(concept, mastery, difficulty, topic, questionType) }],
+    messages: [
+      {
+        role: "user",
+        content: buildQuestionPrompt(concept, mastery, difficulty, topic, questionType),
+      },
+    ],
     maxOutputTokens: 800,
     temperature: 0.4,
     maxRetries: 2,
@@ -177,7 +195,7 @@ function fallbackQuestion(
   concept: LearningConcept,
   difficulty: number,
   topic: string | undefined,
-  questionType: "mcq" | "numerical" | "short_answer" | "diagram" | "essay"
+  questionType: "mcq" | "numerical" | "short_answer" | "diagram" | "essay",
 ): Question {
   const diffLabels = ["", "introductory", "foundational", "standard", "advanced", "mastery"];
   const diffLabel = diffLabels[difficulty] ?? "standard";
@@ -264,17 +282,25 @@ async function generatePlan(
   weeklyMinutes: number,
   examDate: string | undefined,
   syllabus: string[] | undefined,
-  supabase: any
+  supabase: any,
 ) {
   const concepts = await Promise.all(
-    conceptIds.map(id => supabase.from("learning_concepts").select("*").eq("id", id).maybeSingle())
+    conceptIds.map((id) =>
+      supabase.from("learning_concepts").select("*").eq("id", id).maybeSingle(),
+    ),
   );
-  const validConcepts = concepts.map(c => c.data).filter(Boolean);
+  const validConcepts = concepts.map((c) => c.data).filter(Boolean);
 
   const now = new Date();
   const examDeadline = examDate ? new Date(examDate) : new Date(now.getTime() + 30 * 86400000);
-  const weeksAvailable = Math.max(1, Math.ceil((examDeadline.getTime() - now.getTime()) / (7 * 86400000)));
-  const minutesPerWeek = Math.min(weeklyMinutes, Math.floor(weeklyMinutes / weeksAvailable) * weeksAvailable);
+  const weeksAvailable = Math.max(
+    1,
+    Math.ceil((examDeadline.getTime() - now.getTime()) / (7 * 86400000)),
+  );
+  const minutesPerWeek = Math.min(
+    weeklyMinutes,
+    Math.floor(weeklyMinutes / weeksAvailable) * weeksAvailable,
+  );
 
   const tasks = validConcepts.slice(0, 10).map((concept, index) => {
     const week = index % weeksAvailable;
@@ -282,7 +308,10 @@ async function generatePlan(
     return {
       conceptId: concept.id,
       taskType,
-      estimatedMinutes: Math.max(10, Math.round(minutesPerWeek / Math.min(validConcepts.length, 5))),
+      estimatedMinutes: Math.max(
+        10,
+        Math.round(minutesPerWeek / Math.min(validConcepts.length, 5)),
+      ),
       dueAt: new Date(now.getTime() + week * 7 * 86400000 + index * 86400000).toISOString(),
     };
   });
@@ -295,7 +324,7 @@ async function generateFlashcards(
   mastery: Mastery | undefined,
   count: number,
   difficulty: number,
-  supabase: any
+  supabase: any,
 ) {
   const provider = getOpenRouterProvider();
   const diffLabels = ["", "introductory", "foundational", "standard", "advanced", "mastery"];
@@ -304,13 +333,15 @@ async function generateFlashcards(
   const { text } = await generateText({
     model: provider("openai/gpt-4o-mini"),
     system: `You are a ${diffLabel}-level ${concept.framework} flashcard creator. Output ONLY strict JSON array. No markdown. No extra text.`,
-    messages: [{
-      role: "user",
-      content: `Create ${count} flashcards for: "${concept.title}" (${concept.description}).
+    messages: [
+      {
+        role: "user",
+        content: `Create ${count} flashcards for: "${concept.title}" (${concept.description}).
 Grade: ${concept.grade_band}, Curriculum: ${concept.framework}, Difficulty: ${diffLabel}.
 Front: concise question. Back: one-line answer.
-Format: [{"front":"...","back":"..."}]`
-    }],
+Format: [{"front":"...","back":"..."}]`,
+      },
+    ],
     maxOutputTokens: 1500,
     temperature: 0.5,
   });
@@ -326,12 +357,14 @@ async function generateExam(
   questionCount: number,
   timeLimitMinutes: number | undefined,
   difficulty: number,
-  supabase: any
+  supabase: any,
 ) {
   const concepts = await Promise.all(
-    conceptIds.map(id => supabase.from("learning_concepts").select("*").eq("id", id).maybeSingle())
+    conceptIds.map((id) =>
+      supabase.from("learning_concepts").select("*").eq("id", id).maybeSingle(),
+    ),
   );
-  const validConcepts = concepts.map(c => c.data).filter(Boolean);
+  const validConcepts = concepts.map((c) => c.data).filter(Boolean);
 
   const questions = [];
   const questionsPerConcept = Math.max(1, Math.floor(questionCount / validConcepts.length));
@@ -378,18 +411,24 @@ async function generateTutorResponse(
   explanationDepth: "concise" | "standard" | "detailed",
   gradeBand: "middle" | "high",
   curriculum: string,
-  sourceContext: string | undefined
+  sourceContext: string | undefined,
 ): Promise<{ answer: string; sourcesUsed: string[] }> {
   const provider = getOpenRouterProvider();
 
   const modeInstructions: Record<TutorMode, string> = {
-    socratic: "Use the Socratic method. Ask guiding questions. Never give the direct answer immediately. Lead the student to discover the answer through reasoning.",
-    direct: "Provide a clear, direct explanation. Answer the question fully but encourage follow-up.",
+    socratic:
+      "Use the Socratic method. Ask guiding questions. Never give the direct answer immediately. Lead the student to discover the answer through reasoning.",
+    direct:
+      "Provide a clear, direct explanation. Answer the question fully but encourage follow-up.",
     hint: "Give only a single, short hint. Do not explain the full answer.",
-    worked_example: "Provide a complete step-by-step worked example. Label it as AI-generated. Encourage the student to try a similar problem.",
-    simplified: "Explain in simpler language with an everyday analogy. Avoid jargon. Use concrete examples.",
-    analogy: "Explain primarily through a relatable real-world analogy. Connect the analogy back to the concept.",
-    diagnostic: "Ask one diagnostic question to check understanding. Do not teach. Do not give the answer.",
+    worked_example:
+      "Provide a complete step-by-step worked example. Label it as AI-generated. Encourage the student to try a similar problem.",
+    simplified:
+      "Explain in simpler language with an everyday analogy. Avoid jargon. Use concrete examples.",
+    analogy:
+      "Explain primarily through a relatable real-world analogy. Connect the analogy back to the concept.",
+    diagnostic:
+      "Ask one diagnostic question to check understanding. Do not teach. Do not give the answer.",
   };
 
   const depthGuidance = {
@@ -408,12 +447,19 @@ async function generateTutorResponse(
     "- Offer a hint, concrete example, and a one-question understanding check.",
     "- Never claim certainty when it is unwarranted.",
     "- Label any worked example as AI-generated and encourage the student to check course-specific requirements.",
-    sourceContext ? `PRIVATE STUDENT MATERIALS (use only when relevant and cite the source):\n${sourceContext}` : "No private study material is selected for this answer.",
+    sourceContext
+      ? `PRIVATE STUDENT MATERIALS (use only when relevant and cite the source):\n${sourceContext}`
+      : "No private study material is selected for this answer.",
     conversationHistory.length > 0
-      ? `RECENT CONVERSATION:\n${conversationHistory.slice(-6).map(m => `${m.role.toUpperCase()}: ${m.content}`).join("\n")}`
+      ? `RECENT CONVERSATION:\n${conversationHistory
+          .slice(-6)
+          .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
+          .join("\n")}`
       : "",
     `Student message: ${userMessage}`,
-  ].filter(Boolean).join("\n\n");
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 
   const { text } = await generateText({
     model: provider("openai/gpt-4o-mini"),
@@ -429,24 +475,29 @@ async function generateTutorResponse(
 async function generateSummary(
   concept: LearningConcept,
   sourceText: string,
-  format: "summary" | "key_points" | "cheat_sheet" | "flashcards"
+  format: "summary" | "key_points" | "cheat_sheet" | "flashcards",
 ): Promise<string> {
   const provider = getOpenRouterProvider();
 
   const formatInstructions = {
-    summary: "Write a clear, structured summary (3-5 paragraphs) covering the main ideas, key formulas, and important concepts.",
+    summary:
+      "Write a clear, structured summary (3-5 paragraphs) covering the main ideas, key formulas, and important concepts.",
     key_points: "Extract 8-12 bullet-point key points. Each point should be one concise sentence.",
-    cheat_sheet: "Create a compact cheat sheet with: 1) Key formulas 2) Definitions 3) Common pitfalls 4) Quick reference table. Format in markdown.",
-    flashcards: "Generate 10 flashcards. Front: question. Back: answer. Format as JSON: [{\"front\":\"...\",\"back\":\"...\"}]",
+    cheat_sheet:
+      "Create a compact cheat sheet with: 1) Key formulas 2) Definitions 3) Common pitfalls 4) Quick reference table. Format in markdown.",
+    flashcards:
+      'Generate 10 flashcards. Front: question. Back: answer. Format as JSON: [{"front":"...","back":"..."}]',
   };
 
   const { text } = await generateText({
     model: provider("openai/gpt-4o-mini"),
     system: `You are a ${concept.framework} study material creator. Output only the requested format. No extra commentary.`,
-    messages: [{
-      role: "user",
-      content: `Source material:\n${sourceText.slice(0, 15000)}\n\nConcept: ${concept.title} (${concept.standard_code})\n${formatInstructions[format]}`
-    }],
+    messages: [
+      {
+        role: "user",
+        content: `Source material:\n${sourceText.slice(0, 15000)}\n\nConcept: ${concept.title} (${concept.standard_code})\n${formatInstructions[format]}`,
+      },
+    ],
     maxOutputTokens: 2000,
     temperature: 0.3,
   });
@@ -454,10 +505,7 @@ async function generateSummary(
   return text;
 }
 
-async function generateRevisionSchedule(
-  conceptIds: string[],
-  supabase: any
-) {
+async function generateRevisionSchedule(conceptIds: string[], supabase: any) {
   const schedules = [];
 
   for (const conceptId of conceptIds) {
@@ -500,26 +548,29 @@ async function generateRevisionSchedule(
 
 async function extractMemories(
   sessionId: string,
-  messages: { role: "user" | "assistant"; content: string }[]
-): Promise<Array<{
-  memory_type: "conversation" | "mistake" | "strength" | "preference" | "goal" | "misconception";
-  concept_id: string | null;
-  content: Record<string, unknown>;
-  summary: string;
-  importance: number;
-  confidence: number;
-  tags: string[];
-}>> {
+  messages: { role: "user" | "assistant"; content: string }[],
+): Promise<
+  Array<{
+    memory_type: "conversation" | "mistake" | "strength" | "preference" | "goal" | "misconception";
+    concept_id: string | null;
+    content: Record<string, unknown>;
+    summary: string;
+    importance: number;
+    confidence: number;
+    tags: string[];
+  }>
+> {
   const provider = getOpenRouterProvider();
 
-  const conversation = messages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join("\n");
+  const conversation = messages.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join("\n");
 
   const { text } = await generateText({
     model: provider("openai/gpt-4o-mini"),
     system: `You are a learning memory extractor. Analyze the conversation and extract structured memories. Output ONLY a JSON array of memory objects. No markdown. No extra text.`,
-    messages: [{
-      role: "user",
-      content: `Conversation:\n${conversation}\n\nExtract memories as JSON array with this exact shape:
+    messages: [
+      {
+        role: "user",
+        content: `Conversation:\n${conversation}\n\nExtract memories as JSON array with this exact shape:
 [{
   "memory_type": "conversation|mistake|strength|preference|goal|misconception",
   "concept_id": "string|null",
@@ -528,8 +579,9 @@ async function extractMemories(
   "importance": 0.0-1.0,
   "confidence": 0.0-1.0,
   "tags": ["string"]
-}]`
-    }],
+}]`,
+      },
+    ],
     maxOutputTokens: 2000,
     temperature: 0.3,
   });
@@ -555,7 +607,12 @@ export const Route = createFileRoute("/api/learning/session")({
 
         const auth = context as { userId?: string; supabase?: { from: (table: string) => any } };
         if (!auth.userId || !auth.supabase)
-          return apiErrorResponse(401, "AI_AUTH_ERROR", "Sign in to use learning tools.", requestId);
+          return apiErrorResponse(
+            401,
+            "AI_AUTH_ERROR",
+            "Sign in to use learning tools.",
+            requestId,
+          );
 
         const db = auth.supabase;
         const userId = auth.userId;
@@ -568,7 +625,12 @@ export const Route = createFileRoute("/api/learning/session")({
               .eq("id", parsed.data.conceptId)
               .maybeSingle();
             if (error || !concept)
-              return apiErrorResponse(404, "NOT_FOUND", "Learning concept was not found.", requestId);
+              return apiErrorResponse(
+                404,
+                "NOT_FOUND",
+                "Learning concept was not found.",
+                requestId,
+              );
 
             const { data: mastery } = await db
               .from("learning_mastery")
@@ -579,16 +641,33 @@ export const Route = createFileRoute("/api/learning/session")({
 
             let question: Question;
             try {
-              question = await generateAIQuestion(concept, mastery, parsed.data.difficulty, parsed.data.topic, parsed.data.questionType);
+              question = await generateAIQuestion(
+                concept,
+                mastery,
+                parsed.data.difficulty,
+                parsed.data.topic,
+                parsed.data.questionType,
+              );
             } catch {
-              question = fallbackQuestion(concept, parsed.data.difficulty, parsed.data.topic, parsed.data.questionType);
+              question = fallbackQuestion(
+                concept,
+                parsed.data.difficulty,
+                parsed.data.topic,
+                parsed.data.questionType,
+              );
             }
 
             return Response.json({ question, aiGenerated: question.aiGenerated });
           }
 
           if (parsed.data.action === "plan") {
-            const plan = await generatePlan(parsed.data.conceptIds, parsed.data.weeklyMinutes, parsed.data.examDate, parsed.data.syllabus, db);
+            const plan = await generatePlan(
+              parsed.data.conceptIds,
+              parsed.data.weeklyMinutes,
+              parsed.data.examDate,
+              parsed.data.syllabus,
+              db,
+            );
             return Response.json(plan);
           }
 
@@ -608,12 +687,25 @@ export const Route = createFileRoute("/api/learning/session")({
               .eq("concept_id", concept.id)
               .maybeSingle();
 
-            const cards = await generateFlashcards(concept, mastery, parsed.data.count, parsed.data.difficulty, db);
+            const cards = await generateFlashcards(
+              concept,
+              mastery,
+              parsed.data.count,
+              parsed.data.difficulty,
+              db,
+            );
             return Response.json({ cards, aiGenerated: true });
           }
 
           if (parsed.data.action === "exam") {
-            const exam = await generateExam(parsed.data.conceptIds, parsed.data.examType, parsed.data.questionCount, parsed.data.timeLimitMinutes, parsed.data.difficulty, db);
+            const exam = await generateExam(
+              parsed.data.conceptIds,
+              parsed.data.examType,
+              parsed.data.questionCount,
+              parsed.data.timeLimitMinutes,
+              parsed.data.difficulty,
+              db,
+            );
             return Response.json(exam);
           }
 
@@ -637,7 +729,7 @@ export const Route = createFileRoute("/api/learning/session")({
               parsed.data.explanationDepth,
               parsed.data.gradeBand,
               parsed.data.curriculum,
-              parsed.data.sourceContext
+              parsed.data.sourceContext,
             );
 
             return Response.json(result);
@@ -652,7 +744,11 @@ export const Route = createFileRoute("/api/learning/session")({
             if (!concept)
               return apiErrorResponse(404, "NOT_FOUND", "Concept not found.", requestId);
 
-            const result = await generateSummary(concept, parsed.data.sourceText, parsed.data.format);
+            const result = await generateSummary(
+              concept,
+              parsed.data.sourceText,
+              parsed.data.format,
+            );
             return Response.json({ content: result, format: parsed.data.format });
           }
 
@@ -669,7 +765,12 @@ export const Route = createFileRoute("/api/learning/session")({
           return apiErrorResponse(400, "INVALID_ACTION", "Unknown action.", requestId);
         } catch (err) {
           console.error("Learning session error:", err);
-          return apiErrorResponse(500, "INTERNAL_ERROR", "Learning service unavailable.", requestId);
+          return apiErrorResponse(
+            500,
+            "INTERNAL_ERROR",
+            "Learning service unavailable.",
+            requestId,
+          );
         }
       },
     },

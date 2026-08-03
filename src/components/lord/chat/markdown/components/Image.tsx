@@ -15,10 +15,7 @@ export function Image({ src, alt, className, ...props }: ImageProps) {
     <img
       src={src}
       alt={alt}
-      className={cn(
-        "rounded-lg border border-border/20 max-w-full h-auto",
-        className
-      )}
+      className={cn("rounded-lg border border-border/20 max-w-full h-auto", className)}
       {...props}
     />
   );
