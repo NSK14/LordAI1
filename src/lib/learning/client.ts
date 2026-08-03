@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- database schema is defined in types and client types regenerate after migration deployment. */
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 import { nextMastery } from "./mastery";
 import type {
   LearningConcept,
@@ -156,38 +157,123 @@ export async function getLearningSnapshot(userId: string): Promise<LearningSnaps
       grade_band: concept.grade_band as LearningConcept["grade_band"],
     })) as LearningConcept[],
     mastery: (mastery.data ?? []) as Mastery[],
-    tasks: tasks.data ?? [],
-    boards: boards.data ?? [],
-    resources: resources.data ?? [],
-    profile: profile.data,
-    sources: sources.data ?? [],
-    integrations: integrations.data ?? [],
-    sessions: sessions.data ?? [],
-    artifacts: artifacts.data ?? [],
-    attempts: attempts.data ?? [],
-    flashcards: flashcards.data ?? [],
-    notes: notes.data ?? [],
-    exams: exams.data ?? [],
-    revision_schedule: revisionSchedule.data ?? [],
-    memory: memory.data ?? [],
-    voice_sessions: voiceSessions.data ?? [],
-    ocr_jobs: ocrJobs.data ?? [],
-    whiteboards: whiteboards.data ?? [],
-    daily_goals: dailyGoals.data ?? [],
-    weekly_goals: weeklyGoals.data ?? [],
-    analytics: analytics.data ?? [],
-    history: history.data ?? [],
-  };
+    tasks: (tasks.data ?? []) as (LearningPlanTask & { learning_concepts?: { title: string } })[],
+    boards: (boards.data ?? []) as LearningBoard[],
+    resources: (resources.data ?? []) as LearningResource[],
+    profile: profile.data as LearningProfile | null,
+    sources: (sources.data ?? []) as LearningSource[],
+    integrations: (integrations.data ?? []) as any[],
+    sessions: (sessions.data ?? []) as LearningSession[],
+    artifacts: (artifacts.data ?? []) as LearningArtifact[],
+    attempts: (attempts.data ?? []) as LearningAttempt[],
+    flashcards: (flashcards.data ?? []) as Flashcard[],
+    notes: (notes.data ?? []) as LearningNote[],
+    exams: (exams.data ?? []) as Exam[],
+    revision_schedule: (revisionSchedule.data ?? []) as RevisionSchedule[],
+    memory: (memory.data ?? []) as LearningMemory[],
+    voice_sessions: (voiceSessions.data ?? []) as VoiceSession[],
+    ocr_jobs: (ocrJobs.data ?? []) as OCRJob[],
+    whiteboards: (whiteboards.data ?? []) as Whiteboard[],
+    daily_goals: (dailyGoals.data ?? []) as DailyGoal[],
+    weekly_goals: (weeklyGoals.data ?? []) as WeeklyGoal[],
+    analytics: (analytics.data ?? []) as LearningAnalytics[],
+    history: (history.data ?? []) as LearningHistory[],
+  } as LearningSnapshot;
 }
 
-export async function createTutorSession(userId: string, conceptId: string | null, title: string) {
+export async function createTutorSession(
+  userId: string,
+  conceptId: string | null,
+  title: string,
+  subject?: string | null,
+  topic?: string | null,
+) {
   const { data, error } = await db
     .from("learning_sessions")
-    .insert({ user_id: userId, concept_id: conceptId, title })
+    .insert({ user_id: userId, concept_id: conceptId, title, subject: subject ?? null, topic: topic ?? null })
     .select("id")
     .single();
   if (error) throw error;
   return data.id as string;
+}
+
+export async function getLatestTutorSession(userId: string, conceptId: string | null) {
+  let query = db
+    .from("learning_sessions")
+    .select("id,concept_id,title,status,subject,topic,created_at,updated_at")
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .order("updated_at", { ascending: false })
+    .limit(1);
+  if (conceptId) query = query.eq("concept_id", conceptId);
+  const { data, error } = await query.maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function listTutorSessions(userId: string) {
+  const { data, error } = await db
+    .from("learning_sessions")
+    .select("id,concept_id,title,status,subject,topic,created_at,updated_at")
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .order("updated_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as Array<{
+    id: string;
+    concept_id: string | null;
+    title: string;
+    status: string;
+    subject: string | null;
+    topic: string | null;
+    created_at: string;
+    updated_at: string;
+  }>;
+}
+
+export async function searchTutorSessions(userId: string, query: string) {
+  const { data, error } = await db
+    .from("learning_sessions")
+    .select("id,concept_id,title,status,subject,topic,created_at,updated_at")
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .ilike("title", `%${query}%`)
+    .order("updated_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as Array<{
+    id: string;
+    concept_id: string | null;
+    title: string;
+    status: string;
+    subject: string | null;
+    topic: string | null;
+    created_at: string;
+    updated_at: string;
+  }>;
+}
+
+export async function renameTutorSession(userId: string, sessionId: string, title: string) {
+  const { error } = await db
+    .from("learning_sessions")
+    .update({ title })
+    .eq("id", sessionId)
+    .eq("user_id", userId);
+  if (error) throw error;
+}
+
+export async function deleteTutorSession(userId: string, sessionId: string) {
+  const { error: messagesError } = await db
+    .from("learning_messages")
+    .delete()
+    .eq("session_id", sessionId)
+    .eq("user_id", userId);
+  if (messagesError) throw messagesError;
+  const { error } = await db
+    .from("learning_sessions")
+    .delete()
+    .eq("id", sessionId)
+    .eq("user_id", userId);
+  if (error) throw error;
 }
 
 export async function saveTutorMessage(
@@ -238,6 +324,71 @@ export async function getLatestTutorSession(userId: string, conceptId: string | 
   return data;
 }
 
+export async function listTutorSessions(userId: string) {
+  const { data, error } = await db
+    .from("learning_sessions")
+    .select("id,concept_id,title,status,subject,topic,created_at,updated_at")
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .order("updated_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as Array<{
+    id: string;
+    concept_id: string | null;
+    title: string;
+    status: string;
+    subject: string | null;
+    topic: string | null;
+    created_at: string;
+    updated_at: string;
+  }>;
+}
+
+export async function searchTutorSessions(userId: string, query: string) {
+  const { data, error } = await db
+    .from("learning_sessions")
+    .select("id,concept_id,title,status,subject,topic,created_at,updated_at")
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .ilike("title", `%${query}%`)
+    .order("updated_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as Array<{
+    id: string;
+    concept_id: string | null;
+    title: string;
+    status: string;
+    subject: string | null;
+    topic: string | null;
+    created_at: string;
+    updated_at: string;
+  }>;
+}
+
+export async function renameTutorSession(userId: string, sessionId: string, title: string) {
+  const { error } = await db
+    .from("learning_sessions")
+    .update({ title })
+    .eq("id", sessionId)
+    .eq("user_id", userId);
+  if (error) throw error;
+}
+
+export async function deleteTutorSession(userId: string, sessionId: string) {
+  const { error: messagesError } = await db
+    .from("learning_messages")
+    .delete()
+    .eq("session_id", sessionId)
+    .eq("user_id", userId);
+  if (messagesError) throw messagesError;
+  const { error } = await db
+    .from("learning_sessions")
+    .delete()
+    .eq("id", sessionId)
+    .eq("user_id", userId);
+  if (error) throw error;
+}
+
 export async function saveArtifact(
   userId: string,
   input: {
@@ -285,7 +436,7 @@ export async function recordAttempt(userId: string, question: Question, selected
     db.from("learning_attempts").insert({
       user_id: userId,
       concept_id: question.conceptId,
-      question,
+      question: question as unknown as Json,
       answer: { selectedIndex },
       correct,
       score: correct ? 1 : 0,

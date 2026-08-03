@@ -6,7 +6,7 @@
 import { cn } from "@/lib/utils";
 
 interface BoldProps extends React.HTMLAttributes<HTMLElement> {
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 export function Bold({ children, className, ...props }: BoldProps) {

@@ -5,19 +5,26 @@
 import ReactMarkdown from "react-markdown";
 import rehypeShiki from "@shikijs/rehype";
 import remarkGfm from "remark-gfm";
-import * as components from "./components/index"; // Import for side effects if needed, but we'll import directly below
-import { 
-  Blockquote, 
- 
-  CodeBlock, 
-  Heading, 
-  HorizontalRule, 
-  Image, 
-  InlineCode, 
-  Link, 
-  List,  ListItem, 
-  Paragraph, 
-  Table,  TableBody,  TableCell,  TableCaption,  TableHeader,  TableRow,  } from "./components/index";
+import {
+  Blockquote,
+  Bold,
+  Heading,
+  HorizontalRule,
+  Image,
+  InlineCode,
+  Italic,
+  Link,
+  List,
+  ListItem,
+  Paragraph,
+  Table,
+  TableBody,
+  TableCell,
+  TableCaption,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "./components/index";
 
 const shikiHighlighter = rehypeShiki({
   themes: {
@@ -27,14 +34,14 @@ const shikiHighlighter = rehypeShiki({
   defaultColor: false,
 });
 
-export function MarkdownRenderer({ 
-  children, 
+export function MarkdownRenderer({
+  children,
   className,
-  ...props 
-}: { 
-  children: string; 
+  ...props
+}: {
+  children: string;
   className?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }) {
   return (
     <div className={className}>

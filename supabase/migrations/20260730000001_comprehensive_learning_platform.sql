@@ -316,7 +316,7 @@ ALTER TABLE public.learning_history ENABLE ROW LEVEL SECURITY;
 DO $$ DECLARE tbl TEXT; BEGIN
   FOREACH tbl IN ARRAY ARRAY[
     'learning_flashcards','learning_flashcard_reviews','learning_notes',
-    'learning_exams','learning_exam_questions','learning_exam_answers',
+    'learning_exams',
     'learning_revision_schedule','learning_memory','learning_voice_sessions',
     'learning_ocr_jobs','learning_whiteboards','learning_daily_goals',
     'learning_weekly_goals','learning_analytics','learning_history'
@@ -325,6 +325,18 @@ DO $$ DECLARE tbl TEXT; BEGIN
     EXECUTE format('CREATE POLICY "Learning rows belong to user" ON public.%I FOR ALL TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id)', tbl);
   END LOOP;
 END $$;
+
+DROP POLICY IF EXISTS "Learning rows belong to user" ON public.learning_exam_questions;
+CREATE POLICY "Learning rows belong to user" ON public.learning_exam_questions
+  FOR ALL TO authenticated
+  USING (EXISTS (SELECT 1 FROM public.learning_exams WHERE learning_exams.id = learning_exam_questions.exam_id AND learning_exams.user_id = auth.uid()))
+  WITH CHECK (EXISTS (SELECT 1 FROM public.learning_exams WHERE learning_exams.id = learning_exam_questions.exam_id AND learning_exams.user_id = auth.uid()));
+
+DROP POLICY IF EXISTS "Learning rows belong to user" ON public.learning_exam_answers;
+CREATE POLICY "Learning rows belong to user" ON public.learning_exam_answers
+  FOR ALL TO authenticated
+  USING (EXISTS (SELECT 1 FROM public.learning_exams WHERE learning_exams.id = learning_exam_answers.exam_id AND learning_exams.user_id = auth.uid()))
+  WITH CHECK (EXISTS (SELECT 1 FROM public.learning_exams WHERE learning_exams.id = learning_exam_answers.exam_id AND learning_exams.user_id = auth.uid()));
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON
   public.learning_flashcards, public.learning_flashcard_reviews, public.learning_notes,

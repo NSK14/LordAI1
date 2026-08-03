@@ -6,8 +6,7 @@ import type { Database } from "./types";
 
 async function getAuthenticatedSupabase(request: Request) {
   const SUPABASE_URL = process.env.SUPABASE_URL;
-  const SUPABASE_PUBLISHABLE_KEY =
-    process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
+  const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
     const missing = [
@@ -23,51 +22,78 @@ async function getAuthenticatedSupabase(request: Request) {
     throw new Error("Unauthorized: No request headers available");
   }
 
+  let authContext: {
+    supabase: SupabaseClient<Database>;
+    userId: string;
+    claims: any;
+  };
+
+  // Try to get user from Authorization header first
   const authHeader = request.headers.get("authorization");
+  if (authHeader) {
+    if (!authHeader.startsWith("Bearer ")) {
+      throw new Error("Unauthorized: Only Bearer tokens are supported");
+    }
 
-  if (!authHeader) {
-    throw new Error("Unauthorized: No authorization header provided");
-  }
+    const token = authHeader.replace("Bearer ", "");
+    if (!token) {
+      throw new Error("Unauthorized: No token provided");
+    }
 
-  if (!authHeader.startsWith("Bearer ")) {
-    throw new Error("Unauthorized: Only Bearer tokens are supported");
-  }
-
-  const token = authHeader.replace("Bearer ", "");
-  if (!token) {
-    throw new Error("Unauthorized: No token provided");
-  }
-
-  const supabase = createClient<Database>(SUPABASE_URL!, SUPABASE_PUBLISHABLE_KEY!, {
-    global: {
-      headers: {
-        Authorization: `Bearer ${token}`,
+    const supabase = createClient<Database>(SUPABASE_URL!, SUPABASE_PUBLISHABLE_KEY!, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       },
-    },
-    auth: {
-      storage: undefined,
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
+      auth: {
+        storage: undefined,
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    });
 
-  // `getClaims` is not part of the Supabase JS client API; instead
-  // use `auth.getUser()` which will read the user from the Authorization header
-  // we set on the client above. This returns the authenticated user and their ID.
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data?.user) {
-    throw new Error("Unauthorized: Invalid token");
-  }
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data?.user) {
+      throw new Error("Unauthorized: Invalid token");
+    }
 
-  const userId = data.user.id;
-  if (!userId) {
-    throw new Error("Unauthorized: No user ID found in token");
+    const userId = data.user.id;
+    if (!userId) {
+      throw new Error("Unauthorized: No user ID found in token");
+    }
+
+    authContext = {
+      supabase,
+      userId,
+      claims: data.user,
+    };
+  } else {
+    // No Authorization header; use session cookie
+    const supabase = createClient<Database>(SUPABASE_URL!, SUPABASE_PUBLISHABLE_KEY!, {
+      auth: {
+        // We don't set any headers; session is managed via cookie
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    });
+
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !sessionData?.session) {
+      throw new Error("Unauthorized: Invalid session");
+    }
+
+    authContext = {
+      supabase,
+      userId: sessionData.session.user.id,
+      claims: sessionData.session.user,
+    };
   }
 
   return {
-    supabase,
-    userId,
-    claims: data.user,
+    supabase: authContext.supabase,
+    userId: authContext.userId,
+    claims: authContext.claims,
   };
 }
 

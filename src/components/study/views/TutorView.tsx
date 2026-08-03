@@ -5,11 +5,8 @@ import {
   MessageSquare,
   Bot,
   User,
-  Lightbulb,
-  History,
   Copy,
   Check,
-  PauseCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { streamChat } from "@/lib/study-chat";
@@ -19,11 +16,16 @@ import {
   getLatestTutorSession,
   getSessionMessages,
   saveTutorMessage,
+  listTutorSessions,
+  searchTutorSessions,
+  renameTutorSession,
+  deleteTutorSession,
 } from "@/lib/learning/client";
 import { StudyHeader } from "../StudyHeader";
-import { DifficultyStars } from "../ui/DifficultyStars";
 import { selectNextConcept } from "@/lib/learning/mastery";
+import { generateChatTitle, shouldGenerateTitle } from "@/lib/chat-title";
 import type { LearningSnapshot, StudyView, TutorMode } from "../types";
+import { TutorSidebar } from "./TutorSidebar";
 
 interface TutorViewProps {
   snapshot: LearningSnapshot | undefined;
@@ -67,6 +69,8 @@ const SUGGESTED_PROMPTS = [
   "Show me a worked example of Newton's second law",
 ];
 
+const EMPTY_SESSIONS: ReturnType<typeof listTutorSessions> extends Promise<infer T> ? T : never = [] as never;
+
 export function TutorView({ snapshot, userId, conceptId, onBack }: TutorViewProps) {
   const { user } = useCurrentUser();
   const [messages, setMessages] = useState<TutorMessage[]>([]);
@@ -75,7 +79,21 @@ export function TutorView({ snapshot, userId, conceptId, onBack }: TutorViewProp
   const [tutorMode, setTutorMode] = useState<TutorMode>("socratic");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<Array<{
+    id: string;
+    concept_id: string | null;
+    title: string;
+    status: string;
+    subject: string | null;
+    topic: string | null;
+    created_at: string;
+    updated_at: string;
+  }>>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isLoadingSessions, setIsLoadingSessions] = useState(false);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const titleGeneratedForRef = useRef<string | null>(null);
 
   const activeConcept = conceptId
     ? snapshot?.concepts.find((c) => c.id === conceptId)
@@ -87,36 +105,181 @@ export function TutorView({ snapshot, userId, conceptId, onBack }: TutorViewProp
 
   useEffect(() => {
     if (!user?.id) return;
+    let cancelled = false;
 
-    const welcomeMsg: TutorMessage = {
-      id: "welcome",
-      role: "assistant",
-      text: `Hi — I'm LORD, your AI learning coach. I'm here to help you understand ${
-        activeConcept?.subject ?? "your subject"
-      }. What would you like to learn about?`,
-    };
-    setMessages([welcomeMsg]);
-    setSessionId(null);
+    async function loadSessions() {
+      setIsLoadingSessions(true);
+      try {
+        const all = await listTutorSessions(user.id);
+        if (cancelled) return;
+        setSessions(all);
 
-    if (activeConcept) {
-      void getLatestTutorSession(user.id, activeConcept.id)
-        .then(async (session) => {
-          if (!session) return;
-          setSessionId(session.id);
-          const saved = await getSessionMessages(user.id, session.id);
-          if (saved.length) {
-            setMessages(
-              saved.map((msg) => ({
-                id: msg.id,
-                role: msg.role === "assistant" ? "assistant" : "user",
-                text: msg.content,
-              })),
-            );
+        if (activeConcept) {
+          const latest = all.find((s) => s.concept_id === activeConcept.id);
+          if (latest && !sessionId) {
+            setSessionId(latest.id);
+            setIsLoadingMessages(true);
+            const saved = await getSessionMessages(user.id, latest.id);
+            if (!cancelled) {
+              if (saved.length) {
+                setMessages(
+                  saved.map((msg) => ({
+                    id: msg.id,
+                    role: msg.role === "assistant" ? "assistant" : "user",
+                    text: msg.content,
+                  })),
+                );
+              } else {
+                setMessages([
+                  {
+                    id: "welcome",
+                    role: "assistant",
+                    text: `Hi — I'm LORD, your AI learning coach. I'm here to help you understand ${
+                      activeConcept?.subject ?? "your subject"
+                    }. What would you like to learn about?`,
+                  },
+                ]);
+              }
+              setIsLoadingMessages(false);
+            }
+          } else if (!latest && !sessionId) {
+            setMessages([
+              {
+                id: "welcome",
+                role: "assistant",
+                text: `Hi — I'm LORD, your AI learning coach. I'm here to help you understand ${
+                  activeConcept?.subject ?? "your subject"
+                }. What would you like to learn about?`,
+              },
+            ]);
           }
-        })
-        .catch(() => undefined);
+        } else if (!sessionId) {
+          setMessages([
+            {
+              id: "welcome",
+              role: "assistant",
+              text: "Hi — I'm LORD, your AI learning coach. Pick a subject to start tutoring.",
+            },
+          ]);
+        }
+      } catch {
+        if (!cancelled) {
+          setIsLoadingSessions(false);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingSessions(false);
+        }
+      }
     }
-  }, [user?.id, conceptId, activeConcept]);
+
+    loadSessions();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, conceptId, activeConcept?.id]);
+
+  const handleSelectSession = useCallback(
+    async (id: string) => {
+      if (!user?.id) return;
+      setSessionId(id);
+      setIsLoadingMessages(true);
+      try {
+        const saved = await getSessionMessages(user.id, id);
+        if (saved.length) {
+          setMessages(
+            saved.map((msg) => ({
+              id: msg.id,
+              role: msg.role === "assistant" ? "assistant" : "user",
+              text: msg.content,
+            })),
+          );
+        } else {
+          setMessages([
+            {
+              id: "welcome",
+              role: "assistant",
+              text: activeConcept
+                ? `Hi — I'm LORD, your AI learning coach. I'm here to help you understand ${
+                    activeConcept.subject ?? "your subject"
+                  }. What would you like to learn about?`
+                : "Hi — I'm LORD, your AI learning coach. Pick a subject to start tutoring.",
+            },
+          ]);
+        }
+      } catch {
+        setMessages([
+          {
+            id: "welcome",
+            role: "assistant",
+            text: "Unable to load messages. Please try again.",
+          },
+        ]);
+      } finally {
+        setIsLoadingMessages(false);
+      }
+    },
+    [user?.id, activeConcept],
+  );
+
+  const handleNewChat = useCallback(() => {
+    setSessionId(null);
+    setMessages([
+      {
+        id: "welcome",
+        role: "assistant",
+        text: activeConcept
+          ? `Hi — I'm LORD, your AI learning coach. I'm here to help you understand ${
+              activeConcept.subject ?? "your subject"
+            }. What would you like to learn about?`
+          : "Hi — I'm LORD, your AI learning coach. Pick a subject to start tutoring.",
+      },
+    ]);
+  }, [activeConcept]);
+
+  const handleRename = useCallback(async (id: string, title: string) => {
+    if (!user?.id) return;
+    await renameTutorSession(user.id, id, title);
+    setSessions((prev) => prev.map((s) => (s.id === id ? { ...s, title } : s)));
+  }, [user?.id]);
+
+  const handleDelete = useCallback(
+    async (id: string) => {
+      if (!user?.id) return;
+      if (sessionId === id) {
+        setSessionId(null);
+        setMessages([
+          {
+            id: "welcome",
+            role: "assistant",
+            text: activeConcept
+              ? `Hi — I'm LORD, your AI learning coach. I'm here to help you understand ${
+                  activeConcept.subject ?? "your subject"
+                }. What would you like to learn about?`
+              : "Hi — I'm LORD, your AI learning coach. Pick a subject to start tutoring.",
+          },
+        ]);
+      }
+      await deleteTutorSession(user.id, id);
+      setSessions((prev) => prev.filter((s) => s.id !== id));
+    },
+    [user?.id, sessionId, activeConcept],
+  );
+
+  const handleSearch = useCallback(
+    async (query: string) => {
+      if (!user?.id) return;
+      setSearchQuery(query);
+      if (!query.trim()) {
+        const all = await listTutorSessions(user.id);
+        setSessions(all);
+        return;
+      }
+      const results = await searchTutorSessions(user.id, query.trim());
+      setSessions(results);
+    },
+    [user?.id],
+  );
 
   const sendMessage = useCallback(async () => {
     if (!draft.trim() || isThinking || !user?.id) return;
@@ -134,16 +297,37 @@ export function TutorView({ snapshot, userId, conceptId, onBack }: TutorViewProp
 
     let persistedSessionId = sessionId;
 
-    if (!persistedSessionId && activeConcept) {
+    if (!persistedSessionId) {
       try {
-        persistedSessionId = await createTutorSession(
+        const newSessionId = await createTutorSession(
           user.id,
-          activeConcept.id,
-          `Learning ${activeConcept.title}`,
+          activeConcept?.id ?? null,
+          activeConcept ? `Learning ${activeConcept.title}` : "Tutor Chat",
+          activeConcept?.subject ?? null,
+          activeConcept?.title ?? null,
         );
-        setSessionId(persistedSessionId);
+        persistedSessionId = newSessionId;
+        setSessionId(newSessionId);
+        setSessions((prev) => {
+          const existing = prev.find((s) => s.id === newSessionId);
+          if (existing) return prev;
+          return [
+            {
+              id: newSessionId,
+              concept_id: activeConcept?.id ?? null,
+              title: activeConcept ? `Learning ${activeConcept.title}` : "Tutor Chat",
+              status: "active",
+              subject: activeConcept?.subject ?? null,
+              topic: activeConcept?.title ?? null,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            },
+            ...prev,
+          ];
+        });
       } catch {
-        // Continue without persistence if session creation fails
+        setIsThinking(false);
+        return;
       }
     }
 
@@ -210,6 +394,31 @@ export function TutorView({ snapshot, userId, conceptId, onBack }: TutorViewProp
         void saveTutorMessage(user.id, persistedSessionId, "assistant", answer).catch(
           () => undefined,
         );
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.id === persistedSessionId
+              ? { ...s, updated_at: new Date().toISOString() }
+              : s,
+          ),
+        );
+
+        const currentSession = sessions.find((s) => s.id === persistedSessionId);
+        if (
+          currentSession &&
+          shouldGenerateTitle(currentSession.title) &&
+          !titleGeneratedForRef.current
+        ) {
+          const generated = generateChatTitle(text);
+          if (generated) {
+            titleGeneratedForRef.current = persistedSessionId;
+            void renameTutorSession(user.id, persistedSessionId, generated).catch(() => {
+              titleGeneratedForRef.current = null;
+            });
+            setSessions((prev) =>
+              prev.map((s) => (s.id === persistedSessionId ? { ...s, title: generated } : s)),
+            );
+          }
+        }
       }
     } catch {
       setMessages((prev) =>
@@ -231,6 +440,7 @@ export function TutorView({ snapshot, userId, conceptId, onBack }: TutorViewProp
     activeConcept,
     user?.id,
     snapshot?.sources,
+    sessions,
   ]);
 
   const handleCopy = (text: string, id: string) => {
@@ -253,13 +463,18 @@ export function TutorView({ snapshot, userId, conceptId, onBack }: TutorViewProp
     );
   }
 
+  const currentSession = sessions.find((s) => s.id === sessionId);
+  const sessionTitle = currentSession?.title ?? "New tutor chat";
+
   return (
     <div className="p-6">
       <StudyHeader
         view="tutor"
         title="LORD AI Tutor"
         subtitle={
-          activeConcept ? `${activeConcept.title} · ${activeConcept.subject}` : "Adaptive tutoring"
+          activeConcept
+            ? `${activeConcept.title} · ${activeConcept.subject}`
+            : "Adaptive tutoring"
         }
         icon={<MessageSquare className="h-6 w-6 text-primary" />}
         onBack={onBack}
@@ -279,164 +494,191 @@ export function TutorView({ snapshot, userId, conceptId, onBack }: TutorViewProp
         }
       />
 
-      <div className="hud-panel flex h-[500px] flex-col p-4">
-        <div className="flex-1 space-y-4 overflow-y-auto px-1">
-          <AnimatePresence initial={false}>
-            {messages.map((msg) => (
-              <motion.div
-                key={msg.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className={cn("flex gap-3", msg.role === "user" ? "justify-end" : "justify-start")}
-              >
-                <div
-                  className={cn(
-                    "max-w-[80%] rounded-2xl px-4 py-3 text-sm",
-                    msg.role === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "border border-border/40 bg-muted/20 text-foreground",
-                  )}
-                >
-                  <div className="space-y-2">
-                    {msg.text.split("\n").map((line, i) => (
-                      <p key={i} className="whitespace-pre-wrap">
-                        {line || "\u00A0"}
-                      </p>
-                    ))}
-                  </div>
+      <div className="flex gap-4">
+        <TutorSidebar
+          sessions={sessions}
+          currentId={sessionId}
+          onSelect={handleSelectSession}
+          onNew={handleNewChat}
+          onDelete={handleDelete}
+          onRename={handleRename}
+          isOpen={true}
+        />
 
-                  {msg.role === "assistant" && msg.text && (
-                    <button
-                      onClick={() => handleCopy(msg.text, msg.id)}
-                      className="mt-2 rounded-md px-1.5 py-0.5 text-xs text-muted-foreground/60 hover:text-muted-foreground"
-                    >
-                      {copiedId === msg.id ? (
-                        <Check className="h-3 w-3 inline" />
-                      ) : (
-                        <Copy className="h-3 w-3 inline" />
-                      )}
-                    </button>
-                  )}
-                </div>
-
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full">
-                  {msg.role === "user" ? (
-                    <User className="h-4 w-4 text-primary" />
-                  ) : (
-                    <Bot className="h-4 w-4 text-cyan-300" />
-                  )}
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-
-          {isThinking && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex gap-3 justify-start"
-            >
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full">
-                <Bot className="h-4 w-4 text-cyan-300" />
-              </div>
-              <div className="rounded-2xl border border-border/40 bg-muted/20 px-4 py-3">
-                <div className="flex gap-1">
-                  <motion.span
-                    animate={{ opacity: [0.4, 1, 0.4] }}
-                    transition={{ duration: 1.2, repeat: Infinity }}
-                  >
-                    .
-                  </motion.span>
-                  <motion.span
-                    animate={{ opacity: [0.4, 1, 0.4] }}
-                    transition={{ duration: 1.2, repeat: Infinity, delay: 0.2 }}
-                  >
-                    .
-                  </motion.span>
-                  <motion.span
-                    animate={{ opacity: [0.4, 1, 0.4] }}
-                    transition={{ duration: 1.2, repeat: Infinity, delay: 0.4 }}
-                  >
-                    .
-                  </motion.span>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          <div ref={messagesEndRef} />
-        </div>
-
-        <div className="border-t border-border/40 pt-3">
-          <div className="mb-2 flex flex-wrap gap-1.5">
-            {SUGGESTED_PROMPTS.map((prompt) => (
-              <motion.button
-                key={prompt}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => setDraft(prompt)}
-                disabled={isThinking}
-                className="rounded-full border border-border/30 bg-background/40 px-3 py-1 text-xs text-muted-foreground hover:border-primary/30 hover:text-primary disabled:opacity-50"
-              >
-                {prompt}
-              </motion.button>
-            ))}
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="truncate text-sm font-semibold text-foreground">{sessionTitle}</h2>
           </div>
 
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void sendMessage();
-            }}
-            className="flex gap-2"
-          >
-            <input
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
+          <div className="hud-panel flex h-[500px] flex-col p-4">
+            <div className="flex-1 space-y-4 overflow-y-auto px-1">
+              {isLoadingMessages ? (
+                <div className="py-8 text-center text-xs text-muted-foreground">
+                  Loading messages…
+                </div>
+              ) : (
+                <AnimatePresence initial={false}>
+                  {messages.map((msg) => (
+                    <motion.div
+                      key={msg.id}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className={cn(
+                        "flex gap-3",
+                        msg.role === "user" ? "justify-end" : "justify-start",
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          "max-w-[80%] rounded-2xl px-4 py-3 text-sm",
+                          msg.role === "user"
+                            ? "bg-primary text-primary-foreground"
+                            : "border border-border/40 bg-muted/20 text-foreground",
+                        )}
+                      >
+                        <div className="space-y-2">
+                          {msg.text.split("\n").map((line, i) => (
+                            <p key={i} className="whitespace-pre-wrap">
+                              {line || "\u00A0"}
+                            </p>
+                          ))}
+                        </div>
+
+                        {msg.role === "assistant" && msg.text && (
+                          <button
+                            onClick={() => handleCopy(msg.text, msg.id)}
+                            className="mt-2 rounded-md px-1.5 py-0.5 text-xs text-muted-foreground/60 hover:text-muted-foreground"
+                          >
+                            {copiedId === msg.id ? (
+                              <Check className="h-3 w-3 inline" />
+                            ) : (
+                              <Copy className="h-3 w-3 inline" />
+                            )}
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full">
+                        {msg.role === "user" ? (
+                          <User className="h-4 w-4 text-primary" />
+                        ) : (
+                          <Bot className="h-4 w-4 text-cyan-300" />
+                        )}
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              )}
+
+              {isThinking && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex gap-3 justify-start"
+                >
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full">
+                    <Bot className="h-4 w-4 text-cyan-300" />
+                  </div>
+                  <div className="rounded-2xl border border-border/40 bg-muted/20 px-4 py-3">
+                    <div className="flex gap-1">
+                      <motion.span
+                        animate={{ opacity: [0.4, 1, 0.4] }}
+                        transition={{ duration: 1.2, repeat: Infinity }}
+                      >
+                        .
+                      </motion.span>
+                      <motion.span
+                        animate={{ opacity: [0.4, 1, 0.4] }}
+                        transition={{ duration: 1.2, repeat: Infinity, delay: 0.2 }}
+                      >
+                        .
+                      </motion.span>
+                      <motion.span
+                        animate={{ opacity: [0.4, 1, 0.4] }}
+                        transition={{ duration: 1.2, repeat: Infinity, delay: 0.4 }}
+                      >
+                        .
+                      </motion.span>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              <div ref={messagesEndRef} />
+            </div>
+
+            <div className="border-t border-border/40 pt-3">
+              <div className="mb-2 flex flex-wrap gap-1.5">
+                {SUGGESTED_PROMPTS.map((prompt) => (
+                  <motion.button
+                    key={prompt}
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => setDraft(prompt)}
+                    disabled={isThinking}
+                    className="rounded-full border border-border/30 bg-background/40 px-3 py-1 text-xs text-muted-foreground hover:border-primary/30 hover:text-primary disabled:opacity-50"
+                  >
+                    {prompt}
+                  </motion.button>
+                ))}
+              </div>
+
+              <form
+                onSubmit={(e) => {
                   e.preventDefault();
                   void sendMessage();
-                }
-              }}
-              placeholder="Ask about a topic, show your thinking, or paste a problem…"
-              className="flex-1 rounded-lg border border-border/40 bg-background/60 px-4 py-2.5 text-sm text-foreground placeholder-muted-foreground/50 focus:border-primary/50 focus:outline-none"
-              disabled={isThinking}
-            />
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              type="submit"
-              disabled={isThinking || !draft.trim()}
-              className={cn(
-                "flex h-10 w-10 items-center justify-center rounded-lg text-primary-foreground transition-all",
-                isThinking || !draft.trim()
-                  ? "cursor-not-allowed bg-muted/40"
-                  : "bg-primary shadow hover:bg-primary/90",
-              )}
-              aria-label="Send message"
-            >
-              <Send className="h-4 w-4" />
-            </motion.button>
-          </form>
+                }}
+                className="flex gap-2"
+              >
+                <input
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      void sendMessage();
+                    }
+                  }}
+                  placeholder="Ask about a topic, show your thinking, or paste a problem…"
+                  className="flex-1 rounded-lg border border-border/40 bg-background/60 px-4 py-2.5 text-sm text-foreground placeholder-muted-foreground/50 focus:border-primary/50 focus:outline-none"
+                  disabled={isThinking}
+                />
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  type="submit"
+                  disabled={isThinking || !draft.trim()}
+                  className={cn(
+                    "flex h-10 w-10 items-center justify-center rounded-lg text-primary-foreground transition-all",
+                    isThinking || !draft.trim()
+                      ? "cursor-not-allowed bg-muted/40"
+                      : "bg-primary shadow hover:bg-primary/90",
+                  )}
+                  aria-label="Send message"
+                >
+                  <Send className="h-4 w-4" />
+                </motion.button>
+              </form>
+            </div>
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.8 }}
+            className="mt-3 text-center text-xs text-muted-foreground/60"
+          >
+            <span className="inline-flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary/40" />
+              {isThinking
+                ? "LORD is thinking…"
+                : "AI-generated tutoring. Check against course materials."}
+            </span>
+          </motion.div>
         </div>
       </div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 4 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.8 }}
-        className="mt-3 text-center text-xs text-muted-foreground/60"
-      >
-        <span className="inline-flex items-center gap-1">
-          <span className="h-1.5 w-1.5 rounded-full bg-primary/40" />
-          {isThinking
-            ? "LORD is thinking…"
-            : "AI-generated tutoring. Check against course materials."}
-        </span>
-      </motion.div>
     </div>
   );
 }

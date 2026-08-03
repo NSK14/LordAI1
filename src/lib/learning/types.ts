@@ -125,6 +125,8 @@ export type LearningSession = {
   concept_id: string | null;
   title: string;
   status: string;
+  subject: string | null;
+  topic: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -450,6 +452,8 @@ export const AI_GENERATED_NOTICE =
   "AI-generated learning support. Check important answers against your course materials or a trusted source.";
 
 export type TutorMode = "socratic" | "direct" | "hint" | "worked_example" | "simplified" | "analogy" | "diagnostic";
+
+export type TutorSessionRow = LearningSession;
 
 export type TutorContext = {
   page: string;
