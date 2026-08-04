@@ -4,6 +4,7 @@ import { Search, X, SortAsc, SortDesc, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConceptCard } from "../ui/ConceptCard";
 import { StudyHeader } from "../StudyHeader";
+import { AddConceptDialog } from "./AddConceptDialog";
 import type { LearningSnapshot, StudyView } from "../types";
 
 interface ConceptBrowserProps {
@@ -11,12 +12,19 @@ interface ConceptBrowserProps {
   userId: string | null;
   onConceptClick: (conceptId: string) => void;
   onNavigate: (view: StudyView) => void;
+  refresh: () => void;
 }
 
 type SortKey = "title" | "mastery" | "subject";
 type SortDir = "asc" | "desc";
 
-export function ConceptBrowser({ snapshot, onConceptClick, onNavigate }: ConceptBrowserProps) {
+export function ConceptBrowser({
+  snapshot,
+  userId,
+  onConceptClick,
+  onNavigate,
+  refresh,
+}: ConceptBrowserProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [subjectFilter, setSubjectFilter] = useState<string | null>(null);
   const [frameworkFilter, setFrameworkFilter] = useState<string | null>(null);
@@ -25,6 +33,7 @@ export function ConceptBrowser({ snapshot, onConceptClick, onNavigate }: Concept
 
   const concepts = useMemo(() => snapshot?.concepts ?? [], [snapshot?.concepts]);
   const mastery = useMemo(() => snapshot?.mastery ?? [], [snapshot?.mastery]);
+  const tasks = useMemo(() => snapshot?.tasks ?? [], [snapshot?.tasks]);
   const masteryMap = useMemo(() => new Map(mastery.map((m) => [m.concept_id, m])), [mastery]);
 
   const subjects = useMemo(
@@ -76,6 +85,13 @@ export function ConceptBrowser({ snapshot, onConceptClick, onNavigate }: Concept
     setFrameworkFilter(null);
   };
 
+  // Compute mastery stats for header
+  const masteredCount = mastery.filter((m) => m.score >= 0.8).length;
+  const totalConcepts = concepts.length;
+  const overallMasteryPercent =
+    totalConcepts > 0 ? Math.round((masteredCount / totalConcepts) * 100) : 0;
+  const addedConceptIds = tasks.filter((t) => t.concept_id).map((t) => t.concept_id as string);
+
   return (
     <div className="p-6">
       <StudyHeader
@@ -85,6 +101,17 @@ export function ConceptBrowser({ snapshot, onConceptClick, onNavigate }: Concept
         icon={<BookOpen className="h-6 w-6 text-primary" />}
         onBack={() => onNavigate("dashboard")}
         showBack
+        action={
+          <AddConceptDialog
+            userId={userId}
+            concepts={concepts}
+            addedConceptIds={addedConceptIds}
+            refresh={refresh}
+          />
+        }
+        masteryPercent={overallMasteryPercent}
+        totalConcepts={totalConcepts}
+        masteredCount={masteredCount}
       />
 
       <motion.div

@@ -12,6 +12,10 @@ interface StudyHeaderProps {
   onBack?: () => void;
   showBack?: boolean;
   className?: string;
+  // Optional progress stats
+  masteryPercent?: number;
+  totalConcepts?: number;
+  masteredCount?: number;
 }
 
 export function StudyHeader({
@@ -23,10 +27,13 @@ export function StudyHeader({
   onBack,
   showBack = false,
   className,
+  masteryPercent,
+  totalConcepts,
+  masteredCount,
 }: StudyHeaderProps) {
   return (
     <header className={cn("mb-6 flex items-center justify-between gap-4", className)}>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-1">
         {showBack && onBack && (
           <button
             onClick={onBack}
@@ -41,11 +48,19 @@ export function StudyHeader({
             {icon}
           </div>
         )}
-        <div>
+        <div className="flex flex-col">
           <h1 className="font-display text-2xl font-bold tracking-wide text-foreground sm:text-3xl">
             {title}
           </h1>
           {subtitle && <p className="text-sm text-muted-foreground/70">{subtitle}</p>}
+          {/* Display progress stats if provided */}
+          {masteryPercent !== undefined &&
+            totalConcepts !== undefined &&
+            masteredCount !== undefined && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Mastery: {masteryPercent}% ({masteredCount} of {totalConcepts} concepts)
+              </p>
+            )}
         </div>
       </div>
       {action && <div className="shrink-0">{action}</div>}

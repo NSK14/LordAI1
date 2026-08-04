@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { GraduationCap, Target, Brain, Bookmark } from "lucide-react";
+import { GraduationCap, Target, Brain, Bookmark, Plus, Check, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { MasteryBadge } from "../ui/MasteryBadge";
 import { StudyHeader } from "../StudyHeader";
-import { selectNextConcept } from "@/lib/learning/mastery";
+import { addConceptToPlan } from "@/lib/learning/client";
 import type { LearningSnapshot, StudyView, LearningConcept } from "../types";
 
 interface ConceptDetailProps {
@@ -12,6 +14,7 @@ interface ConceptDetailProps {
   conceptId?: string;
   onNavigate: (view: StudyView) => void;
   onBack: () => void;
+  refresh: () => void;
 }
 
 export function ConceptDetail({
@@ -20,7 +23,10 @@ export function ConceptDetail({
   conceptId,
   onNavigate,
   onBack,
+  refresh,
 }: ConceptDetailProps) {
+  const [adding, setAdding] = useState(false);
+
   if (!snapshot || !conceptId) {
     return (
       <div className="p-6">
@@ -35,11 +41,22 @@ export function ConceptDetail({
     );
   }
 
+  // Compute overall mastery stats for header
   const { concepts, mastery, resources, sources } = snapshot;
+  const masteredCount = mastery.filter((m) => m.score >= 0.8).length;
+  const totalConcepts = concepts.length;
+  const overallMasteryPercent =
+    totalConcepts > 0 ? Math.round((masteredCount / totalConcepts) * 100) : 0;
+  const planTaskConceptIds = snapshot.tasks
+    .filter((t) => t.concept_id)
+    .map((t) => t.concept_id as string);
+
   const masteryMap = new Map(mastery.map((m) => [m.concept_id, m]));
 
   const concept = concepts.find((c) => c.id === conceptId);
   const conceptMastery = masteryMap.get(conceptId);
+
+  const alreadyInPlan = planTaskConceptIds.includes(conceptId);
 
   if (!concept) {
     return (
@@ -67,6 +84,20 @@ export function ConceptDetail({
     (s) => s.extracted_text && concept.keywords?.some((kw) => s.extracted_text?.includes(kw)),
   );
 
+  const handleAddToPlan = async () => {
+    if (!userId || alreadyInPlan || adding) return;
+    setAdding(true);
+    try {
+      await addConceptToPlan(userId, { id: concept.id, title: concept.title });
+      toast.success(`${concept.title} added to your study plan.`);
+      refresh();
+    } catch {
+      toast.error("Could not add concept to your study plan.");
+    } finally {
+      setAdding(false);
+    }
+  };
+
   const actionButtons = [
     {
       label: "Start Practice",
@@ -87,10 +118,17 @@ export function ConceptDetail({
       variant: "secondary" as const,
     },
     {
-      label: "Add to Plan",
-      icon: <Bookmark className="h-4 w-4" />,
-      onClick: () => onNavigate("planner"),
-      variant: "secondary" as const,
+      label: alreadyInPlan ? "Added to Plan" : "Add to Plan",
+      icon: adding ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : alreadyInPlan ? (
+        <Check className="h-4 w-4" />
+      ) : (
+        <Bookmark className="h-4 w-4" />
+      ),
+      onClick: handleAddToPlan,
+      variant: alreadyInPlan ? ("added" as const) : ("secondary" as const),
+      disabled: alreadyInPlan || adding,
     },
   ];
 
@@ -104,6 +142,9 @@ export function ConceptDetail({
         onBack={onBack}
         showBack
         action={<MasteryBadge score={score} showLabel />}
+        masteryPercent={overallMasteryPercent}
+        totalConcepts={totalConcepts}
+        masteredCount={masteredCount}
       />
 
       <motion.div
@@ -155,11 +196,15 @@ export function ConceptDetail({
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.25, delay: 0.25 + i * 0.05 }}
                   onClick={btn.onClick}
+                  disabled={btn.disabled}
                   className={cn(
                     "inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-200",
+                    btn.disabled && "cursor-not-allowed opacity-70",
                     btn.variant === "primary"
                       ? "bg-primary text-primary-foreground shadow hover:bg-primary/90"
-                      : "border border-border/40 bg-muted/20 text-foreground hover:bg-muted/30",
+                      : btn.variant === "added"
+                        ? "border border-emerald-400/30 bg-emerald-500/10 text-emerald-400"
+                        : "border border-border/40 bg-muted/20 text-foreground hover:bg-muted/30",
                   )}
                 >
                   {btn.icon}

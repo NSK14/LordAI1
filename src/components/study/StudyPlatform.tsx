@@ -92,6 +92,7 @@ export function StudyPlatform() {
         conceptId={conceptId}
         onNavigate={handleViewChange}
         onBack={() => navigateTo("concepts")}
+        refresh={refresh}
       />
     ) : (
       <ConceptBrowser
@@ -99,6 +100,7 @@ export function StudyPlatform() {
         userId={userId}
         onConceptClick={handleConceptClick}
         onNavigate={handleViewChange}
+        refresh={refresh}
       />
     ),
     practice: (

@@ -116,6 +116,11 @@ export function DashboardView({
     },
   ];
 
+  // Mastery stats for the persistent header across study views.
+  const totalConcepts = concepts.length;
+  const overallMasteryPercent =
+    totalConcepts > 0 ? Math.round((masteredCount / totalConcepts) * 100) : 0;
+
   return (
     <div className="p-6">
       <StudyHeader
@@ -123,6 +128,9 @@ export function DashboardView({
         title="Learning Dashboard"
         subtitle="Your personalized adaptive learning hub"
         icon={<GraduationCap className="h-6 w-6 text-primary" />}
+        masteryPercent={overallMasteryPercent}
+        totalConcepts={totalConcepts}
+        masteredCount={masteredCount}
       />
 
       <motion.section
