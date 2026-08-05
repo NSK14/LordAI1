@@ -6,7 +6,7 @@ import type { StudyView } from "./types";
 interface StudyHeaderProps {
   view: StudyView;
   title: string;
-  subtitle?: string;
+  subtitle?: ReactNode;
   icon?: ReactNode;
   action?: ReactNode;
   onBack?: () => void;

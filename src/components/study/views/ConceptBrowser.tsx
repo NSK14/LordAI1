@@ -4,6 +4,7 @@ import { Search, X, SortAsc, SortDesc, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConceptCard } from "../ui/ConceptCard";
 import { StudyHeader } from "../StudyHeader";
+import { AddSubjectDialog } from "./AddSubjectDialog";
 import { AddConceptDialog } from "./AddConceptDialog";
 import type { LearningSnapshot, StudyView } from "../types";
 
@@ -18,6 +19,13 @@ interface ConceptBrowserProps {
 type SortKey = "title" | "mastery" | "subject";
 type SortDir = "asc" | "desc";
 
+function classToGradeBand(classNumber: string | null | undefined): "middle" | "high" | null {
+  if (!classNumber) return null;
+  const n = Number.parseInt(classNumber, 10);
+  if (Number.isNaN(n)) return null;
+  return n >= 11 ? "high" : "middle";
+}
+
 export function ConceptBrowser({
   snapshot,
   userId,
@@ -31,14 +39,30 @@ export function ConceptBrowser({
   const [sortBy, setSortBy] = useState<SortKey>("title");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
 
-  const concepts = useMemo(() => snapshot?.concepts ?? [], [snapshot?.concepts]);
+  const profile = useMemo(() => snapshot?.profile, [snapshot?.profile]);
+  const classNumber = profile?.class ?? null;
+  const gradeBand = useMemo(() => classToGradeBand(classNumber), [classNumber]);
+
+  const allConcepts = useMemo(() => snapshot?.concepts ?? [], [snapshot?.concepts]);
   const mastery = useMemo(() => snapshot?.mastery ?? [], [snapshot?.mastery]);
   const tasks = useMemo(() => snapshot?.tasks ?? [], [snapshot?.tasks]);
   const masteryMap = useMemo(() => new Map(mastery.map((m) => [m.concept_id, m])), [mastery]);
 
+  // Class-based curriculum: catalog concepts filter to the selected grade band.
+  // Student-defined concepts are always visible (they belong to the active profile).
+  const concepts = useMemo(() => {
+    if (!gradeBand) return allConcepts;
+    return allConcepts.filter((c) => c.is_custom || c.grade_band === gradeBand);
+  }, [allConcepts, gradeBand]);
+
+  const customSubjects = useMemo(
+    () => (profile?.custom_subjects ?? []).map((s) => s.name),
+    [profile?.custom_subjects],
+  );
+
   const subjects = useMemo(
-    () => Array.from(new Set(concepts.map((c) => c.subject))).sort(),
-    [concepts],
+    () => Array.from(new Set([...concepts.map((c) => c.subject), ...customSubjects])).sort(),
+    [concepts, customSubjects],
   );
 
   const filtered = useMemo(() => {
@@ -85,7 +109,6 @@ export function ConceptBrowser({
     setFrameworkFilter(null);
   };
 
-  // Compute mastery stats for header
   const masteredCount = mastery.filter((m) => m.score >= 0.8).length;
   const totalConcepts = concepts.length;
   const overallMasteryPercent =
@@ -97,17 +120,26 @@ export function ConceptBrowser({
       <StudyHeader
         view="concepts"
         title="Concept Library"
-        subtitle={`${concepts.length} concepts available`}
+        subtitle={
+          classNumber
+            ? `Class ${classNumber} · ${concepts.length} concepts available`
+            : `${concepts.length} concepts available`
+        }
         icon={<BookOpen className="h-6 w-6 text-primary" />}
         onBack={() => onNavigate("dashboard")}
         showBack
         action={
-          <AddConceptDialog
-            userId={userId}
-            concepts={concepts}
-            addedConceptIds={addedConceptIds}
-            refresh={refresh}
-          />
+          <div className="flex items-center gap-2">
+            <AddSubjectDialog userId={userId} refresh={refresh} />
+            <AddConceptDialog
+              userId={userId}
+              subjects={subjects}
+              concepts={concepts}
+              classNumber={classNumber}
+              refresh={refresh}
+              onAdded={onConceptClick}
+            />
+          </div>
         }
         masteryPercent={overallMasteryPercent}
         totalConcepts={totalConcepts}

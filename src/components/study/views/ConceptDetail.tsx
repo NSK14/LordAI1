@@ -13,6 +13,7 @@ interface ConceptDetailProps {
   userId: string | null;
   conceptId?: string;
   onNavigate: (view: StudyView) => void;
+  onStartInContext?: (view: StudyView) => void;
   onBack: () => void;
   refresh: () => void;
 }
@@ -22,6 +23,7 @@ export function ConceptDetail({
   userId,
   conceptId,
   onNavigate,
+  onStartInContext,
   onBack,
   refresh,
 }: ConceptDetailProps) {
@@ -102,19 +104,19 @@ export function ConceptDetail({
     {
       label: "Start Practice",
       icon: <Target className="h-4 w-4" />,
-      onClick: () => onNavigate("practice"),
+      onClick: () => onStartInContext?.("practice") ?? onNavigate("practice"),
       variant: "primary" as const,
     },
     {
       label: "Ask LORD Tutor",
       icon: <GraduationCap className="h-4 w-4" />,
-      onClick: () => onNavigate("tutor"),
+      onClick: () => onStartInContext?.("tutor") ?? onNavigate("tutor"),
       variant: "secondary" as const,
     },
     {
       label: "Flashcards",
       icon: <Brain className="h-4 w-4" />,
-      onClick: () => onNavigate("flashcards"),
+      onClick: () => onStartInContext?.("flashcards") ?? onNavigate("flashcards"),
       variant: "secondary" as const,
     },
     {
@@ -137,7 +139,21 @@ export function ConceptDetail({
       <StudyHeader
         view="concepts"
         title={concept.title}
-        subtitle={concept.standard_code}
+        subtitle={
+          <span className="inline-flex items-center gap-2">
+            {concept.standard_code}
+            {concept.is_custom && (
+              <span className="rounded-md bg-amber-500/15 px-1.5 py-0.25 text-xs font-medium text-amber-400">
+                Custom concept
+              </span>
+            )}
+            {snapshot?.profile?.class && (
+              <span className="text-xs text-muted-foreground">
+                · Class {snapshot.profile.class}
+              </span>
+            )}
+          </span>
+        }
         icon={<GraduationCap className="h-6 w-6 text-primary" />}
         onBack={onBack}
         showBack

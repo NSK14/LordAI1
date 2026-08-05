@@ -1,65 +1,88 @@
 import { useState, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Search, Plus, Check, Loader2 } from "lucide-react";
+import { motion } from "framer-motion";
+import { Plus, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { addConceptToPlan } from "@/lib/learning/client";
+import { addCustomSubject, createCustomConcept } from "@/lib/learning/client";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from "../../ui/dialog";
 import type { LearningConcept } from "../types";
 
 interface AddConceptDialogProps {
   userId: string | null;
+  subjects: string[];
   concepts: LearningConcept[];
-  addedConceptIds: string[];
+  classNumber?: string | null;
   refresh: () => void;
+  onAdded: (conceptId: string) => void;
 }
 
 export function AddConceptDialog({
   userId,
+  subjects,
   concepts,
-  addedConceptIds,
+  classNumber,
   refresh,
+  onAdded,
 }: AddConceptDialogProps) {
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const [addingIds, setAddingIds] = useState<Set<string>>(new Set());
-  const [locallyAdded, setLocallyAdded] = useState<string[]>([]);
+  const [subjectMode, setSubjectMode] = useState<"existing" | "new">("existing");
+  const [subject, setSubject] = useState("");
+  const [newSubject, setNewSubject] = useState("");
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+  const [error, setError] = useState("");
 
-  const addedSet = useMemo(
-    () => new Set([...addedConceptIds, ...locallyAdded]),
-    [addedConceptIds, locallyAdded],
-  );
+  const chosenSubject = subjectMode === "new" ? newSubject.trim() : subject;
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return concepts;
-    return concepts.filter(
+  const isDuplicate = useMemo(() => {
+    if (!chosenSubject || !name.trim()) return false;
+    return concepts.some(
       (c) =>
-        c.title.toLowerCase().includes(q) ||
-        c.standard_code.toLowerCase().includes(q) ||
-        (c.subject?.toLowerCase().includes(q) ?? false) ||
-        (c.keywords?.some((k) => k.toLowerCase().includes(q)) ?? false),
+        c.subject.toLowerCase() === chosenSubject.toLowerCase() &&
+        c.title.toLowerCase() === name.trim().toLowerCase(),
     );
-  }, [concepts, query]);
+  }, [concepts, chosenSubject, name]);
 
-  const handleAdd = async (concept: LearningConcept) => {
-    if (!userId || addedSet.has(concept.id) || addingIds.has(concept.id)) return;
-    setAddingIds((s) => new Set(s).add(concept.id));
+  const handleAdd = async () => {
+    if (!userId || !chosenSubject || !name.trim()) return;
+    if (isDuplicate || isCreating) return;
+
+    setIsCreating(true);
+    setError("");
     try {
-      await addConceptToPlan(userId, { id: concept.id, title: concept.title });
-      setLocallyAdded((prev) => [...prev, concept.id]);
-      toast.success(`${concept.title} added to your study plan.`);
-      refresh();
-    } catch {
-      toast.error("Could not add concept to your study plan.");
-    } finally {
-      setAddingIds((s) => {
-        const copy = new Set(s);
-        copy.delete(concept.id);
-        return copy;
+      if (subjectMode === "new") {
+        await addCustomSubject(userId, chosenSubject);
+      }
+
+      const concept = await createCustomConcept(userId, {
+        subject: chosenSubject,
+        title: name.trim(),
+        description: description.trim(),
+        class: classNumber,
       });
+
+      toast.success(
+        `${concept.title} has been added to your Study workspace. You can now study ${concept.title} with LORD.`,
+      );
+      setOpen(false);
+      setSubject("");
+      setNewSubject("");
+      setName("");
+      setDescription("");
+      setSubjectMode("existing");
+      refresh();
+      onAdded(concept.id);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Could not create concept.";
+      setError(message);
+      toast.error(`Could not create concept: ${message}`);
+    } finally {
+      setIsCreating(false);
     }
   };
+
+  const canSubmit = !!userId && !!chosenSubject && !!name.trim() && !isDuplicate && !isCreating;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -67,91 +90,123 @@ export function AddConceptDialog({
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground shadow transition hover:bg-primary/90"
+          className="inline-flex items-center gap-2 rounded-lg border border-border/40 bg-background/60 px-3 py-1.5 text-sm font-medium text-foreground shadow transition hover:border-primary/50 hover:bg-accent"
         >
           <Plus className="h-4 w-4" />
           Add Concept
         </motion.button>
       </DialogTrigger>
-      <DialogContent className="max-w-lg p-0">
+      <DialogContent className="max-w-md p-0">
         <DialogHeader className="p-6 pb-2">
-          <DialogTitle>Add Concept to Study Plan</DialogTitle>
-        </DialogHeader>
-        <div className="px-6 pb-4">
-          <div className="relative mb-3">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/60" />
-            <input
-              type="text"
-              placeholder="Search concepts, codes, or keywords..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="w-full rounded-lg border border-border/40 bg-background/60 pl-10 pr-4 py-2 text-sm text-foreground placeholder-muted-foreground/50 focus:border-primary/50 focus:outline-none"
-            />
-          </div>
-          <p className="mb-2 text-xs text-muted-foreground">
-            {addedSet.size} of {concepts.length} concepts added
+          <DialogTitle>Add Concept</DialogTitle>
+          <p className="text-sm text-muted-foreground">
+            Add a concept to your curriculum. It starts at 0% mastery until you study or practice
+            it.
           </p>
-          <AnimatePresence>
-            {filtered.length === 0 ? (
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="py-6 text-center text-sm text-muted-foreground"
-              >
-                No concepts match your search.
-              </motion.p>
-            ) : (
-              <motion.div
-                className="space-y-1 max-h-72 overflow-y-auto"
-                initial="hide"
-                animate="show"
-                variants={{ show: { transition: { staggerChildren: 0.03 } } }}
-              >
-                {filtered.map((concept) => {
-                  const alreadyAdded = addedSet.has(concept.id);
-                  const isAdding = addingIds.has(concept.id);
-                  return (
-                    <motion.div
-                      key={concept.id}
-                      variants={{ show: { opacity: 1, y: 0 } }}
-                      className="flex items-center justify-between rounded-lg border border-border/40 bg-card/50 px-3 py-2"
-                    >
-                      <div className="flex-1 truncate">
-                        <p className="text-sm font-medium text-foreground truncate">
-                          {concept.title}
-                        </p>
-                        <p className="text-xs text-muted-foreground/70 truncate">
-                          {concept.subject} · {concept.standard_code}
-                        </p>
-                      </div>
-                      {isAdding ? (
-                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                      ) : (
-                        <motion.button
-                          whileHover={{ scale: alreadyAdded ? 1 : 1.05 }}
-                          whileTap={{ scale: alreadyAdded ? 1 : 0.95 }}
-                          onClick={() => handleAdd(concept)}
-                          disabled={alreadyAdded}
-                          className={cn(
-                            "inline-flex items-center justify-center rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-                            alreadyAdded
-                              ? "cursor-default bg-muted/30 text-muted-foreground"
-                              : "bg-primary/10 text-primary hover:bg-primary/20",
-                          )}
-                        >
-                          {alreadyAdded ? (
-                            <Check className="h-3.5 w-3.5" />
-                          ) : (
-                            <Plus className="h-3.5 w-3.5" />
-                          )}
-                        </motion.button>
-                      )}
-                    </motion.div>
-                  );
-                })}
-              </motion.div>
+        </DialogHeader>
+        <div className="px-6 pb-6">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-foreground">Subject</label>
+              <div className="mt-1 flex gap-2">
+                <label className="flex items-center gap-1 text-sm">
+                  <input
+                    type="radio"
+                    name="subjectMode"
+                    checked={subjectMode === "existing"}
+                    onChange={() => setSubjectMode("existing")}
+                  />{" "}
+                  Existing
+                </label>
+                <label className="flex items-center gap-1 text-sm">
+                  <input
+                    type="radio"
+                    name="subjectMode"
+                    checked={subjectMode === "new"}
+                    onChange={() => setSubjectMode("new")}
+                  />{" "}
+                  New
+                </label>
+              </div>
+              {subjectMode === "existing" ? (
+                <select
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  className="mt-2 w-full rounded-lg border border-border/40 bg-background/60 px-3 py-2 text-sm text-foreground focus:border-primary/50 focus:outline-none"
+                  disabled={isCreating}
+                >
+                  <option value="" disabled>
+                    Select a subject
+                  </option>
+                  {subjects.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={newSubject}
+                  onChange={(e) => setNewSubject(e.target.value)}
+                  placeholder="New subject name"
+                  className="mt-2 w-full rounded-lg border border-border/40 bg-background/60 px-3 py-2 text-sm text-foreground placeholder-muted-foreground/50 focus:border-primary/50 focus:outline-none"
+                  disabled={isCreating}
+                />
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground">Concept name</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Human Eye"
+                className="mt-1 w-full rounded-lg border border-border/40 bg-background/60 px-3 py-2 text-sm text-foreground placeholder-muted-foreground/50 focus:border-primary/50 focus:outline-none"
+                disabled={isCreating}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground">
+                Description (optional)
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Enter what you want to learn…"
+                rows={3}
+                className="mt-1 w-full rounded-lg border border-border/40 bg-background/60 px-3 py-2 text-sm text-foreground placeholder-muted-foreground/50 focus:border-primary/50 focus:outline-none"
+                disabled={isCreating}
+              />
+            </div>
+
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            {isDuplicate && (
+              <p className="text-sm text-amber-400">This concept already exists in that subject.</p>
             )}
-          </AnimatePresence>
+          </div>
+
+          <motion.div whileHover={{ scale: canSubmit ? 1.02 : 1 }} className="mt-6">
+            <button
+              onClick={handleAdd}
+              disabled={!canSubmit}
+              className={cn(
+                "w-full rounded-lg px-4 py-2 text-sm font-semibold text-primary-foreground shadow transition",
+                canSubmit ? "bg-primary hover:bg-primary/90" : "cursor-not-allowed bg-muted/30",
+              )}
+            >
+              {isCreating ? (
+                <span className="inline-flex items-center justify-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Adding…
+                </span>
+              ) : (
+                "Add Concept"
+              )}
+            </button>
+          </motion.div>
         </div>
       </DialogContent>
     </Dialog>

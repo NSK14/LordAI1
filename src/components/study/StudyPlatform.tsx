@@ -15,6 +15,7 @@ import { FlashcardStudy } from "./views/FlashcardStudy";
 import { TestCenter } from "./views/TestCenter";
 import { PlannerView } from "./views/PlannerView";
 import { ProgressView } from "./views/ProgressView";
+import { StudyOnboarding } from "./views/StudyOnboarding";
 import { LoadingState } from "./ui/LoadingState";
 import type { StudyView } from "./types";
 
@@ -83,6 +84,7 @@ export function StudyPlatform() {
         onStartPractice={handleStartPractice}
         onStartTutor={handleStartTutor}
         onConceptClick={handleConceptClick}
+        refresh={refresh}
       />
     ),
     concepts: conceptId ? (
@@ -91,6 +93,7 @@ export function StudyPlatform() {
         userId={userId}
         conceptId={conceptId}
         onNavigate={handleViewChange}
+        onStartInContext={(view) => navigateTo(view, conceptId)}
         onBack={() => navigateTo("concepts")}
         refresh={refresh}
       />
@@ -174,6 +177,8 @@ export function StudyPlatform() {
                 Your learning data could not be loaded. Please refresh and try again.
               </p>
             </div>
+          ) : userId && snapshot && !snapshot.profile?.class ? (
+            <StudyOnboarding userId={userId} onClose={refresh} />
           ) : (
             views[activeView]
           )}

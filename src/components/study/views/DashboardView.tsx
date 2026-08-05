@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   Target,
@@ -15,6 +15,7 @@ import { StatCard } from "../ui/StatCard";
 import { QuickActionTile } from "../ui/QuickActionTile";
 import { ConceptCard } from "../ui/ConceptCard";
 import { StudyHeader } from "../StudyHeader";
+import { ChangeClassDialog } from "./ChangeClassDialog";
 import type { LearningSnapshot, StudyView } from "../types";
 
 interface DashboardViewProps {
@@ -24,6 +25,7 @@ interface DashboardViewProps {
   onStartPractice: (conceptId?: string) => void;
   onStartTutor: (conceptId?: string) => void;
   onConceptClick: (conceptId: string) => void;
+  refresh: () => void;
 }
 
 export function DashboardView({
@@ -33,7 +35,31 @@ export function DashboardView({
   onStartPractice,
   onStartTutor,
   onConceptClick,
+  refresh,
 }: DashboardViewProps) {
+  const { concepts, mastery, tasks, sessions, attempts, profile } = snapshot ?? {};
+
+  const gradeBand: "middle" | "high" | null = useMemo(() => {
+    const cls = profile?.class;
+    if (!cls) return null;
+    return Number.parseInt(cls, 10) >= 11 ? "high" : "middle";
+  }, [profile?.class]);
+
+  const curriculumConcepts = useMemo(() => {
+    const list = concepts ?? [];
+    return gradeBand ? list.filter((c) => c.is_custom || c.grade_band === gradeBand) : list;
+  }, [concepts, gradeBand]);
+
+  const masteryMap = useMemo(
+    () => new Map((mastery ?? []).map((m) => [m.concept_id, m])),
+    [mastery],
+  );
+  const nextConcept = selectNextConcept(curriculumConcepts, mastery ?? []);
+
+  const masteredCount = (mastery ?? []).filter((m) => m.score >= 0.8).length;
+  const totalMastery = (mastery ?? []).length;
+  const masteryPercent = totalMastery > 0 ? Math.round((masteredCount / totalMastery) * 100) : 0;
+
   if (!snapshot) {
     return (
       <div className="p-6">
@@ -42,48 +68,43 @@ export function DashboardView({
     );
   }
 
-  const { concepts, mastery, tasks, sessions, attempts, profile } = snapshot;
-
-  const masteryMap = new Map(mastery.map((m) => [m.concept_id, m]));
-  const nextConcept = selectNextConcept(concepts, mastery);
-
-  const masteredCount = mastery.filter((m) => m.score >= 0.8).length;
-  const totalMastery = mastery.length;
-  const masteryPercent = totalMastery > 0 ? Math.round((masteredCount / totalMastery) * 100) : 0;
-
-  const masteredConcepts = concepts.filter((c) => {
+  const masteredConcepts = curriculumConcepts.filter((c) => {
     const m = masteryMap.get(c.id);
     return m && m.score >= 0.8;
   });
 
-  const learningConcepts = concepts.filter((c) => {
+  const learningConcepts = curriculumConcepts.filter((c) => {
     const m = masteryMap.get(c.id);
     return m && m.score >= 0.6 && m.score < 0.8;
   });
 
-  const notStartedConcepts = concepts.filter((c) => {
+  const notStartedConcepts = curriculumConcepts.filter((c) => {
     const m = masteryMap.get(c.id);
     return !m || m.score < 0.35;
   });
 
   const today = new Date().toDateString();
-  const todaysAttempts = attempts.filter((a) => new Date(a.created_at).toDateString() === today);
+  const todaysAttempts = (attempts ?? []).filter(
+    (a) => new Date(a.created_at).toDateString() === today,
+  );
   const dailyGoal = Math.min(100, Math.round((todaysAttempts.length / 3) * 100));
 
   let streak = 0;
   const cursor = new Date();
   const activeDays = new Set(
-    [...sessions, ...attempts].map((item) => new Date(item.created_at).toDateString()),
+    [...(sessions ?? []), ...(attempts ?? [])].map((item) =>
+      new Date(item.created_at).toDateString(),
+    ),
   );
   while (activeDays.has(cursor.toDateString())) {
     streak++;
     cursor.setDate(cursor.getDate() - 1);
   }
 
-  const xp = mastery.reduce((sum, m) => sum + (m.evidence_count ?? 0) * 25, 0);
+  const xp = (mastery ?? []).reduce((sum, m) => sum + (m.evidence_count ?? 0) * 25, 0);
 
-  const upcomingTasks = tasks.slice(0, 5);
-  const isReady = isReadyForTest(mastery);
+  const upcomingTasks = (tasks ?? []).slice(0, 5);
+  const isReady = isReadyForTest(mastery ?? []);
 
   const quickActions = [
     {
@@ -117,7 +138,7 @@ export function DashboardView({
   ];
 
   // Mastery stats for the persistent header across study views.
-  const totalConcepts = concepts.length;
+  const totalConcepts = curriculumConcepts.length;
   const overallMasteryPercent =
     totalConcepts > 0 ? Math.round((masteredCount / totalConcepts) * 100) : 0;
 
@@ -131,6 +152,13 @@ export function DashboardView({
         masteryPercent={overallMasteryPercent}
         totalConcepts={totalConcepts}
         masteredCount={masteredCount}
+        action={
+          <ChangeClassDialog
+            userId={userId}
+            currentClass={profile?.class ?? null}
+            onSaved={refresh}
+          />
+        }
       />
 
       <motion.section
@@ -282,9 +310,9 @@ export function DashboardView({
           </button>
         </div>
 
-        {concepts.length > 0 ? (
+        {curriculumConcepts.length > 0 ? (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {concepts.slice(0, 8).map((concept, i) => (
+            {curriculumConcepts.slice(0, 8).map((concept, i) => (
               <ConceptCard
                 key={concept.id}
                 concept={concept}

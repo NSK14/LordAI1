@@ -40,6 +40,7 @@ const db = supabase;
 export async function getLearningSnapshot(userId: string): Promise<LearningSnapshot> {
   const [
     concepts,
+    userConcepts,
     mastery,
     tasks,
     boards,
@@ -64,10 +65,16 @@ export async function getLearningSnapshot(userId: string): Promise<LearningSnaps
     history,
   ] = await Promise.all([
     db.from("learning_concepts").select("*").order("framework").order("title"),
+    (db as any)
+      .from("learning_user_concepts")
+      .select("*")
+      .eq("user_id", userId)
+      .order("subject")
+      .order("title"),
     db.from("learning_mastery").select("*").eq("user_id", userId),
     db
       .from("learning_plan_tasks")
-      .select("*, learning_concepts(title)")
+      .select("*")
       .eq("user_id", userId)
       .eq("status", "pending")
       .order("due_at")
@@ -184,6 +191,7 @@ export async function getLearningSnapshot(userId: string): Promise<LearningSnaps
 
   for (const result of [
     concepts,
+    userConcepts,
     mastery,
     tasks,
     boards,
@@ -211,11 +219,20 @@ export async function getLearningSnapshot(userId: string): Promise<LearningSnaps
   }
 
   return {
-    concepts: (concepts.data ?? []).map((concept) => ({
-      ...concept,
-      framework: concept.framework as LearningConcept["framework"],
-      grade_band: concept.grade_band as LearningConcept["grade_band"],
-    })) as LearningConcept[],
+    concepts: [
+      ...(concepts.data ?? []).map((concept) => ({
+        ...concept,
+        framework: concept.framework as LearningConcept["framework"],
+        grade_band: concept.grade_band as LearningConcept["grade_band"],
+        is_custom: false,
+      })),
+      ...((userConcepts?.data ?? []) as any[]).map((concept) => ({
+        ...concept,
+        framework: concept.framework as LearningConcept["framework"],
+        grade_band: concept.grade_band as LearningConcept["grade_band"],
+        is_custom: true,
+      })),
+    ] as LearningConcept[],
     mastery: (mastery.data ?? []) as Mastery[],
     tasks: (tasks.data ?? []) as (LearningPlanTask & { learning_concepts?: { title: string } })[],
     boards: (boards.data ?? []) as LearningBoard[],
@@ -386,6 +403,128 @@ export async function saveProfile(userId: string, input: Record<string, unknown>
     .from("learning_profiles")
     .upsert({ user_id: userId, ...input } as any, { onConflict: "user_id" });
   if (error) throw error;
+}
+
+export async function completeStudentOnboarding(userId: string, classNumber: number) {
+  const gradeBand: "middle" | "high" = classNumber >= 11 ? "high" : "middle";
+
+  const { data: existing, error: loadError } = await (db as any)
+    .from("learning_profiles")
+    .select("custom_subjects")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (loadError) throw loadError;
+
+  const profile: Record<string, unknown> = {
+    user_id: userId,
+    grade_band: gradeBand,
+    class: String(classNumber),
+    curriculum: "CBSE",
+    custom_subjects: existing?.custom_subjects ?? [],
+  };
+  const { error } = await db
+    .from("learning_profiles")
+    .upsert(profile as any, { onConflict: "user_id" });
+  if (error) throw error;
+}
+
+export async function addCustomSubject(userId: string, subject: string, description = "") {
+  const { data: existing, error: loadError } = await (db as any)
+    .from("learning_profiles")
+    .select("custom_subjects")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (loadError) throw loadError;
+  const current: Array<{ name: string; description?: string }> =
+    (existing?.custom_subjects as Array<{ name: string; description?: string }> | undefined) ?? [];
+  if (!current.some((s) => s.name.toLowerCase() === subject.toLowerCase())) {
+    current.push({ name: subject, description });
+  }
+  const { error } = await db
+    .from("learning_profiles")
+    .upsert({ user_id: userId, custom_subjects: current } as any, {
+      onConflict: "user_id",
+    });
+  if (error) throw error;
+}
+
+export interface CustomConceptInput {
+  subject: string;
+  title: string;
+  description?: string;
+  standardCode?: string;
+  chapter?: string;
+  keywords?: string[];
+  class?: string | null;
+}
+
+function slugify(input: string): string {
+  return input
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+export async function createCustomConcept(
+  userId: string,
+  input: CustomConceptInput,
+): Promise<LearningConcept> {
+  const id = `uc_${userId}_${slugify(input.subject)}_${slugify(input.title)}`;
+  const gradeBand: "middle" | "high" =
+    Number.parseInt(input.class ?? "8", 10) >= 11 ? "high" : "middle";
+  const { error } = await (db as any).from("learning_user_concepts").insert({
+    id,
+    user_id: userId,
+    subject: input.subject,
+    standard_code: input.standardCode ?? "",
+    framework: "CBSE",
+    grade_band: gradeBand,
+    class: input.class ?? null,
+    title: input.title,
+    description: input.description ?? "",
+    prerequisites: [],
+    chapter: input.chapter ?? null,
+    keywords: input.keywords ?? [],
+    misconception_tags: [],
+    estimated_study_minutes: 20,
+    is_custom: true,
+  });
+  if (error) throw error;
+
+  return {
+    id,
+    standard_code: input.standardCode ?? "",
+    framework: "CBSE",
+    subject: input.subject,
+    grade_band: gradeBand,
+    title: input.title,
+    description: input.description ?? "",
+    prerequisites: [],
+    chapter: input.chapter ?? undefined,
+    keywords: input.keywords ?? undefined,
+    is_custom: true,
+    class: input.class ?? null,
+  };
+}
+
+export async function getCustomConcepts(userId: string): Promise<LearningConcept[]> {
+  const { data, error } = await (db as any)
+    .from("learning_user_concepts")
+    .select("*")
+    .eq("user_id", userId)
+    .order("subject")
+    .order("title");
+  if (error) throw error;
+  return (data ?? []).map((concept: any) => ({
+    ...concept,
+    framework: concept.framework as LearningConcept["framework"],
+    grade_band: concept.grade_band as LearningConcept["grade_band"],
+    is_custom: true,
+  })) as LearningConcept[];
 }
 
 export async function recordAttempt(userId: string, question: Question, selectedIndex: number) {

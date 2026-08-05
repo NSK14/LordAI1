@@ -332,6 +332,11 @@ export function TutorView({ snapshot, userId, conceptId, onBack }: TutorViewProp
       .map((s) => `[${s.name}] ${s.extracted_text!.slice(0, 2500)}`)
       .join("\n\n");
 
+    const studentClass = snapshot?.profile?.class ?? null;
+    const customTag = activeConcept?.is_custom
+      ? "\nThis concept is a student-created custom concept (not part of the standard curriculum)."
+      : "";
+
     const conversationHistory = messages.slice(-8).map((msg) => ({
       role: msg.role,
       content: msg.text,
@@ -339,8 +344,10 @@ export function TutorView({ snapshot, userId, conceptId, onBack }: TutorViewProp
 
     const systemPrompt = [
       `You are LORD, a safe and encouraging middle/high-school tutor.`,
+      studentClass ? `Student class: ${studentClass}.` : "",
       `Subject: ${activeConcept?.subject ?? "General"}.`,
       `Current concept: ${activeConcept?.title ?? "any topic"} - ${activeConcept?.description ?? ""}.`,
+      customTag,
       `Teaching mode: ${MODE_LABELS[tutorMode]} - Guide the student with questions and hints before revealing answers.`,
       `Guidelines: Use short, clear chunks. Offer a hint, concrete example, and a one-question understanding check. Label worked examples as AI-generated.`,
       sourceContext
@@ -429,6 +436,7 @@ export function TutorView({ snapshot, userId, conceptId, onBack }: TutorViewProp
     activeConcept,
     user?.id,
     snapshot?.sources,
+    snapshot?.profile?.class,
     sessions,
   ]);
 

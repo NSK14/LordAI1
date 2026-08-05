@@ -7,6 +7,30 @@ import { requireSupabaseRequestAuth } from "@/integrations/supabase/auth-middlew
 import { apiErrorResponse } from "@/lib/api-error";
 import type { Question, TutorMode, LearningConcept, Mastery } from "@/lib/learning/types";
 
+async function resolveConcept(db: any, conceptId: string): Promise<LearningConcept | null> {
+  const { data: catalog } = await db
+    .from("learning_concepts")
+    .select("*")
+    .eq("id", conceptId)
+    .maybeSingle();
+  if (catalog) {
+    return {
+      ...catalog,
+      is_custom: false,
+    } as LearningConcept;
+  }
+  const { data: custom } = await db
+    .from("learning_user_concepts")
+    .select("*")
+    .eq("id", conceptId)
+    .maybeSingle();
+  if (!custom) return null;
+  return {
+    ...custom,
+    is_custom: true,
+  } as LearningConcept;
+}
+
 function getOpenRouterProvider() {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) throw new Error("AI not configured");
@@ -284,12 +308,8 @@ async function generatePlan(
   syllabus: string[] | undefined,
   supabase: any,
 ) {
-  const concepts = await Promise.all(
-    conceptIds.map((id) =>
-      supabase.from("learning_concepts").select("*").eq("id", id).maybeSingle(),
-    ),
-  );
-  const validConcepts = concepts.map((c) => c.data).filter(Boolean);
+  const concepts = await Promise.all(conceptIds.map((id) => resolveConcept(supabase, id)));
+  const validConcepts = concepts.filter((c): c is LearningConcept => c !== null);
 
   const now = new Date();
   const examDeadline = examDate ? new Date(examDate) : new Date(now.getTime() + 30 * 86400000);
@@ -359,12 +379,8 @@ async function generateExam(
   difficulty: number,
   supabase: any,
 ) {
-  const concepts = await Promise.all(
-    conceptIds.map((id) =>
-      supabase.from("learning_concepts").select("*").eq("id", id).maybeSingle(),
-    ),
-  );
-  const validConcepts = concepts.map((c) => c.data).filter(Boolean);
+  const concepts = await Promise.all(conceptIds.map((id) => resolveConcept(supabase, id)));
+  const validConcepts = concepts.filter((c): c is LearningConcept => c !== null);
 
   const questions = [];
   const questionsPerConcept = Math.max(1, Math.floor(questionCount / validConcepts.length));
@@ -619,12 +635,8 @@ export const Route = createFileRoute("/api/learning/session")({
 
         try {
           if (parsed.data.action === "question") {
-            const { data: concept, error } = await db
-              .from("learning_concepts")
-              .select("*")
-              .eq("id", parsed.data.conceptId)
-              .maybeSingle();
-            if (error || !concept)
+            const concept = await resolveConcept(db, parsed.data.conceptId);
+            if (!concept)
               return apiErrorResponse(
                 404,
                 "NOT_FOUND",
@@ -672,11 +684,7 @@ export const Route = createFileRoute("/api/learning/session")({
           }
 
           if (parsed.data.action === "flashcards") {
-            const { data: concept } = await db
-              .from("learning_concepts")
-              .select("*")
-              .eq("id", parsed.data.conceptId)
-              .maybeSingle();
+            const concept = await resolveConcept(db, parsed.data.conceptId);
             if (!concept)
               return apiErrorResponse(404, "NOT_FOUND", "Concept not found.", requestId);
 
@@ -712,12 +720,7 @@ export const Route = createFileRoute("/api/learning/session")({
           if (parsed.data.action === "tutor") {
             let concept: LearningConcept | null = null;
             if (parsed.data.conceptId) {
-              const { data } = await db
-                .from("learning_concepts")
-                .select("*")
-                .eq("id", parsed.data.conceptId)
-                .maybeSingle();
-              concept = data;
+              concept = await resolveConcept(db, parsed.data.conceptId);
             }
 
             const result = await generateTutorResponse(
@@ -736,11 +739,7 @@ export const Route = createFileRoute("/api/learning/session")({
           }
 
           if (parsed.data.action === "summary") {
-            const { data: concept } = await db
-              .from("learning_concepts")
-              .select("*")
-              .eq("id", parsed.data.conceptId)
-              .maybeSingle();
+            const concept = await resolveConcept(db, parsed.data.conceptId);
             if (!concept)
               return apiErrorResponse(404, "NOT_FOUND", "Concept not found.", requestId);
 

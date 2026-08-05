@@ -49,6 +49,8 @@ export type LearningConcept = {
   estimated_study_minutes?: number;
   keywords?: string[];
   learning_objectives?: string[];
+  is_custom?: boolean;
+  class?: string | null;
 };
 
 export type LearningProfile = {
@@ -66,6 +68,8 @@ export type LearningProfile = {
   preferred_pace?: PreferredPace;
   notification_preferences?: Record<string, unknown>;
   timezone?: string;
+  class?: string | null;
+  custom_subjects?: Array<{ name: string; description?: string }>;
   created_at: string;
   updated_at: string;
 };
@@ -439,7 +443,7 @@ export type LearningSnapshot = {
   resources: LearningResource[];
   profile: LearningProfile | null;
   sources: LearningSource[];
-  integrations: any[];
+  integrations: Record<string, unknown>[];
   sessions: LearningSession[];
   artifacts: LearningArtifact[];
   attempts: LearningAttempt[];
