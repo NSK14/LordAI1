@@ -174,8 +174,11 @@ export function StudyPlatform() {
           ) : error ? (
             <div className="p-6">
               <p className="rounded-md bg-destructive/10 p-3 text-destructive">
-                Your learning data could not be loaded. Please refresh and try again.
+                Your learning data could not be loaded.
               </p>
+              <pre className="mt-2 rounded-md bg-destructive/5 p-3 text-xs text-destructive/90 break-words">
+                {error instanceof Error ? error.message : String(error)}
+              </pre>
             </div>
           ) : userId && snapshot && !snapshot.profile?.class ? (
             <StudyOnboarding userId={userId} onClose={refresh} />
