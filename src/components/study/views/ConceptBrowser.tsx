@@ -6,6 +6,7 @@ import { ConceptCard } from "../ui/ConceptCard";
 import { StudyHeader } from "../StudyHeader";
 import { AddSubjectDialog } from "./AddSubjectDialog";
 import { AddConceptDialog } from "./AddConceptDialog";
+import { getConceptClass, classToGradeBand } from "@/lib/learning/class";
 import type { LearningSnapshot, StudyView } from "../types";
 
 interface ConceptBrowserProps {
@@ -18,13 +19,6 @@ interface ConceptBrowserProps {
 
 type SortKey = "title" | "mastery" | "subject";
 type SortDir = "asc" | "desc";
-
-function classToGradeBand(classNumber: string | null | undefined): "middle" | "high" | null {
-  if (!classNumber) return null;
-  const n = Number.parseInt(classNumber, 10);
-  if (Number.isNaN(n)) return null;
-  return n >= 11 ? "high" : "middle";
-}
 
 export function ConceptBrowser({
   snapshot,
@@ -41,19 +35,31 @@ export function ConceptBrowser({
 
   const profile = useMemo(() => snapshot?.profile, [snapshot?.profile]);
   const classNumber = profile?.class ?? null;
-  const gradeBand = useMemo(() => classToGradeBand(classNumber), [classNumber]);
+  const selectedClass = useMemo(() => {
+    if (!classNumber) return null;
+    const n = Number.parseInt(classNumber, 10);
+    return Number.isNaN(n) ? null : n;
+  }, [classNumber]);
+  const studentGradeBand = useMemo(() => classToGradeBand(classNumber), [classNumber]);
 
   const allConcepts = useMemo(() => snapshot?.concepts ?? [], [snapshot?.concepts]);
   const mastery = useMemo(() => snapshot?.mastery ?? [], [snapshot?.mastery]);
   const tasks = useMemo(() => snapshot?.tasks ?? [], [snapshot?.tasks]);
   const masteryMap = useMemo(() => new Map(mastery.map((m) => [m.concept_id, m])), [mastery]);
 
-  // Class-based curriculum: catalog concepts filter to the selected grade band.
-  // Student-defined concepts are always visible (they belong to the active profile).
+  // Class-based curriculum:
+  //  - exact-class concepts match the student's selected class (e.g. CBSE-10-MATH-3 for Class 10)
+  //  - band-only concepts (NGSS-MS/HS, CCSS.HSA) match when the student's grade band matches
+  //  - student-defined concepts are always visible regardless of class
   const concepts = useMemo(() => {
-    if (!gradeBand) return allConcepts;
-    return allConcepts.filter((c) => c.is_custom || c.grade_band === gradeBand);
-  }, [allConcepts, gradeBand]);
+    if (!selectedClass) return allConcepts;
+    return allConcepts.filter((c) => {
+      if (c.is_custom) return true;
+      const conceptClass = getConceptClass(c);
+      if (conceptClass !== null) return conceptClass === selectedClass;
+      return c.grade_band === studentGradeBand;
+    });
+  }, [allConcepts, selectedClass, studentGradeBand]);
 
   const customSubjects = useMemo(
     () => (profile?.custom_subjects ?? []).map((s) => s.name),

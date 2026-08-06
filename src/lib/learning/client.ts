@@ -2,6 +2,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { nextMastery } from "./mastery";
+import { classToGradeBand } from "./class";
 import type {
   LearningConcept,
   Mastery,
@@ -406,7 +407,7 @@ export async function saveProfile(userId: string, input: Record<string, unknown>
 }
 
 export async function completeStudentOnboarding(userId: string, classNumber: number) {
-  const gradeBand: "middle" | "high" = classNumber >= 11 ? "high" : "middle";
+  const gradeBand = classToGradeBand(classNumber) ?? "middle";
 
   const { data: existing, error: loadError } = await (db as any)
     .from("learning_profiles")
@@ -474,8 +475,7 @@ export async function createCustomConcept(
   input: CustomConceptInput,
 ): Promise<LearningConcept> {
   const id = `uc_${userId}_${slugify(input.subject)}_${slugify(input.title)}`;
-  const gradeBand: "middle" | "high" =
-    Number.parseInt(input.class ?? "8", 10) >= 11 ? "high" : "middle";
+  const gradeBand = classToGradeBand(input.class) ?? "middle";
   const { error } = await (db as any).from("learning_user_concepts").insert({
     id,
     user_id: userId,

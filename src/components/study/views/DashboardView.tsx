@@ -11,6 +11,7 @@ import {
   FileQuestion,
 } from "lucide-react";
 import { selectNextConcept, isReadyForTest } from "@/lib/learning/mastery";
+import { getConceptClass, classToGradeBand } from "@/lib/learning/class";
 import { StatCard } from "../ui/StatCard";
 import { QuickActionTile } from "../ui/QuickActionTile";
 import { ConceptCard } from "../ui/ConceptCard";
@@ -39,16 +40,28 @@ export function DashboardView({
 }: DashboardViewProps) {
   const { concepts, mastery, tasks, sessions, attempts, profile } = snapshot ?? {};
 
-  const gradeBand: "middle" | "high" | null = useMemo(() => {
+  const selectedClass = useMemo(() => {
     const cls = profile?.class;
     if (!cls) return null;
-    return Number.parseInt(cls, 10) >= 11 ? "high" : "middle";
+    const n = Number.parseInt(cls, 10);
+    return Number.isNaN(n) ? null : n;
   }, [profile?.class]);
+
+  const studentGradeBand = useMemo(
+    () => classToGradeBand(profile?.class ?? null),
+    [profile?.class],
+  );
 
   const curriculumConcepts = useMemo(() => {
     const list = concepts ?? [];
-    return gradeBand ? list.filter((c) => c.is_custom || c.grade_band === gradeBand) : list;
-  }, [concepts, gradeBand]);
+    if (!selectedClass) return list;
+    return list.filter((c) => {
+      if (c.is_custom) return true;
+      const conceptClass = getConceptClass(c);
+      if (conceptClass !== null) return conceptClass === selectedClass;
+      return c.grade_band === studentGradeBand;
+    });
+  }, [concepts, selectedClass, studentGradeBand]);
 
   const masteryMap = useMemo(
     () => new Map((mastery ?? []).map((m) => [m.concept_id, m])),

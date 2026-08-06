@@ -1,5 +1,5 @@
 export type LearningFramework = "CBSE" | "COMMON_CORE" | "NGSS";
-export type GradeBand = "middle" | "high";
+export type GradeBand = "elementary" | "middle" | "high";
 export type ExplanationDepth = "concise" | "standard" | "detailed";
 export type LearningStyle = "visual" | "auditory" | "reading" | "kinesthetic" | "mixed";
 export type PreferredPace = "slow" | "moderate" | "fast";
