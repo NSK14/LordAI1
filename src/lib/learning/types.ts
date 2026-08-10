@@ -174,9 +174,12 @@ export type LearningPlan = {
   id: string;
   user_id: string;
   title: string;
+  description: string | null;
   starts_on: string;
   ends_on: string;
-  status: "active" | "archived" | "completed";
+  daily_minutes: number | null;
+  status: "active" | "paused" | "completed" | "archived";
+  source: "manual" | "ai" | "mixed";
   generated_from: Record<string, unknown>;
   created_at: string;
   updated_at: string;
@@ -188,10 +191,14 @@ export type LearningPlanTask = {
   user_id: string;
   concept_id: string | null;
   title: string;
-  task_type: "learn" | "practice" | "review" | "reflect";
+  description: string | null;
+  task_type: "learn" | "practice" | "review" | "quiz" | "flashcards" | "custom";
   due_at: string;
   estimated_minutes: number;
-  status: "pending" | "completed" | "skipped";
+  priority: "low" | "medium" | "high";
+  status: "pending" | "in_progress" | "completed" | "skipped";
+  position: number;
+  notes: string | null;
   created_at: string;
 };
 
@@ -492,11 +499,89 @@ export type PlanGenerationRequest = {
   weeklyMinutes: number;
   examDate?: string;
   syllabus?: string[];
+  planName?: string;
+  startDate?: string;
+  targetDate?: string;
+  dailyMinutes?: number;
+  subjects?: string[];
+  preferredDays?: number[];
+  difficulty?: "easy" | "medium" | "hard";
 };
 
 export type PlanTask = {
   conceptId: string;
-  taskType: "learn" | "practice" | "review" | "reflect";
+  taskType: "learn" | "practice" | "review" | "quiz" | "flashcards" | "custom";
   estimatedMinutes: number;
   dueAt: string;
+  title?: string;
+  description?: string;
+  priority?: "low" | "medium" | "high";
+  notes?: string;
+};
+
+export type PlanInput = {
+  title: string;
+  description?: string;
+  startDate: string;
+  targetDate: string;
+  dailyMinutes: number;
+  subjects?: string[];
+  preferredDays?: number[];
+  difficulty?: "easy" | "medium" | "hard";
+  examDate?: string;
+  source?: "manual" | "ai" | "mixed";
+  conceptIds?: string[];
+  status?: "active" | "paused" | "completed" | "archived";
+};
+
+export type PlanTaskInput = {
+  title: string;
+  description?: string;
+  conceptId?: string;
+  taskType: "learn" | "practice" | "review" | "quiz" | "flashcards" | "custom";
+  scheduledDate: string;
+  estimatedMinutes: number;
+  priority: "low" | "medium" | "high";
+  notes?: string;
+  position?: number;
+};
+
+export type AIProposedChange = {
+  taskId?: string;
+  action: "create" | "update" | "delete" | "reschedule" | "move" | "duplicate";
+  field?: string;
+  from?: unknown;
+  to?: unknown;
+  summary: string;
+};
+
+export type PlanOptimizationResult = {
+  summary: string;
+  health: {
+    workload: "low" | "optimal" | "high" | "overloaded";
+    coverage: "poor" | "fair" | "good" | "excellent";
+    revision: "low" | "fair" | "good";
+    weakTopics: number;
+    deadline: "at_risk" | "on_track" | "ahead";
+  };
+  changes: AIProposedChange[];
+  recommendations: string[];
+  smartSuggestions?: string[];
+};
+
+export type PlanWithTasks = LearningPlan & {
+  tasks: LearningPlanTask[];
+  progress: {
+    total: number;
+    completed: number;
+    percent: number;
+    remainingMinutes: number;
+  };
+  dailyWorkload: Array<{
+    date: string;
+    scheduledMinutes: number;
+    dailyTarget: number;
+    overloaded: boolean;
+    tasks: LearningPlanTask[];
+  }>;
 };

@@ -23,6 +23,11 @@ import type {
   LearningAnalytics,
   LearningHistory,
   AI_GENERATED_NOTICE,
+  PlanInput,
+  PlanTaskInput,
+  PlanWithTasks,
+  AIProposedChange,
+  PlanOptimizationResult,
 } from "@/lib/learning/types";
 
 export type {
@@ -50,6 +55,11 @@ export type {
   LearningAnalytics,
   LearningHistory,
   AI_GENERATED_NOTICE,
+  PlanInput,
+  PlanTaskInput,
+  PlanWithTasks,
+  AIProposedChange,
+  PlanOptimizationResult,
 };
 
 export type StudyView =
@@ -105,9 +115,13 @@ export type SessionResponse =
 
 export type PlanTask = {
   conceptId: string;
-  taskType: "learn" | "practice" | "review" | "reflect";
+  taskType: "learn" | "practice" | "review" | "quiz" | "flashcards" | "custom";
   estimatedMinutes: number;
   dueAt: string;
+  title?: string;
+  description?: string;
+  priority?: "low" | "medium" | "high";
+  notes?: string;
 };
 
 export interface StudyPlatformProps {

@@ -24,19 +24,37 @@ import { Route as AuthenticatedTasksRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedStudyRouteImport } from './routes/_authenticated/study'
 import { Route as AuthenticatedStatisticsRouteImport } from './routes/_authenticated/statistics'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedResearchRouteImport } from './routes/_authenticated/research'
+import { Route as AuthenticatedProjectsRouteImport } from './routes/_authenticated/projects'
 import { Route as AuthenticatedProgressRouteImport } from './routes/_authenticated/progress'
 import { Route as AuthenticatedProductivityRouteImport } from './routes/_authenticated/productivity'
 import { Route as AuthenticatedPracticeRouteImport } from './routes/_authenticated/practice'
 import { Route as AuthenticatedPlanRouteImport } from './routes/_authenticated/plan'
 import { Route as AuthenticatedMemoryRouteImport } from './routes/_authenticated/memory'
 import { Route as AuthenticatedLearnRouteImport } from './routes/_authenticated/learn'
+import { Route as AuthenticatedImagesRouteImport } from './routes/_authenticated/images'
 import { Route as AuthenticatedFeedRouteImport } from './routes/_authenticated/feed'
 import { Route as AuthenticatedDocumentsRouteImport } from './routes/_authenticated/documents'
 import { Route as AuthenticatedChatRouteImport } from './routes/_authenticated/chat'
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
 import { Route as AuthenticatedBoardsRouteImport } from './routes/_authenticated/boards'
+import { Route as AuthenticatedAssistantRouteImport } from './routes/_authenticated/assistant'
+import { Route as AuthenticatedArtifactsRouteImport } from './routes/_authenticated/artifacts'
+import { Route as ApiStudyPlansIndexRouteImport } from './routes/api/study-plans/index'
+import { Route as ApiSavedResponsesIndexRouteImport } from './routes/api/saved-responses/index'
+import { Route as ApiResearchIndexRouteImport } from './routes/api/research/index'
+import { Route as ApiProjectsIndexRouteImport } from './routes/api/projects/index'
+import { Route as ApiImagesIndexRouteImport } from './routes/api/images/index'
+import { Route as ApiDocumentsIndexRouteImport } from './routes/api/documents/index'
+import { Route as ApiArtifactsIndexRouteImport } from './routes/api/artifacts/index'
+import { Route as ApiStudyPlansIdRouteImport } from './routes/api/study-plans/$id'
 import { Route as ApiSharesTokenRouteImport } from './routes/api/shares/$token'
 import { Route as ApiSharedTokenRouteImport } from './routes/api/shared/$token'
+import { Route as ApiSavedResponsesIdRouteImport } from './routes/api/saved-responses/$id'
+import { Route as ApiResearchIdRouteImport } from './routes/api/research/$id'
+import { Route as ApiProjectsIdRouteImport } from './routes/api/projects/$id'
+import { Route as ApiPrivacyExportRouteImport } from './routes/api/privacy/export'
+import { Route as ApiPrivacyDeleteRouteImport } from './routes/api/privacy/delete'
 import { Route as ApiLearningWhiteboardRouteImport } from './routes/api/learning/whiteboard'
 import { Route as ApiLearningVoiceRouteImport } from './routes/api/learning/voice'
 import { Route as ApiLearningSessionRouteImport } from './routes/api/learning/session'
@@ -49,7 +67,31 @@ import { Route as ApiLearningFlashcardsRouteImport } from './routes/api/learning
 import { Route as ApiLearningFeaturesRouteImport } from './routes/api/learning/features'
 import { Route as ApiLearningExamsRouteImport } from './routes/api/learning/exams'
 import { Route as ApiLearningAnalyticsRouteImport } from './routes/api/learning/analytics'
+import { Route as ApiImagesUploadRouteImport } from './routes/api/images/upload'
+import { Route as ApiImagesGenerateRouteImport } from './routes/api/images/generate'
+import { Route as ApiImagesAnalyzeRouteImport } from './routes/api/images/analyze'
+import { Route as ApiDocumentsUploadRouteImport } from './routes/api/documents/upload'
+import { Route as ApiAssistantPreferencesRouteImport } from './routes/api/assistant/preferences'
+import { Route as ApiArtifactsIdRouteImport } from './routes/api/artifacts/$id'
+import { Route as AuthenticatedResearchIdRouteImport } from './routes/_authenticated/research/$id'
+import { Route as AuthenticatedProjectsIdRouteImport } from './routes/_authenticated/projects/$id'
+import { Route as AuthenticatedArtifactsIdRouteImport } from './routes/_authenticated/artifacts/$id'
+import { Route as ApiDocumentsIdIndexRouteImport } from './routes/api/documents/$id/index'
+import { Route as ApiAssistantMemoryIndexRouteImport } from './routes/api/assistant/memory/index'
+import { Route as ApiWorkspaceTrashCleanupRouteImport } from './routes/api/workspace/trash/cleanup'
 import { Route as ApiLearningSourcesIngestRouteImport } from './routes/api/learning/sources/ingest'
+import { Route as ApiDocumentsIdProcessRouteImport } from './routes/api/documents/$id/process'
+import { Route as ApiDocumentsIdChunksRouteImport } from './routes/api/documents/$id/chunks'
+import { Route as ApiStudyPlansIdTasksIndexRouteImport } from './routes/api/study-plans/$id/tasks/index'
+import { Route as ApiResearchIdSourcesIndexRouteImport } from './routes/api/research/$id/sources/index'
+import { Route as ApiProjectsIdFilesIndexRouteImport } from './routes/api/projects/$id/files/index'
+import { Route as ApiProjectsIdDocumentsIndexRouteImport } from './routes/api/projects/$id/documents/index'
+import { Route as ApiDocumentsIdChatIndexRouteImport } from './routes/api/documents/$id/chat/index'
+import { Route as ApiStudyPlansIdTasksTaskIdRouteImport } from './routes/api/study-plans/$id/tasks/$taskId'
+import { Route as ApiStudyPlansIdAiSuggestRouteImport } from './routes/api/study-plans/$id/ai/suggest'
+import { Route as ApiStudyPlansIdAiOptimizeRouteImport } from './routes/api/study-plans/$id/ai/optimize'
+import { Route as ApiStudyPlansIdAiGenerateRouteImport } from './routes/api/study-plans/$id/ai/generate'
+import { Route as ApiProjectsIdFilesFileIdRouteImport } from './routes/api/projects/$id/files/$fileId'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
@@ -125,6 +167,16 @@ const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedResearchRoute = AuthenticatedResearchRouteImport.update({
+  id: '/research',
+  path: '/research',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedProjectsRoute = AuthenticatedProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedProgressRoute = AuthenticatedProgressRouteImport.update({
   id: '/progress',
   path: '/progress',
@@ -156,6 +208,11 @@ const AuthenticatedLearnRoute = AuthenticatedLearnRouteImport.update({
   path: '/learn',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedImagesRoute = AuthenticatedImagesRouteImport.update({
+  id: '/images',
+  path: '/images',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedFeedRoute = AuthenticatedFeedRouteImport.update({
   id: '/feed',
   path: '/feed',
@@ -181,6 +238,56 @@ const AuthenticatedBoardsRoute = AuthenticatedBoardsRouteImport.update({
   path: '/boards',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAssistantRoute = AuthenticatedAssistantRouteImport.update({
+  id: '/assistant',
+  path: '/assistant',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedArtifactsRoute = AuthenticatedArtifactsRouteImport.update({
+  id: '/artifacts',
+  path: '/artifacts',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const ApiStudyPlansIndexRoute = ApiStudyPlansIndexRouteImport.update({
+  id: '/api/study-plans/',
+  path: '/api/study-plans/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSavedResponsesIndexRoute = ApiSavedResponsesIndexRouteImport.update({
+  id: '/api/saved-responses/',
+  path: '/api/saved-responses/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiResearchIndexRoute = ApiResearchIndexRouteImport.update({
+  id: '/api/research/',
+  path: '/api/research/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiProjectsIndexRoute = ApiProjectsIndexRouteImport.update({
+  id: '/api/projects/',
+  path: '/api/projects/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiImagesIndexRoute = ApiImagesIndexRouteImport.update({
+  id: '/api/images/',
+  path: '/api/images/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDocumentsIndexRoute = ApiDocumentsIndexRouteImport.update({
+  id: '/api/documents/',
+  path: '/api/documents/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiArtifactsIndexRoute = ApiArtifactsIndexRouteImport.update({
+  id: '/api/artifacts/',
+  path: '/api/artifacts/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiStudyPlansIdRoute = ApiStudyPlansIdRouteImport.update({
+  id: '/api/study-plans/$id',
+  path: '/api/study-plans/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSharesTokenRoute = ApiSharesTokenRouteImport.update({
   id: '/$token',
   path: '/$token',
@@ -189,6 +296,31 @@ const ApiSharesTokenRoute = ApiSharesTokenRouteImport.update({
 const ApiSharedTokenRoute = ApiSharedTokenRouteImport.update({
   id: '/api/shared/$token',
   path: '/api/shared/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSavedResponsesIdRoute = ApiSavedResponsesIdRouteImport.update({
+  id: '/api/saved-responses/$id',
+  path: '/api/saved-responses/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiResearchIdRoute = ApiResearchIdRouteImport.update({
+  id: '/api/research/$id',
+  path: '/api/research/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiProjectsIdRoute = ApiProjectsIdRouteImport.update({
+  id: '/api/projects/$id',
+  path: '/api/projects/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPrivacyExportRoute = ApiPrivacyExportRouteImport.update({
+  id: '/api/privacy/export',
+  path: '/api/privacy/export',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPrivacyDeleteRoute = ApiPrivacyDeleteRouteImport.update({
+  id: '/api/privacy/delete',
+  path: '/api/privacy/delete',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiLearningWhiteboardRoute = ApiLearningWhiteboardRouteImport.update({
@@ -251,11 +383,141 @@ const ApiLearningAnalyticsRoute = ApiLearningAnalyticsRouteImport.update({
   path: '/api/learning/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiImagesUploadRoute = ApiImagesUploadRouteImport.update({
+  id: '/api/images/upload',
+  path: '/api/images/upload',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiImagesGenerateRoute = ApiImagesGenerateRouteImport.update({
+  id: '/api/images/generate',
+  path: '/api/images/generate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiImagesAnalyzeRoute = ApiImagesAnalyzeRouteImport.update({
+  id: '/api/images/analyze',
+  path: '/api/images/analyze',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDocumentsUploadRoute = ApiDocumentsUploadRouteImport.update({
+  id: '/api/documents/upload',
+  path: '/api/documents/upload',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAssistantPreferencesRoute = ApiAssistantPreferencesRouteImport.update({
+  id: '/api/assistant/preferences',
+  path: '/api/assistant/preferences',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiArtifactsIdRoute = ApiArtifactsIdRouteImport.update({
+  id: '/api/artifacts/$id',
+  path: '/api/artifacts/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedResearchIdRoute = AuthenticatedResearchIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AuthenticatedResearchRoute,
+} as any)
+const AuthenticatedProjectsIdRoute = AuthenticatedProjectsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AuthenticatedProjectsRoute,
+} as any)
+const AuthenticatedArtifactsIdRoute =
+  AuthenticatedArtifactsIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedArtifactsRoute,
+  } as any)
+const ApiDocumentsIdIndexRoute = ApiDocumentsIdIndexRouteImport.update({
+  id: '/api/documents/$id/',
+  path: '/api/documents/$id/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAssistantMemoryIndexRoute = ApiAssistantMemoryIndexRouteImport.update({
+  id: '/api/assistant/memory/',
+  path: '/api/assistant/memory/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWorkspaceTrashCleanupRoute =
+  ApiWorkspaceTrashCleanupRouteImport.update({
+    id: '/api/workspace/trash/cleanup',
+    path: '/api/workspace/trash/cleanup',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiLearningSourcesIngestRoute =
   ApiLearningSourcesIngestRouteImport.update({
     id: '/api/learning/sources/ingest',
     path: '/api/learning/sources/ingest',
     getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiDocumentsIdProcessRoute = ApiDocumentsIdProcessRouteImport.update({
+  id: '/api/documents/$id/process',
+  path: '/api/documents/$id/process',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDocumentsIdChunksRoute = ApiDocumentsIdChunksRouteImport.update({
+  id: '/api/documents/$id/chunks',
+  path: '/api/documents/$id/chunks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiStudyPlansIdTasksIndexRoute =
+  ApiStudyPlansIdTasksIndexRouteImport.update({
+    id: '/tasks/',
+    path: '/tasks/',
+    getParentRoute: () => ApiStudyPlansIdRoute,
+  } as any)
+const ApiResearchIdSourcesIndexRoute =
+  ApiResearchIdSourcesIndexRouteImport.update({
+    id: '/sources/',
+    path: '/sources/',
+    getParentRoute: () => ApiResearchIdRoute,
+  } as any)
+const ApiProjectsIdFilesIndexRoute = ApiProjectsIdFilesIndexRouteImport.update({
+  id: '/files/',
+  path: '/files/',
+  getParentRoute: () => ApiProjectsIdRoute,
+} as any)
+const ApiProjectsIdDocumentsIndexRoute =
+  ApiProjectsIdDocumentsIndexRouteImport.update({
+    id: '/documents/',
+    path: '/documents/',
+    getParentRoute: () => ApiProjectsIdRoute,
+  } as any)
+const ApiDocumentsIdChatIndexRoute = ApiDocumentsIdChatIndexRouteImport.update({
+  id: '/api/documents/$id/chat/',
+  path: '/api/documents/$id/chat/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiStudyPlansIdTasksTaskIdRoute =
+  ApiStudyPlansIdTasksTaskIdRouteImport.update({
+    id: '/tasks/$taskId',
+    path: '/tasks/$taskId',
+    getParentRoute: () => ApiStudyPlansIdRoute,
+  } as any)
+const ApiStudyPlansIdAiSuggestRoute =
+  ApiStudyPlansIdAiSuggestRouteImport.update({
+    id: '/ai/suggest',
+    path: '/ai/suggest',
+    getParentRoute: () => ApiStudyPlansIdRoute,
+  } as any)
+const ApiStudyPlansIdAiOptimizeRoute =
+  ApiStudyPlansIdAiOptimizeRouteImport.update({
+    id: '/ai/optimize',
+    path: '/ai/optimize',
+    getParentRoute: () => ApiStudyPlansIdRoute,
+  } as any)
+const ApiStudyPlansIdAiGenerateRoute =
+  ApiStudyPlansIdAiGenerateRouteImport.update({
+    id: '/ai/generate',
+    path: '/ai/generate',
+    getParentRoute: () => ApiStudyPlansIdRoute,
+  } as any)
+const ApiProjectsIdFilesFileIdRoute =
+  ApiProjectsIdFilesFileIdRouteImport.update({
+    id: '/files/$fileId',
+    path: '/files/$fileId',
+    getParentRoute: () => ApiProjectsIdRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -263,17 +525,22 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/artifacts': typeof AuthenticatedArtifactsRouteWithChildren
+  '/assistant': typeof AuthenticatedAssistantRoute
   '/boards': typeof AuthenticatedBoardsRoute
   '/calendar': typeof AuthenticatedCalendarRoute
   '/chat': typeof AuthenticatedChatRoute
   '/documents': typeof AuthenticatedDocumentsRoute
   '/feed': typeof AuthenticatedFeedRoute
+  '/images': typeof AuthenticatedImagesRoute
   '/learn': typeof AuthenticatedLearnRoute
   '/memory': typeof AuthenticatedMemoryRoute
   '/plan': typeof AuthenticatedPlanRoute
   '/practice': typeof AuthenticatedPracticeRoute
   '/productivity': typeof AuthenticatedProductivityRoute
   '/progress': typeof AuthenticatedProgressRoute
+  '/projects': typeof AuthenticatedProjectsRouteWithChildren
+  '/research': typeof AuthenticatedResearchRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRoute
   '/statistics': typeof AuthenticatedStatisticsRoute
   '/study': typeof AuthenticatedStudyRoute
@@ -284,6 +551,15 @@ export interface FileRoutesByFullPath {
   '/api/openrouter-test': typeof ApiOpenrouterTestRoute
   '/api/shares': typeof ApiSharesRouteWithChildren
   '/share/$token': typeof ShareTokenRoute
+  '/artifacts/$id': typeof AuthenticatedArtifactsIdRoute
+  '/projects/$id': typeof AuthenticatedProjectsIdRoute
+  '/research/$id': typeof AuthenticatedResearchIdRoute
+  '/api/artifacts/$id': typeof ApiArtifactsIdRoute
+  '/api/assistant/preferences': typeof ApiAssistantPreferencesRoute
+  '/api/documents/upload': typeof ApiDocumentsUploadRoute
+  '/api/images/analyze': typeof ApiImagesAnalyzeRoute
+  '/api/images/generate': typeof ApiImagesGenerateRoute
+  '/api/images/upload': typeof ApiImagesUploadRoute
   '/api/learning/analytics': typeof ApiLearningAnalyticsRoute
   '/api/learning/exams': typeof ApiLearningExamsRoute
   '/api/learning/features': typeof ApiLearningFeaturesRoute
@@ -296,26 +572,59 @@ export interface FileRoutesByFullPath {
   '/api/learning/session': typeof ApiLearningSessionRoute
   '/api/learning/voice': typeof ApiLearningVoiceRoute
   '/api/learning/whiteboard': typeof ApiLearningWhiteboardRoute
+  '/api/privacy/delete': typeof ApiPrivacyDeleteRoute
+  '/api/privacy/export': typeof ApiPrivacyExportRoute
+  '/api/projects/$id': typeof ApiProjectsIdRouteWithChildren
+  '/api/research/$id': typeof ApiResearchIdRouteWithChildren
+  '/api/saved-responses/$id': typeof ApiSavedResponsesIdRoute
   '/api/shared/$token': typeof ApiSharedTokenRoute
   '/api/shares/$token': typeof ApiSharesTokenRoute
+  '/api/study-plans/$id': typeof ApiStudyPlansIdRouteWithChildren
+  '/api/artifacts/': typeof ApiArtifactsIndexRoute
+  '/api/documents/': typeof ApiDocumentsIndexRoute
+  '/api/images/': typeof ApiImagesIndexRoute
+  '/api/projects/': typeof ApiProjectsIndexRoute
+  '/api/research/': typeof ApiResearchIndexRoute
+  '/api/saved-responses/': typeof ApiSavedResponsesIndexRoute
+  '/api/study-plans/': typeof ApiStudyPlansIndexRoute
+  '/api/documents/$id/chunks': typeof ApiDocumentsIdChunksRoute
+  '/api/documents/$id/process': typeof ApiDocumentsIdProcessRoute
   '/api/learning/sources/ingest': typeof ApiLearningSourcesIngestRoute
+  '/api/workspace/trash/cleanup': typeof ApiWorkspaceTrashCleanupRoute
+  '/api/assistant/memory/': typeof ApiAssistantMemoryIndexRoute
+  '/api/documents/$id/': typeof ApiDocumentsIdIndexRoute
+  '/api/projects/$id/files/$fileId': typeof ApiProjectsIdFilesFileIdRoute
+  '/api/study-plans/$id/ai/generate': typeof ApiStudyPlansIdAiGenerateRoute
+  '/api/study-plans/$id/ai/optimize': typeof ApiStudyPlansIdAiOptimizeRoute
+  '/api/study-plans/$id/ai/suggest': typeof ApiStudyPlansIdAiSuggestRoute
+  '/api/study-plans/$id/tasks/$taskId': typeof ApiStudyPlansIdTasksTaskIdRoute
+  '/api/documents/$id/chat/': typeof ApiDocumentsIdChatIndexRoute
+  '/api/projects/$id/documents/': typeof ApiProjectsIdDocumentsIndexRoute
+  '/api/projects/$id/files/': typeof ApiProjectsIdFilesIndexRoute
+  '/api/research/$id/sources/': typeof ApiResearchIdSourcesIndexRoute
+  '/api/study-plans/$id/tasks/': typeof ApiStudyPlansIdTasksIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/artifacts': typeof AuthenticatedArtifactsRouteWithChildren
+  '/assistant': typeof AuthenticatedAssistantRoute
   '/boards': typeof AuthenticatedBoardsRoute
   '/calendar': typeof AuthenticatedCalendarRoute
   '/chat': typeof AuthenticatedChatRoute
   '/documents': typeof AuthenticatedDocumentsRoute
   '/feed': typeof AuthenticatedFeedRoute
+  '/images': typeof AuthenticatedImagesRoute
   '/learn': typeof AuthenticatedLearnRoute
   '/memory': typeof AuthenticatedMemoryRoute
   '/plan': typeof AuthenticatedPlanRoute
   '/practice': typeof AuthenticatedPracticeRoute
   '/productivity': typeof AuthenticatedProductivityRoute
   '/progress': typeof AuthenticatedProgressRoute
+  '/projects': typeof AuthenticatedProjectsRouteWithChildren
+  '/research': typeof AuthenticatedResearchRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRoute
   '/statistics': typeof AuthenticatedStatisticsRoute
   '/study': typeof AuthenticatedStudyRoute
@@ -326,6 +635,15 @@ export interface FileRoutesByTo {
   '/api/openrouter-test': typeof ApiOpenrouterTestRoute
   '/api/shares': typeof ApiSharesRouteWithChildren
   '/share/$token': typeof ShareTokenRoute
+  '/artifacts/$id': typeof AuthenticatedArtifactsIdRoute
+  '/projects/$id': typeof AuthenticatedProjectsIdRoute
+  '/research/$id': typeof AuthenticatedResearchIdRoute
+  '/api/artifacts/$id': typeof ApiArtifactsIdRoute
+  '/api/assistant/preferences': typeof ApiAssistantPreferencesRoute
+  '/api/documents/upload': typeof ApiDocumentsUploadRoute
+  '/api/images/analyze': typeof ApiImagesAnalyzeRoute
+  '/api/images/generate': typeof ApiImagesGenerateRoute
+  '/api/images/upload': typeof ApiImagesUploadRoute
   '/api/learning/analytics': typeof ApiLearningAnalyticsRoute
   '/api/learning/exams': typeof ApiLearningExamsRoute
   '/api/learning/features': typeof ApiLearningFeaturesRoute
@@ -338,9 +656,37 @@ export interface FileRoutesByTo {
   '/api/learning/session': typeof ApiLearningSessionRoute
   '/api/learning/voice': typeof ApiLearningVoiceRoute
   '/api/learning/whiteboard': typeof ApiLearningWhiteboardRoute
+  '/api/privacy/delete': typeof ApiPrivacyDeleteRoute
+  '/api/privacy/export': typeof ApiPrivacyExportRoute
+  '/api/projects/$id': typeof ApiProjectsIdRouteWithChildren
+  '/api/research/$id': typeof ApiResearchIdRouteWithChildren
+  '/api/saved-responses/$id': typeof ApiSavedResponsesIdRoute
   '/api/shared/$token': typeof ApiSharedTokenRoute
   '/api/shares/$token': typeof ApiSharesTokenRoute
+  '/api/study-plans/$id': typeof ApiStudyPlansIdRouteWithChildren
+  '/api/artifacts': typeof ApiArtifactsIndexRoute
+  '/api/documents': typeof ApiDocumentsIndexRoute
+  '/api/images': typeof ApiImagesIndexRoute
+  '/api/projects': typeof ApiProjectsIndexRoute
+  '/api/research': typeof ApiResearchIndexRoute
+  '/api/saved-responses': typeof ApiSavedResponsesIndexRoute
+  '/api/study-plans': typeof ApiStudyPlansIndexRoute
+  '/api/documents/$id/chunks': typeof ApiDocumentsIdChunksRoute
+  '/api/documents/$id/process': typeof ApiDocumentsIdProcessRoute
   '/api/learning/sources/ingest': typeof ApiLearningSourcesIngestRoute
+  '/api/workspace/trash/cleanup': typeof ApiWorkspaceTrashCleanupRoute
+  '/api/assistant/memory': typeof ApiAssistantMemoryIndexRoute
+  '/api/documents/$id': typeof ApiDocumentsIdIndexRoute
+  '/api/projects/$id/files/$fileId': typeof ApiProjectsIdFilesFileIdRoute
+  '/api/study-plans/$id/ai/generate': typeof ApiStudyPlansIdAiGenerateRoute
+  '/api/study-plans/$id/ai/optimize': typeof ApiStudyPlansIdAiOptimizeRoute
+  '/api/study-plans/$id/ai/suggest': typeof ApiStudyPlansIdAiSuggestRoute
+  '/api/study-plans/$id/tasks/$taskId': typeof ApiStudyPlansIdTasksTaskIdRoute
+  '/api/documents/$id/chat': typeof ApiDocumentsIdChatIndexRoute
+  '/api/projects/$id/documents': typeof ApiProjectsIdDocumentsIndexRoute
+  '/api/projects/$id/files': typeof ApiProjectsIdFilesIndexRoute
+  '/api/research/$id/sources': typeof ApiResearchIdSourcesIndexRoute
+  '/api/study-plans/$id/tasks': typeof ApiStudyPlansIdTasksIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -349,17 +695,22 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/_authenticated/artifacts': typeof AuthenticatedArtifactsRouteWithChildren
+  '/_authenticated/assistant': typeof AuthenticatedAssistantRoute
   '/_authenticated/boards': typeof AuthenticatedBoardsRoute
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
   '/_authenticated/chat': typeof AuthenticatedChatRoute
   '/_authenticated/documents': typeof AuthenticatedDocumentsRoute
   '/_authenticated/feed': typeof AuthenticatedFeedRoute
+  '/_authenticated/images': typeof AuthenticatedImagesRoute
   '/_authenticated/learn': typeof AuthenticatedLearnRoute
   '/_authenticated/memory': typeof AuthenticatedMemoryRoute
   '/_authenticated/plan': typeof AuthenticatedPlanRoute
   '/_authenticated/practice': typeof AuthenticatedPracticeRoute
   '/_authenticated/productivity': typeof AuthenticatedProductivityRoute
   '/_authenticated/progress': typeof AuthenticatedProgressRoute
+  '/_authenticated/projects': typeof AuthenticatedProjectsRouteWithChildren
+  '/_authenticated/research': typeof AuthenticatedResearchRouteWithChildren
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/statistics': typeof AuthenticatedStatisticsRoute
   '/_authenticated/study': typeof AuthenticatedStudyRoute
@@ -370,6 +721,15 @@ export interface FileRoutesById {
   '/api/openrouter-test': typeof ApiOpenrouterTestRoute
   '/api/shares': typeof ApiSharesRouteWithChildren
   '/share/$token': typeof ShareTokenRoute
+  '/_authenticated/artifacts/$id': typeof AuthenticatedArtifactsIdRoute
+  '/_authenticated/projects/$id': typeof AuthenticatedProjectsIdRoute
+  '/_authenticated/research/$id': typeof AuthenticatedResearchIdRoute
+  '/api/artifacts/$id': typeof ApiArtifactsIdRoute
+  '/api/assistant/preferences': typeof ApiAssistantPreferencesRoute
+  '/api/documents/upload': typeof ApiDocumentsUploadRoute
+  '/api/images/analyze': typeof ApiImagesAnalyzeRoute
+  '/api/images/generate': typeof ApiImagesGenerateRoute
+  '/api/images/upload': typeof ApiImagesUploadRoute
   '/api/learning/analytics': typeof ApiLearningAnalyticsRoute
   '/api/learning/exams': typeof ApiLearningExamsRoute
   '/api/learning/features': typeof ApiLearningFeaturesRoute
@@ -382,9 +742,37 @@ export interface FileRoutesById {
   '/api/learning/session': typeof ApiLearningSessionRoute
   '/api/learning/voice': typeof ApiLearningVoiceRoute
   '/api/learning/whiteboard': typeof ApiLearningWhiteboardRoute
+  '/api/privacy/delete': typeof ApiPrivacyDeleteRoute
+  '/api/privacy/export': typeof ApiPrivacyExportRoute
+  '/api/projects/$id': typeof ApiProjectsIdRouteWithChildren
+  '/api/research/$id': typeof ApiResearchIdRouteWithChildren
+  '/api/saved-responses/$id': typeof ApiSavedResponsesIdRoute
   '/api/shared/$token': typeof ApiSharedTokenRoute
   '/api/shares/$token': typeof ApiSharesTokenRoute
+  '/api/study-plans/$id': typeof ApiStudyPlansIdRouteWithChildren
+  '/api/artifacts/': typeof ApiArtifactsIndexRoute
+  '/api/documents/': typeof ApiDocumentsIndexRoute
+  '/api/images/': typeof ApiImagesIndexRoute
+  '/api/projects/': typeof ApiProjectsIndexRoute
+  '/api/research/': typeof ApiResearchIndexRoute
+  '/api/saved-responses/': typeof ApiSavedResponsesIndexRoute
+  '/api/study-plans/': typeof ApiStudyPlansIndexRoute
+  '/api/documents/$id/chunks': typeof ApiDocumentsIdChunksRoute
+  '/api/documents/$id/process': typeof ApiDocumentsIdProcessRoute
   '/api/learning/sources/ingest': typeof ApiLearningSourcesIngestRoute
+  '/api/workspace/trash/cleanup': typeof ApiWorkspaceTrashCleanupRoute
+  '/api/assistant/memory/': typeof ApiAssistantMemoryIndexRoute
+  '/api/documents/$id/': typeof ApiDocumentsIdIndexRoute
+  '/api/projects/$id/files/$fileId': typeof ApiProjectsIdFilesFileIdRoute
+  '/api/study-plans/$id/ai/generate': typeof ApiStudyPlansIdAiGenerateRoute
+  '/api/study-plans/$id/ai/optimize': typeof ApiStudyPlansIdAiOptimizeRoute
+  '/api/study-plans/$id/ai/suggest': typeof ApiStudyPlansIdAiSuggestRoute
+  '/api/study-plans/$id/tasks/$taskId': typeof ApiStudyPlansIdTasksTaskIdRoute
+  '/api/documents/$id/chat/': typeof ApiDocumentsIdChatIndexRoute
+  '/api/projects/$id/documents/': typeof ApiProjectsIdDocumentsIndexRoute
+  '/api/projects/$id/files/': typeof ApiProjectsIdFilesIndexRoute
+  '/api/research/$id/sources/': typeof ApiResearchIdSourcesIndexRoute
+  '/api/study-plans/$id/tasks/': typeof ApiStudyPlansIdTasksIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -393,17 +781,22 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/sitemap.xml'
+    | '/artifacts'
+    | '/assistant'
     | '/boards'
     | '/calendar'
     | '/chat'
     | '/documents'
     | '/feed'
+    | '/images'
     | '/learn'
     | '/memory'
     | '/plan'
     | '/practice'
     | '/productivity'
     | '/progress'
+    | '/projects'
+    | '/research'
     | '/settings'
     | '/statistics'
     | '/study'
@@ -414,6 +807,15 @@ export interface FileRouteTypes {
     | '/api/openrouter-test'
     | '/api/shares'
     | '/share/$token'
+    | '/artifacts/$id'
+    | '/projects/$id'
+    | '/research/$id'
+    | '/api/artifacts/$id'
+    | '/api/assistant/preferences'
+    | '/api/documents/upload'
+    | '/api/images/analyze'
+    | '/api/images/generate'
+    | '/api/images/upload'
     | '/api/learning/analytics'
     | '/api/learning/exams'
     | '/api/learning/features'
@@ -426,26 +828,59 @@ export interface FileRouteTypes {
     | '/api/learning/session'
     | '/api/learning/voice'
     | '/api/learning/whiteboard'
+    | '/api/privacy/delete'
+    | '/api/privacy/export'
+    | '/api/projects/$id'
+    | '/api/research/$id'
+    | '/api/saved-responses/$id'
     | '/api/shared/$token'
     | '/api/shares/$token'
+    | '/api/study-plans/$id'
+    | '/api/artifacts/'
+    | '/api/documents/'
+    | '/api/images/'
+    | '/api/projects/'
+    | '/api/research/'
+    | '/api/saved-responses/'
+    | '/api/study-plans/'
+    | '/api/documents/$id/chunks'
+    | '/api/documents/$id/process'
     | '/api/learning/sources/ingest'
+    | '/api/workspace/trash/cleanup'
+    | '/api/assistant/memory/'
+    | '/api/documents/$id/'
+    | '/api/projects/$id/files/$fileId'
+    | '/api/study-plans/$id/ai/generate'
+    | '/api/study-plans/$id/ai/optimize'
+    | '/api/study-plans/$id/ai/suggest'
+    | '/api/study-plans/$id/tasks/$taskId'
+    | '/api/documents/$id/chat/'
+    | '/api/projects/$id/documents/'
+    | '/api/projects/$id/files/'
+    | '/api/research/$id/sources/'
+    | '/api/study-plans/$id/tasks/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
     | '/reset-password'
     | '/sitemap.xml'
+    | '/artifacts'
+    | '/assistant'
     | '/boards'
     | '/calendar'
     | '/chat'
     | '/documents'
     | '/feed'
+    | '/images'
     | '/learn'
     | '/memory'
     | '/plan'
     | '/practice'
     | '/productivity'
     | '/progress'
+    | '/projects'
+    | '/research'
     | '/settings'
     | '/statistics'
     | '/study'
@@ -456,6 +891,15 @@ export interface FileRouteTypes {
     | '/api/openrouter-test'
     | '/api/shares'
     | '/share/$token'
+    | '/artifacts/$id'
+    | '/projects/$id'
+    | '/research/$id'
+    | '/api/artifacts/$id'
+    | '/api/assistant/preferences'
+    | '/api/documents/upload'
+    | '/api/images/analyze'
+    | '/api/images/generate'
+    | '/api/images/upload'
     | '/api/learning/analytics'
     | '/api/learning/exams'
     | '/api/learning/features'
@@ -468,9 +912,37 @@ export interface FileRouteTypes {
     | '/api/learning/session'
     | '/api/learning/voice'
     | '/api/learning/whiteboard'
+    | '/api/privacy/delete'
+    | '/api/privacy/export'
+    | '/api/projects/$id'
+    | '/api/research/$id'
+    | '/api/saved-responses/$id'
     | '/api/shared/$token'
     | '/api/shares/$token'
+    | '/api/study-plans/$id'
+    | '/api/artifacts'
+    | '/api/documents'
+    | '/api/images'
+    | '/api/projects'
+    | '/api/research'
+    | '/api/saved-responses'
+    | '/api/study-plans'
+    | '/api/documents/$id/chunks'
+    | '/api/documents/$id/process'
     | '/api/learning/sources/ingest'
+    | '/api/workspace/trash/cleanup'
+    | '/api/assistant/memory'
+    | '/api/documents/$id'
+    | '/api/projects/$id/files/$fileId'
+    | '/api/study-plans/$id/ai/generate'
+    | '/api/study-plans/$id/ai/optimize'
+    | '/api/study-plans/$id/ai/suggest'
+    | '/api/study-plans/$id/tasks/$taskId'
+    | '/api/documents/$id/chat'
+    | '/api/projects/$id/documents'
+    | '/api/projects/$id/files'
+    | '/api/research/$id/sources'
+    | '/api/study-plans/$id/tasks'
   id:
     | '__root__'
     | '/'
@@ -478,17 +950,22 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/sitemap.xml'
+    | '/_authenticated/artifacts'
+    | '/_authenticated/assistant'
     | '/_authenticated/boards'
     | '/_authenticated/calendar'
     | '/_authenticated/chat'
     | '/_authenticated/documents'
     | '/_authenticated/feed'
+    | '/_authenticated/images'
     | '/_authenticated/learn'
     | '/_authenticated/memory'
     | '/_authenticated/plan'
     | '/_authenticated/practice'
     | '/_authenticated/productivity'
     | '/_authenticated/progress'
+    | '/_authenticated/projects'
+    | '/_authenticated/research'
     | '/_authenticated/settings'
     | '/_authenticated/statistics'
     | '/_authenticated/study'
@@ -499,6 +976,15 @@ export interface FileRouteTypes {
     | '/api/openrouter-test'
     | '/api/shares'
     | '/share/$token'
+    | '/_authenticated/artifacts/$id'
+    | '/_authenticated/projects/$id'
+    | '/_authenticated/research/$id'
+    | '/api/artifacts/$id'
+    | '/api/assistant/preferences'
+    | '/api/documents/upload'
+    | '/api/images/analyze'
+    | '/api/images/generate'
+    | '/api/images/upload'
     | '/api/learning/analytics'
     | '/api/learning/exams'
     | '/api/learning/features'
@@ -511,9 +997,37 @@ export interface FileRouteTypes {
     | '/api/learning/session'
     | '/api/learning/voice'
     | '/api/learning/whiteboard'
+    | '/api/privacy/delete'
+    | '/api/privacy/export'
+    | '/api/projects/$id'
+    | '/api/research/$id'
+    | '/api/saved-responses/$id'
     | '/api/shared/$token'
     | '/api/shares/$token'
+    | '/api/study-plans/$id'
+    | '/api/artifacts/'
+    | '/api/documents/'
+    | '/api/images/'
+    | '/api/projects/'
+    | '/api/research/'
+    | '/api/saved-responses/'
+    | '/api/study-plans/'
+    | '/api/documents/$id/chunks'
+    | '/api/documents/$id/process'
     | '/api/learning/sources/ingest'
+    | '/api/workspace/trash/cleanup'
+    | '/api/assistant/memory/'
+    | '/api/documents/$id/'
+    | '/api/projects/$id/files/$fileId'
+    | '/api/study-plans/$id/ai/generate'
+    | '/api/study-plans/$id/ai/optimize'
+    | '/api/study-plans/$id/ai/suggest'
+    | '/api/study-plans/$id/tasks/$taskId'
+    | '/api/documents/$id/chat/'
+    | '/api/projects/$id/documents/'
+    | '/api/projects/$id/files/'
+    | '/api/research/$id/sources/'
+    | '/api/study-plans/$id/tasks/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -527,6 +1041,12 @@ export interface RootRouteChildren {
   ApiOpenrouterTestRoute: typeof ApiOpenrouterTestRoute
   ApiSharesRoute: typeof ApiSharesRouteWithChildren
   ShareTokenRoute: typeof ShareTokenRoute
+  ApiArtifactsIdRoute: typeof ApiArtifactsIdRoute
+  ApiAssistantPreferencesRoute: typeof ApiAssistantPreferencesRoute
+  ApiDocumentsUploadRoute: typeof ApiDocumentsUploadRoute
+  ApiImagesAnalyzeRoute: typeof ApiImagesAnalyzeRoute
+  ApiImagesGenerateRoute: typeof ApiImagesGenerateRoute
+  ApiImagesUploadRoute: typeof ApiImagesUploadRoute
   ApiLearningAnalyticsRoute: typeof ApiLearningAnalyticsRoute
   ApiLearningExamsRoute: typeof ApiLearningExamsRoute
   ApiLearningFeaturesRoute: typeof ApiLearningFeaturesRoute
@@ -539,8 +1059,27 @@ export interface RootRouteChildren {
   ApiLearningSessionRoute: typeof ApiLearningSessionRoute
   ApiLearningVoiceRoute: typeof ApiLearningVoiceRoute
   ApiLearningWhiteboardRoute: typeof ApiLearningWhiteboardRoute
+  ApiPrivacyDeleteRoute: typeof ApiPrivacyDeleteRoute
+  ApiPrivacyExportRoute: typeof ApiPrivacyExportRoute
+  ApiProjectsIdRoute: typeof ApiProjectsIdRouteWithChildren
+  ApiResearchIdRoute: typeof ApiResearchIdRouteWithChildren
+  ApiSavedResponsesIdRoute: typeof ApiSavedResponsesIdRoute
   ApiSharedTokenRoute: typeof ApiSharedTokenRoute
+  ApiStudyPlansIdRoute: typeof ApiStudyPlansIdRouteWithChildren
+  ApiArtifactsIndexRoute: typeof ApiArtifactsIndexRoute
+  ApiDocumentsIndexRoute: typeof ApiDocumentsIndexRoute
+  ApiImagesIndexRoute: typeof ApiImagesIndexRoute
+  ApiProjectsIndexRoute: typeof ApiProjectsIndexRoute
+  ApiResearchIndexRoute: typeof ApiResearchIndexRoute
+  ApiSavedResponsesIndexRoute: typeof ApiSavedResponsesIndexRoute
+  ApiStudyPlansIndexRoute: typeof ApiStudyPlansIndexRoute
+  ApiDocumentsIdChunksRoute: typeof ApiDocumentsIdChunksRoute
+  ApiDocumentsIdProcessRoute: typeof ApiDocumentsIdProcessRoute
   ApiLearningSourcesIngestRoute: typeof ApiLearningSourcesIngestRoute
+  ApiWorkspaceTrashCleanupRoute: typeof ApiWorkspaceTrashCleanupRoute
+  ApiAssistantMemoryIndexRoute: typeof ApiAssistantMemoryIndexRoute
+  ApiDocumentsIdIndexRoute: typeof ApiDocumentsIdIndexRoute
+  ApiDocumentsIdChatIndexRoute: typeof ApiDocumentsIdChatIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -650,6 +1189,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/research': {
+      id: '/_authenticated/research'
+      path: '/research'
+      fullPath: '/research'
+      preLoaderRoute: typeof AuthenticatedResearchRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/projects': {
+      id: '/_authenticated/projects'
+      path: '/projects'
+      fullPath: '/projects'
+      preLoaderRoute: typeof AuthenticatedProjectsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/progress': {
       id: '/_authenticated/progress'
       path: '/progress'
@@ -692,6 +1245,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedLearnRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/images': {
+      id: '/_authenticated/images'
+      path: '/images'
+      fullPath: '/images'
+      preLoaderRoute: typeof AuthenticatedImagesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/feed': {
       id: '/_authenticated/feed'
       path: '/feed'
@@ -727,6 +1287,76 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBoardsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/assistant': {
+      id: '/_authenticated/assistant'
+      path: '/assistant'
+      fullPath: '/assistant'
+      preLoaderRoute: typeof AuthenticatedAssistantRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/artifacts': {
+      id: '/_authenticated/artifacts'
+      path: '/artifacts'
+      fullPath: '/artifacts'
+      preLoaderRoute: typeof AuthenticatedArtifactsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/study-plans/': {
+      id: '/api/study-plans/'
+      path: '/api/study-plans'
+      fullPath: '/api/study-plans/'
+      preLoaderRoute: typeof ApiStudyPlansIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/saved-responses/': {
+      id: '/api/saved-responses/'
+      path: '/api/saved-responses'
+      fullPath: '/api/saved-responses/'
+      preLoaderRoute: typeof ApiSavedResponsesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/research/': {
+      id: '/api/research/'
+      path: '/api/research'
+      fullPath: '/api/research/'
+      preLoaderRoute: typeof ApiResearchIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/projects/': {
+      id: '/api/projects/'
+      path: '/api/projects'
+      fullPath: '/api/projects/'
+      preLoaderRoute: typeof ApiProjectsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/images/': {
+      id: '/api/images/'
+      path: '/api/images'
+      fullPath: '/api/images/'
+      preLoaderRoute: typeof ApiImagesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/documents/': {
+      id: '/api/documents/'
+      path: '/api/documents'
+      fullPath: '/api/documents/'
+      preLoaderRoute: typeof ApiDocumentsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/artifacts/': {
+      id: '/api/artifacts/'
+      path: '/api/artifacts'
+      fullPath: '/api/artifacts/'
+      preLoaderRoute: typeof ApiArtifactsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/study-plans/$id': {
+      id: '/api/study-plans/$id'
+      path: '/api/study-plans/$id'
+      fullPath: '/api/study-plans/$id'
+      preLoaderRoute: typeof ApiStudyPlansIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/shares/$token': {
       id: '/api/shares/$token'
       path: '/$token'
@@ -739,6 +1369,41 @@ declare module '@tanstack/react-router' {
       path: '/api/shared/$token'
       fullPath: '/api/shared/$token'
       preLoaderRoute: typeof ApiSharedTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/saved-responses/$id': {
+      id: '/api/saved-responses/$id'
+      path: '/api/saved-responses/$id'
+      fullPath: '/api/saved-responses/$id'
+      preLoaderRoute: typeof ApiSavedResponsesIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/research/$id': {
+      id: '/api/research/$id'
+      path: '/api/research/$id'
+      fullPath: '/api/research/$id'
+      preLoaderRoute: typeof ApiResearchIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/projects/$id': {
+      id: '/api/projects/$id'
+      path: '/api/projects/$id'
+      fullPath: '/api/projects/$id'
+      preLoaderRoute: typeof ApiProjectsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/privacy/export': {
+      id: '/api/privacy/export'
+      path: '/api/privacy/export'
+      fullPath: '/api/privacy/export'
+      preLoaderRoute: typeof ApiPrivacyExportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/privacy/delete': {
+      id: '/api/privacy/delete'
+      path: '/api/privacy/delete'
+      fullPath: '/api/privacy/delete'
+      preLoaderRoute: typeof ApiPrivacyDeleteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/learning/whiteboard': {
@@ -825,6 +1490,90 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiLearningAnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/images/upload': {
+      id: '/api/images/upload'
+      path: '/api/images/upload'
+      fullPath: '/api/images/upload'
+      preLoaderRoute: typeof ApiImagesUploadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/images/generate': {
+      id: '/api/images/generate'
+      path: '/api/images/generate'
+      fullPath: '/api/images/generate'
+      preLoaderRoute: typeof ApiImagesGenerateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/images/analyze': {
+      id: '/api/images/analyze'
+      path: '/api/images/analyze'
+      fullPath: '/api/images/analyze'
+      preLoaderRoute: typeof ApiImagesAnalyzeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/documents/upload': {
+      id: '/api/documents/upload'
+      path: '/api/documents/upload'
+      fullPath: '/api/documents/upload'
+      preLoaderRoute: typeof ApiDocumentsUploadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/assistant/preferences': {
+      id: '/api/assistant/preferences'
+      path: '/api/assistant/preferences'
+      fullPath: '/api/assistant/preferences'
+      preLoaderRoute: typeof ApiAssistantPreferencesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/artifacts/$id': {
+      id: '/api/artifacts/$id'
+      path: '/api/artifacts/$id'
+      fullPath: '/api/artifacts/$id'
+      preLoaderRoute: typeof ApiArtifactsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/research/$id': {
+      id: '/_authenticated/research/$id'
+      path: '/$id'
+      fullPath: '/research/$id'
+      preLoaderRoute: typeof AuthenticatedResearchIdRouteImport
+      parentRoute: typeof AuthenticatedResearchRoute
+    }
+    '/_authenticated/projects/$id': {
+      id: '/_authenticated/projects/$id'
+      path: '/$id'
+      fullPath: '/projects/$id'
+      preLoaderRoute: typeof AuthenticatedProjectsIdRouteImport
+      parentRoute: typeof AuthenticatedProjectsRoute
+    }
+    '/_authenticated/artifacts/$id': {
+      id: '/_authenticated/artifacts/$id'
+      path: '/$id'
+      fullPath: '/artifacts/$id'
+      preLoaderRoute: typeof AuthenticatedArtifactsIdRouteImport
+      parentRoute: typeof AuthenticatedArtifactsRoute
+    }
+    '/api/documents/$id/': {
+      id: '/api/documents/$id/'
+      path: '/api/documents/$id'
+      fullPath: '/api/documents/$id/'
+      preLoaderRoute: typeof ApiDocumentsIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/assistant/memory/': {
+      id: '/api/assistant/memory/'
+      path: '/api/assistant/memory'
+      fullPath: '/api/assistant/memory/'
+      preLoaderRoute: typeof ApiAssistantMemoryIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/workspace/trash/cleanup': {
+      id: '/api/workspace/trash/cleanup'
+      path: '/api/workspace/trash/cleanup'
+      fullPath: '/api/workspace/trash/cleanup'
+      preLoaderRoute: typeof ApiWorkspaceTrashCleanupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/learning/sources/ingest': {
       id: '/api/learning/sources/ingest'
       path: '/api/learning/sources/ingest'
@@ -832,21 +1581,150 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiLearningSourcesIngestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/documents/$id/process': {
+      id: '/api/documents/$id/process'
+      path: '/api/documents/$id/process'
+      fullPath: '/api/documents/$id/process'
+      preLoaderRoute: typeof ApiDocumentsIdProcessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/documents/$id/chunks': {
+      id: '/api/documents/$id/chunks'
+      path: '/api/documents/$id/chunks'
+      fullPath: '/api/documents/$id/chunks'
+      preLoaderRoute: typeof ApiDocumentsIdChunksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/study-plans/$id/tasks/': {
+      id: '/api/study-plans/$id/tasks/'
+      path: '/tasks'
+      fullPath: '/api/study-plans/$id/tasks/'
+      preLoaderRoute: typeof ApiStudyPlansIdTasksIndexRouteImport
+      parentRoute: typeof ApiStudyPlansIdRoute
+    }
+    '/api/research/$id/sources/': {
+      id: '/api/research/$id/sources/'
+      path: '/sources'
+      fullPath: '/api/research/$id/sources/'
+      preLoaderRoute: typeof ApiResearchIdSourcesIndexRouteImport
+      parentRoute: typeof ApiResearchIdRoute
+    }
+    '/api/projects/$id/files/': {
+      id: '/api/projects/$id/files/'
+      path: '/files'
+      fullPath: '/api/projects/$id/files/'
+      preLoaderRoute: typeof ApiProjectsIdFilesIndexRouteImport
+      parentRoute: typeof ApiProjectsIdRoute
+    }
+    '/api/projects/$id/documents/': {
+      id: '/api/projects/$id/documents/'
+      path: '/documents'
+      fullPath: '/api/projects/$id/documents/'
+      preLoaderRoute: typeof ApiProjectsIdDocumentsIndexRouteImport
+      parentRoute: typeof ApiProjectsIdRoute
+    }
+    '/api/documents/$id/chat/': {
+      id: '/api/documents/$id/chat/'
+      path: '/api/documents/$id/chat'
+      fullPath: '/api/documents/$id/chat/'
+      preLoaderRoute: typeof ApiDocumentsIdChatIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/study-plans/$id/tasks/$taskId': {
+      id: '/api/study-plans/$id/tasks/$taskId'
+      path: '/tasks/$taskId'
+      fullPath: '/api/study-plans/$id/tasks/$taskId'
+      preLoaderRoute: typeof ApiStudyPlansIdTasksTaskIdRouteImport
+      parentRoute: typeof ApiStudyPlansIdRoute
+    }
+    '/api/study-plans/$id/ai/suggest': {
+      id: '/api/study-plans/$id/ai/suggest'
+      path: '/ai/suggest'
+      fullPath: '/api/study-plans/$id/ai/suggest'
+      preLoaderRoute: typeof ApiStudyPlansIdAiSuggestRouteImport
+      parentRoute: typeof ApiStudyPlansIdRoute
+    }
+    '/api/study-plans/$id/ai/optimize': {
+      id: '/api/study-plans/$id/ai/optimize'
+      path: '/ai/optimize'
+      fullPath: '/api/study-plans/$id/ai/optimize'
+      preLoaderRoute: typeof ApiStudyPlansIdAiOptimizeRouteImport
+      parentRoute: typeof ApiStudyPlansIdRoute
+    }
+    '/api/study-plans/$id/ai/generate': {
+      id: '/api/study-plans/$id/ai/generate'
+      path: '/ai/generate'
+      fullPath: '/api/study-plans/$id/ai/generate'
+      preLoaderRoute: typeof ApiStudyPlansIdAiGenerateRouteImport
+      parentRoute: typeof ApiStudyPlansIdRoute
+    }
+    '/api/projects/$id/files/$fileId': {
+      id: '/api/projects/$id/files/$fileId'
+      path: '/files/$fileId'
+      fullPath: '/api/projects/$id/files/$fileId'
+      preLoaderRoute: typeof ApiProjectsIdFilesFileIdRouteImport
+      parentRoute: typeof ApiProjectsIdRoute
+    }
   }
 }
 
+interface AuthenticatedArtifactsRouteChildren {
+  AuthenticatedArtifactsIdRoute: typeof AuthenticatedArtifactsIdRoute
+}
+
+const AuthenticatedArtifactsRouteChildren: AuthenticatedArtifactsRouteChildren =
+  {
+    AuthenticatedArtifactsIdRoute: AuthenticatedArtifactsIdRoute,
+  }
+
+const AuthenticatedArtifactsRouteWithChildren =
+  AuthenticatedArtifactsRoute._addFileChildren(
+    AuthenticatedArtifactsRouteChildren,
+  )
+
+interface AuthenticatedProjectsRouteChildren {
+  AuthenticatedProjectsIdRoute: typeof AuthenticatedProjectsIdRoute
+}
+
+const AuthenticatedProjectsRouteChildren: AuthenticatedProjectsRouteChildren = {
+  AuthenticatedProjectsIdRoute: AuthenticatedProjectsIdRoute,
+}
+
+const AuthenticatedProjectsRouteWithChildren =
+  AuthenticatedProjectsRoute._addFileChildren(
+    AuthenticatedProjectsRouteChildren,
+  )
+
+interface AuthenticatedResearchRouteChildren {
+  AuthenticatedResearchIdRoute: typeof AuthenticatedResearchIdRoute
+}
+
+const AuthenticatedResearchRouteChildren: AuthenticatedResearchRouteChildren = {
+  AuthenticatedResearchIdRoute: AuthenticatedResearchIdRoute,
+}
+
+const AuthenticatedResearchRouteWithChildren =
+  AuthenticatedResearchRoute._addFileChildren(
+    AuthenticatedResearchRouteChildren,
+  )
+
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedArtifactsRoute: typeof AuthenticatedArtifactsRouteWithChildren
+  AuthenticatedAssistantRoute: typeof AuthenticatedAssistantRoute
   AuthenticatedBoardsRoute: typeof AuthenticatedBoardsRoute
   AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRoute
   AuthenticatedChatRoute: typeof AuthenticatedChatRoute
   AuthenticatedDocumentsRoute: typeof AuthenticatedDocumentsRoute
   AuthenticatedFeedRoute: typeof AuthenticatedFeedRoute
+  AuthenticatedImagesRoute: typeof AuthenticatedImagesRoute
   AuthenticatedLearnRoute: typeof AuthenticatedLearnRoute
   AuthenticatedMemoryRoute: typeof AuthenticatedMemoryRoute
   AuthenticatedPlanRoute: typeof AuthenticatedPlanRoute
   AuthenticatedPracticeRoute: typeof AuthenticatedPracticeRoute
   AuthenticatedProductivityRoute: typeof AuthenticatedProductivityRoute
   AuthenticatedProgressRoute: typeof AuthenticatedProgressRoute
+  AuthenticatedProjectsRoute: typeof AuthenticatedProjectsRouteWithChildren
+  AuthenticatedResearchRoute: typeof AuthenticatedResearchRouteWithChildren
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedStatisticsRoute: typeof AuthenticatedStatisticsRoute
   AuthenticatedStudyRoute: typeof AuthenticatedStudyRoute
@@ -855,17 +1733,22 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedArtifactsRoute: AuthenticatedArtifactsRouteWithChildren,
+  AuthenticatedAssistantRoute: AuthenticatedAssistantRoute,
   AuthenticatedBoardsRoute: AuthenticatedBoardsRoute,
   AuthenticatedCalendarRoute: AuthenticatedCalendarRoute,
   AuthenticatedChatRoute: AuthenticatedChatRoute,
   AuthenticatedDocumentsRoute: AuthenticatedDocumentsRoute,
   AuthenticatedFeedRoute: AuthenticatedFeedRoute,
+  AuthenticatedImagesRoute: AuthenticatedImagesRoute,
   AuthenticatedLearnRoute: AuthenticatedLearnRoute,
   AuthenticatedMemoryRoute: AuthenticatedMemoryRoute,
   AuthenticatedPlanRoute: AuthenticatedPlanRoute,
   AuthenticatedPracticeRoute: AuthenticatedPracticeRoute,
   AuthenticatedProductivityRoute: AuthenticatedProductivityRoute,
   AuthenticatedProgressRoute: AuthenticatedProgressRoute,
+  AuthenticatedProjectsRoute: AuthenticatedProjectsRouteWithChildren,
+  AuthenticatedResearchRoute: AuthenticatedResearchRouteWithChildren,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedStatisticsRoute: AuthenticatedStatisticsRoute,
   AuthenticatedStudyRoute: AuthenticatedStudyRoute,
@@ -888,6 +1771,54 @@ const ApiSharesRouteWithChildren = ApiSharesRoute._addFileChildren(
   ApiSharesRouteChildren,
 )
 
+interface ApiProjectsIdRouteChildren {
+  ApiProjectsIdFilesFileIdRoute: typeof ApiProjectsIdFilesFileIdRoute
+  ApiProjectsIdDocumentsIndexRoute: typeof ApiProjectsIdDocumentsIndexRoute
+  ApiProjectsIdFilesIndexRoute: typeof ApiProjectsIdFilesIndexRoute
+}
+
+const ApiProjectsIdRouteChildren: ApiProjectsIdRouteChildren = {
+  ApiProjectsIdFilesFileIdRoute: ApiProjectsIdFilesFileIdRoute,
+  ApiProjectsIdDocumentsIndexRoute: ApiProjectsIdDocumentsIndexRoute,
+  ApiProjectsIdFilesIndexRoute: ApiProjectsIdFilesIndexRoute,
+}
+
+const ApiProjectsIdRouteWithChildren = ApiProjectsIdRoute._addFileChildren(
+  ApiProjectsIdRouteChildren,
+)
+
+interface ApiResearchIdRouteChildren {
+  ApiResearchIdSourcesIndexRoute: typeof ApiResearchIdSourcesIndexRoute
+}
+
+const ApiResearchIdRouteChildren: ApiResearchIdRouteChildren = {
+  ApiResearchIdSourcesIndexRoute: ApiResearchIdSourcesIndexRoute,
+}
+
+const ApiResearchIdRouteWithChildren = ApiResearchIdRoute._addFileChildren(
+  ApiResearchIdRouteChildren,
+)
+
+interface ApiStudyPlansIdRouteChildren {
+  ApiStudyPlansIdAiGenerateRoute: typeof ApiStudyPlansIdAiGenerateRoute
+  ApiStudyPlansIdAiOptimizeRoute: typeof ApiStudyPlansIdAiOptimizeRoute
+  ApiStudyPlansIdAiSuggestRoute: typeof ApiStudyPlansIdAiSuggestRoute
+  ApiStudyPlansIdTasksTaskIdRoute: typeof ApiStudyPlansIdTasksTaskIdRoute
+  ApiStudyPlansIdTasksIndexRoute: typeof ApiStudyPlansIdTasksIndexRoute
+}
+
+const ApiStudyPlansIdRouteChildren: ApiStudyPlansIdRouteChildren = {
+  ApiStudyPlansIdAiGenerateRoute: ApiStudyPlansIdAiGenerateRoute,
+  ApiStudyPlansIdAiOptimizeRoute: ApiStudyPlansIdAiOptimizeRoute,
+  ApiStudyPlansIdAiSuggestRoute: ApiStudyPlansIdAiSuggestRoute,
+  ApiStudyPlansIdTasksTaskIdRoute: ApiStudyPlansIdTasksTaskIdRoute,
+  ApiStudyPlansIdTasksIndexRoute: ApiStudyPlansIdTasksIndexRoute,
+}
+
+const ApiStudyPlansIdRouteWithChildren = ApiStudyPlansIdRoute._addFileChildren(
+  ApiStudyPlansIdRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
@@ -899,6 +1830,12 @@ const rootRouteChildren: RootRouteChildren = {
   ApiOpenrouterTestRoute: ApiOpenrouterTestRoute,
   ApiSharesRoute: ApiSharesRouteWithChildren,
   ShareTokenRoute: ShareTokenRoute,
+  ApiArtifactsIdRoute: ApiArtifactsIdRoute,
+  ApiAssistantPreferencesRoute: ApiAssistantPreferencesRoute,
+  ApiDocumentsUploadRoute: ApiDocumentsUploadRoute,
+  ApiImagesAnalyzeRoute: ApiImagesAnalyzeRoute,
+  ApiImagesGenerateRoute: ApiImagesGenerateRoute,
+  ApiImagesUploadRoute: ApiImagesUploadRoute,
   ApiLearningAnalyticsRoute: ApiLearningAnalyticsRoute,
   ApiLearningExamsRoute: ApiLearningExamsRoute,
   ApiLearningFeaturesRoute: ApiLearningFeaturesRoute,
@@ -911,8 +1848,27 @@ const rootRouteChildren: RootRouteChildren = {
   ApiLearningSessionRoute: ApiLearningSessionRoute,
   ApiLearningVoiceRoute: ApiLearningVoiceRoute,
   ApiLearningWhiteboardRoute: ApiLearningWhiteboardRoute,
+  ApiPrivacyDeleteRoute: ApiPrivacyDeleteRoute,
+  ApiPrivacyExportRoute: ApiPrivacyExportRoute,
+  ApiProjectsIdRoute: ApiProjectsIdRouteWithChildren,
+  ApiResearchIdRoute: ApiResearchIdRouteWithChildren,
+  ApiSavedResponsesIdRoute: ApiSavedResponsesIdRoute,
   ApiSharedTokenRoute: ApiSharedTokenRoute,
+  ApiStudyPlansIdRoute: ApiStudyPlansIdRouteWithChildren,
+  ApiArtifactsIndexRoute: ApiArtifactsIndexRoute,
+  ApiDocumentsIndexRoute: ApiDocumentsIndexRoute,
+  ApiImagesIndexRoute: ApiImagesIndexRoute,
+  ApiProjectsIndexRoute: ApiProjectsIndexRoute,
+  ApiResearchIndexRoute: ApiResearchIndexRoute,
+  ApiSavedResponsesIndexRoute: ApiSavedResponsesIndexRoute,
+  ApiStudyPlansIndexRoute: ApiStudyPlansIndexRoute,
+  ApiDocumentsIdChunksRoute: ApiDocumentsIdChunksRoute,
+  ApiDocumentsIdProcessRoute: ApiDocumentsIdProcessRoute,
   ApiLearningSourcesIngestRoute: ApiLearningSourcesIngestRoute,
+  ApiWorkspaceTrashCleanupRoute: ApiWorkspaceTrashCleanupRoute,
+  ApiAssistantMemoryIndexRoute: ApiAssistantMemoryIndexRoute,
+  ApiDocumentsIdIndexRoute: ApiDocumentsIdIndexRoute,
+  ApiDocumentsIdChatIndexRoute: ApiDocumentsIdChatIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
