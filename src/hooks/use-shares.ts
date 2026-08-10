@@ -14,6 +14,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ShareRecord, SharedConversation } from "@/lib/share";
 import { getShareUrl } from "@/lib/share";
+import { authenticatedFetch } from "@/lib/authenticated-fetch";
 
 const API_BASE = ""; // same-origin; native uses relative path too
 
@@ -23,7 +24,7 @@ export function useShares(userId: string) {
   return useQuery({
     queryKey: sharesQueryKey(userId),
     queryFn: async (): Promise<ShareRecord[]> => {
-      const res = await fetch(`${API_BASE}/api/shares`, { credentials: "include" });
+      const res = await authenticatedFetch(`${API_BASE}/api/shares`);
       if (!res.ok) throw new Error("Failed to load shares");
       const json = (await res.json()) as { shares: ShareRecord[] };
       return json.shares;
@@ -32,7 +33,7 @@ export function useShares(userId: string) {
 }
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, { credentials: "include", ...init });
+  const res = await authenticatedFetch(url, init);
   if (!res.ok) {
     let message = "Request failed";
     try {

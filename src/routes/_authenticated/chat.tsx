@@ -1603,7 +1603,7 @@ function ChatPage() {
           const isLast = idx === safeMessages.length - 1;
           const text = m.parts
             .filter((p) => p.type === "text")
-            .map((p) => (p as { text: string }).text)
+            .map((p) => (p as { text?: string }).text ?? "")
             .join("");
           return (
             <li

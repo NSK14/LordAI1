@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- database schema is defined in types and client types regenerate after migration deployment. */
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
+import { authenticatedFetch } from "@/lib/authenticated-fetch";
 import { nextMastery } from "./mastery";
 import { classToGradeBand } from "./class";
 import type {
@@ -349,13 +350,20 @@ export async function saveTutorMessage(
   content: string,
   sourceIds: string[] = [],
 ) {
-  const { error } = await db.from("learning_messages").insert({
-    user_id: userId,
-    session_id: sessionId,
-    role,
-    content,
-    source_ids: sourceIds,
-  });
+  const idempotencyKey = `${sessionId}:${role}:${Date.now()}`;
+  const { error } = await db
+    .from("learning_messages")
+    .upsert(
+      {
+        user_id: userId,
+        session_id: sessionId,
+        role,
+        content,
+        source_ids: sourceIds,
+        idempotency_key: idempotencyKey,
+      },
+      { onConflict: "idempotency_key" },
+    );
   if (error) throw error;
   const { error: sessionError } = await db
     .from("learning_sessions")
@@ -666,7 +674,7 @@ export async function generateFlashcards(
   count: number,
   sourceText?: string,
 ) {
-  const response = await fetch(`${getApiBaseUrl()}/api/learning/flashcards`, {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/learning/flashcards`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "generate", conceptId, count, sourceText }),
@@ -680,7 +688,7 @@ export async function reviewFlashcard(
   quality: number,
   responseTimeMs?: number,
 ) {
-  const response = await fetch(`${getApiBaseUrl()}/api/learning/flashcards`, {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/learning/flashcards`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "review", flashcardId, quality, responseTimeMs }),
@@ -690,7 +698,7 @@ export async function reviewFlashcard(
 }
 
 export async function getDueFlashcards(userId: string, limit = 20) {
-  const response = await fetch(`${getApiBaseUrl()}/api/learning/flashcards`, {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/learning/flashcards`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "due", limit }),
@@ -700,7 +708,7 @@ export async function getDueFlashcards(userId: string, limit = 20) {
 }
 
 export async function listFlashcards(userId: string, conceptId?: string, limit = 50) {
-  const response = await fetch(`${getApiBaseUrl()}/api/learning/flashcards`, {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/learning/flashcards`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "list", conceptId, limit }),
@@ -720,7 +728,7 @@ export async function createExam(
     difficulty: number;
   },
 ) {
-  const response = await fetch(`${getApiBaseUrl()}/api/learning/exams`, {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/learning/exams`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "create", ...input }),
@@ -735,7 +743,7 @@ export async function submitExamAnswer(
   userAnswer: Record<string, unknown>,
   timeSpentSeconds?: number,
 ) {
-  const response = await fetch(`${getApiBaseUrl()}/api/learning/exams`, {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/learning/exams`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -751,7 +759,7 @@ export async function submitExamAnswer(
 }
 
 export async function completeExam(examId: string) {
-  const response = await fetch(`${getApiBaseUrl()}/api/learning/exams`, {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/learning/exams`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "complete", examId }),
@@ -761,7 +769,7 @@ export async function completeExam(examId: string) {
 }
 
 export async function getExam(examId: string) {
-  const response = await fetch(`${getApiBaseUrl()}/api/learning/exams`, {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/learning/exams`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "get", examId }),
@@ -771,7 +779,7 @@ export async function getExam(examId: string) {
 }
 
 export async function listExams(status?: string, limit = 20) {
-  const response = await fetch(`${getApiBaseUrl()}/api/learning/exams`, {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/learning/exams`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "list", status, limit }),
@@ -782,7 +790,7 @@ export async function listExams(status?: string, limit = 20) {
 
 // Revision
 export async function scheduleRevision(userId: string, conceptIds: string[]) {
-  const response = await fetch(`${getApiBaseUrl()}/api/learning/revision`, {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/learning/revision`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "schedule", conceptIds }),
@@ -792,7 +800,7 @@ export async function scheduleRevision(userId: string, conceptIds: string[]) {
 }
 
 export async function getDueRevision(userId: string, limit = 20) {
-  const response = await fetch(`${getApiBaseUrl()}/api/learning/revision`, {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/learning/revision`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "due", limit }),
@@ -802,7 +810,7 @@ export async function getDueRevision(userId: string, limit = 20) {
 }
 
 export async function completeRevision(userId: string, conceptId: string, quality: number) {
-  const response = await fetch(`${getApiBaseUrl()}/api/learning/revision`, {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/learning/revision`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "complete", conceptId, quality }),
@@ -818,7 +826,7 @@ export async function startVoiceSession(
   mode: "stt" | "tts" | "conversational",
   language = "en",
 ) {
-  const response = await fetch(`${getApiBaseUrl()}/api/learning/voice`, {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/learning/voice`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "start_session", conceptId, mode, language }),
@@ -832,7 +840,7 @@ export async function endVoiceSession(
   transcript?: string,
   durationSeconds?: number,
 ) {
-  const response = await fetch(`${getApiBaseUrl()}/api/learning/voice`, {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/learning/voice`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "end_session", sessionId, transcript, durationSeconds }),
@@ -843,7 +851,7 @@ export async function endVoiceSession(
 
 // OCR
 export async function processOCR(sourceId: string, mimeType: string, fileBase64: string) {
-  const response = await fetch(`${getApiBaseUrl()}/api/learning/ocr`, {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/learning/ocr`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "process", sourceId, mimeType, fileBase64 }),
@@ -862,7 +870,7 @@ export async function createWhiteboard(
     canvasData: Record<string, unknown>;
   },
 ) {
-  const response = await fetch(`${getApiBaseUrl()}/api/learning/whiteboard`, {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/learning/whiteboard`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "create", ...input }),
@@ -876,7 +884,7 @@ export async function updateWhiteboard(
   canvasData: Record<string, unknown>,
   aiAnnotations?: Record<string, unknown>[],
 ) {
-  const response = await fetch(`${getApiBaseUrl()}/api/learning/whiteboard`, {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/learning/whiteboard`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "update", whiteboardId, canvasData, aiAnnotations }),
@@ -890,7 +898,7 @@ export async function annotateWhiteboard(
   canvasData: Record<string, unknown>,
   instruction: string,
 ) {
-  const response = await fetch(`${getApiBaseUrl()}/api/learning/whiteboard`, {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/learning/whiteboard`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "annotate", whiteboardId, canvasData, instruction }),
@@ -900,7 +908,7 @@ export async function annotateWhiteboard(
 }
 
 export async function getWhiteboard(whiteboardId: string) {
-  const response = await fetch(`${getApiBaseUrl()}/api/learning/whiteboard`, {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/learning/whiteboard`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "get", whiteboardId }),
@@ -910,7 +918,7 @@ export async function getWhiteboard(whiteboardId: string) {
 }
 
 export async function listWhiteboards(conceptId?: string, limit = 20) {
-  const response = await fetch(`${getApiBaseUrl()}/api/learning/whiteboard`, {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/learning/whiteboard`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "list", conceptId, limit }),
@@ -932,7 +940,7 @@ export async function createNote(
     isAiGenerated?: boolean;
   },
 ) {
-  const response = await fetch(`${getApiBaseUrl()}/api/learning/notes`, {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/learning/notes`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "create", ...input }),
@@ -945,7 +953,7 @@ export async function generateNoteSummary(
   noteId: string,
   format: "summary" | "key_points" | "cheat_sheet" | "flashcards",
 ) {
-  const response = await fetch(`${getApiBaseUrl()}/api/learning/notes`, {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/learning/notes`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "generate", noteId, format }),
@@ -955,7 +963,7 @@ export async function generateNoteSummary(
 }
 
 export async function listNotes(conceptId?: string, sessionId?: string, limit = 20) {
-  const response = await fetch(`${getApiBaseUrl()}/api/learning/notes`, {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/learning/notes`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "list", conceptId, sessionId, limit }),
@@ -978,7 +986,7 @@ export async function storeMemory(
     tags?: string[];
   },
 ) {
-  const response = await fetch(`${getApiBaseUrl()}/api/learning/memory`, {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/learning/memory`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "store", ...input }),
@@ -995,7 +1003,7 @@ export async function retrieveMemories(
     limit?: number;
   } = {},
 ) {
-  const response = await fetch(`${getApiBaseUrl()}/api/learning/memory`, {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/learning/memory`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "retrieve", ...options }),
@@ -1022,7 +1030,7 @@ export async function recordAnalytics(
     xpEarned: number;
   },
 ) {
-  const response = await fetch(`${getApiBaseUrl()}/api/learning/analytics`, {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/learning/analytics`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "record", ...input }),

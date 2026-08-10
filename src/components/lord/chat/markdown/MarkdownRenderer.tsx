@@ -6,6 +6,8 @@ import ReactMarkdown from "react-markdown";
 import rehypeShiki from "@shikijs/rehype";
 import remarkGfm from "remark-gfm";
 import type { ComponentPropsWithoutRef } from "react";
+
+type RehypePlugin = (tree: any) => any;
 import {
   Blockquote,
   Bold,
@@ -27,16 +29,44 @@ import {
   TableRow,
 } from "./components/index";
 
-const shikiHighlighter: any = (rehypeShiki as unknown as (options: {
-  themes: { light: string; dark: string };
-  defaultColor: boolean;
-}) => any)({
-  themes: {
-    light: "github-light",
-    dark: "github-dark",
-  },
-  defaultColor: false,
-});
+function safeRehypeShiki(): RehypePlugin {
+  const shiki = (rehypeShiki as unknown as (options: {
+    themes: { light: string; dark: string };
+    defaultColor: boolean;
+  }) => RehypePlugin)({
+    themes: {
+      light: "github-light",
+      dark: "github-dark",
+    },
+    defaultColor: false,
+  });
+
+  return function safeShiki(tree: any) {
+    try {
+      if (!tree || !tree.children || !Array.isArray(tree.children)) {
+        return tree;
+      }
+      sanitizeTree(tree);
+      return shiki(tree);
+    } catch (error) {
+      console.error("Shiki highlight error:", error);
+      return tree;
+    }
+  };
+}
+
+function sanitizeTree(node: any): void {
+  if (!node || typeof node !== "object") return;
+
+  if (Array.isArray(node.children)) {
+    node.children = node.children.filter((child: any) => child && typeof child === "object");
+    for (const child of node.children) {
+      sanitizeTree(child);
+    }
+  }
+}
+
+const shikiHighlighter = safeRehypeShiki();
 
 export function MarkdownRenderer({
   children,
@@ -47,6 +77,8 @@ export function MarkdownRenderer({
   className?: string;
   [key: string]: unknown;
 }) {
+  const safeChildren = typeof children === "string" ? children : "";
+
   return (
     <div className={className}>
       <ReactMarkdown
@@ -81,7 +113,7 @@ export function MarkdownRenderer({
         } as any}
         {...props}
       >
-        {children}
+        {safeChildren}
       </ReactMarkdown>
     </div>
   );

@@ -1465,6 +1465,7 @@ export type Database = {
           content: string;
           created_at: string;
           id: string;
+          idempotency_key: string | null;
           role: string;
           session_id: string;
           source_ids: string[];
@@ -1474,6 +1475,7 @@ export type Database = {
           content: string;
           created_at?: string;
           id?: string;
+          idempotency_key?: string | null;
           role: string;
           session_id: string;
           source_ids?: string[];
@@ -1483,6 +1485,7 @@ export type Database = {
           content?: string;
           created_at?: string;
           id?: string;
+          idempotency_key?: string | null;
           role?: string;
           session_id?: string;
           source_ids?: string[];
