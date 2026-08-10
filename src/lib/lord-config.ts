@@ -5,6 +5,7 @@
 export const LORD_MODELS = {
   // ⚡ Lowest latency / everyday chat
   fast: [
+    "google/gemma-3-27b-it:free",
     "openai/gpt-oss-20b:free",
     "google/gemma-4-26b-a4b-it:free",
     "nvidia/nemotron-nano-9b-v2:free",
@@ -12,6 +13,8 @@ export const LORD_MODELS = {
 
   // 💬 Best general-purpose assistants
   balanced: [
+    "google/gemini-2.5-flash:free",
+    "fish-audio/s2.1-pro-free:free",
     "tencent/hy3:free",
     "google/gemma-4-31b-it:free",
     "openai/gpt-oss-120b:free",
@@ -20,6 +23,7 @@ export const LORD_MODELS = {
 
   // 🧠 Deep reasoning & planning
   reasoning: [
+    "qwen/qwen3-235b-a22b:free",
     "tencent/hy3:free",
     "nvidia/nemotron-3-ultra-550b-a55b:free",
     "openai/gpt-oss-120b:free",
@@ -29,6 +33,7 @@ export const LORD_MODELS = {
 
   // 💻 Software engineering
   coding: [
+    "meta-llama/llama-3.3-70b-instruct:free",
     "poolside/laguna-m.1:free",
     "cohere/north-mini-code:free",
     "tencent/hy3:free",

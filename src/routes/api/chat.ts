@@ -129,12 +129,12 @@ async function buildMemoryPrompt(
 
   let ranked = memories;
   try {
-    const retrieved = await retrieveMemories(query, memories, { lightweight: false });
+    const retrieved = await retrieveMemories(query, memories, { lightweight: true });
     if (retrieved.length > 0) {
       ranked = retrieved.map((r) => r.memory);
     }
   } catch {
-    // Embedding failed — keep newest-first order as a safe fallback.
+    // Ranking failed — keep newest-first order as a safe fallback.
   }
 
   const lines = ranked.map((m) => `- ${m.content.replace(/\s+/g, " ").trim()}`).slice(0, 12);

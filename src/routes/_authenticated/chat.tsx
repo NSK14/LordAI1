@@ -1415,23 +1415,6 @@ function ChatPage() {
         .eq("id", convId)
         .then(({ error }) => error);
       maybeGenerateTitle(convId, text, existing ? existing.title : "");
-      const touchError = await touchPromise;
-      if (touchError) {
-        console.error(
-          JSON.stringify({
-            event: "supabase_update_error",
-            table: "conversations",
-            conversationId: convId,
-            error: touchError.message,
-          }),
-        );
-        throw touchError;
-      }
-      // Reconcile: refresh the affected message list and the exact conversation
-      // list so the real server timestamps replace the optimistic ones. We do
-      // NOT blanket-invalidate other queries.
-      qc.invalidateQueries({ queryKey: ["messages", dbConvId], exact: true });
-      qc.invalidateQueries({ queryKey: conversationsQueryKey, exact: true });
 
       // Detect calendar event in user message — confirm before persisting.
       const detected = detectCalendarEvent(text);
@@ -1450,7 +1433,29 @@ function ChatPage() {
         return;
       }
 
+      // Start the AI request as soon as the user message is persisted and
+      // feature detections have had their chance to intercept. The conversation
+      // touch and title generation are non-critical side-effects that must not
+      // delay the streaming response.
       sendToAI(userMessage, convId, isNewConversation);
+
+      touchPromise.then((touchError) => {
+        if (touchError) {
+          console.error(
+            JSON.stringify({
+              event: "supabase_update_error",
+              table: "conversations",
+              conversationId: convId,
+              error: touchError.message,
+            }),
+          );
+        }
+      });
+      // Reconcile: refresh the affected message list and the exact conversation
+      // list so the real server timestamps replace the optimistic ones. We do
+      // NOT blanket-invalidate other queries.
+      qc.invalidateQueries({ queryKey: ["messages", dbConvId], exact: true });
+      qc.invalidateQueries({ queryKey: conversationsQueryKey, exact: true });
     } catch (err) {
       console.error(
         JSON.stringify({
