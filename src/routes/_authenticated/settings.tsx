@@ -223,12 +223,19 @@ function SettingsPage() {
   const [theme, setTheme] = useState("dark");
 
   useEffect(() => {
-    if (!data) return;
-    setDefaultMode(data.default_mode ?? "balanced");
-    setVoiceRate(Number(data.voice_rate ?? 1));
-    setAutoSpeak(data.auto_speak ?? true);
-    setNotifications(data.notifications_enabled ?? true);
-    setTheme(data.theme ?? "dark");
+    if (!data || typeof data === 'string') return;
+    const settings = data as {
+      default_mode: string;
+      voice_rate: number;
+      auto_speak: boolean;
+      notifications_enabled: boolean;
+      theme: string;
+    };
+    setDefaultMode(settings.default_mode ?? "balanced");
+    setVoiceRate(Number(settings.voice_rate ?? 1));
+    setAutoSpeak(settings.auto_speak ?? true);
+    setNotifications(settings.notifications_enabled ?? true);
+    setTheme(settings.theme ?? "dark");
   }, [data]);
 
   const { data: memories = [], isLoading: memoriesLoading } = useMemories(user?.id);

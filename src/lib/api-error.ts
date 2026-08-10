@@ -1,11 +1,14 @@
 export type ApiErrorCode =
   | "INVALID_REQUEST"
+  | "INVALID_ACTION"
   | "AI_NOT_CONFIGURED"
   | "AI_AUTH_ERROR"
   | "AI_BAD_REQUEST"
   | "AI_CREDITS_EXHAUSTED"
   | "AI_RATE_LIMITED"
   | "AI_UPSTREAM_ERROR"
+  | "AI_ERROR"
+  | "DB_ERROR"
   | "INTERNAL_ERROR"
   | "NOT_FOUND";
 
@@ -57,6 +60,26 @@ export function apiErrorResponse(
       headers: { "Cache-Control": "no-store" },
     },
   );
+}
+
+export function apiOkResponse(
+  data: unknown,
+  status = 200,
+): Response {
+  return Response.json(
+    data,
+    {
+      status,
+      headers: { "Cache-Control": "no-store" },
+    },
+  );
+}
+
+export function apiNoContentResponse(): Response {
+  return new Response(null, {
+    status: 204,
+    headers: { "Cache-Control": "no-store" },
+  });
 }
 
 export function getSafeErrorMessage(error: unknown): string {

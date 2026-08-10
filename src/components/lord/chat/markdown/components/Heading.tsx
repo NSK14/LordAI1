@@ -1,5 +1,4 @@
 /// <reference types="react/jsx-runtime" />
-/// <reference types="react/jsx-runtime" />
 
 "use client";
 
@@ -20,7 +19,7 @@ const headingStyles: Record<number, string> = {
 };
 
 export function Heading({ level, children, className, ...props }: HeadingProps) {
-  const Component = `h${level}` as keyof JSX.IntrinsicElements;
+  const Component = `h${level}` as React.ElementType;
 
   return (
     <Component className={cn(headingStyles[level], className)} {...props}>

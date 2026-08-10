@@ -29,11 +29,11 @@ const MemoryRequestSchema = z.discriminatedUnion("action", [
     ]),
     conceptId: z.string().optional(),
     sessionId: z.string().uuid().optional(),
-    content: z.record(z.unknown()),
+    content: z.record(z.string(), z.unknown()),
     summary: z.string().optional(),
-    importance: z.number().min(0).max(1).default(1),
-    confidence: z.number().min(0).max(1).default(1),
-    tags: z.array(z.string()).default([]),
+    importance: z.number().min(0).max(1).optional(),
+    confidence: z.number().min(0).max(1).optional(),
+    tags: z.array(z.string()).optional(),
   }),
   z.object({
     action: z.literal("retrieve"),
@@ -41,7 +41,7 @@ const MemoryRequestSchema = z.discriminatedUnion("action", [
       .enum(["conversation", "mistake", "strength", "preference", "goal", "misconception"])
       .optional(),
     conceptId: z.string().optional(),
-    limit: z.number().int().min(1).max(100).default(50),
+    limit: z.number().int().min(1).max(100).optional(),
   }),
   z.object({
     action: z.literal("extract"),
@@ -51,7 +51,7 @@ const MemoryRequestSchema = z.discriminatedUnion("action", [
     action: z.literal("get_context"),
     conceptId: z.string().optional(),
     query: z.string().optional(),
-    limit: z.number().int().min(1).max(20).default(10),
+    limit: z.number().int().min(1).max(20).optional(),
   }),
 ]);
 
@@ -138,7 +138,7 @@ export const Route = createFileRoute("/api/learning/memory")({
 
             // Extract memories using AI
             const conversation = messages
-              .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
+              .map((m: any) => `${m.role.toUpperCase()}: ${m.content}`)
               .join("\n");
 
             const provider = getOpenRouterProvider();

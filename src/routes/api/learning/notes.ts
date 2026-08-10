@@ -20,24 +20,24 @@ const NotesRequestSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("create"),
     title: z.string().min(1).max(200),
-    content: z.record(z.unknown()).optional(),
+    content: z.record(z.string(), z.unknown()).optional(),
     contentText: z.string().optional(),
     conceptId: z.string().optional(),
     sessionId: z.string().uuid().optional(),
-    tags: z.array(z.string()).default([]),
-    isAiGenerated: z.boolean().default(false),
+    tags: z.array(z.string()).optional(),
+    isAiGenerated: z.boolean().optional(),
   }),
   z.object({
     action: z.literal("generate"),
     conceptId: z.string().min(1),
     sourceText: z.string().min(50),
-    format: z.enum(["summary", "key_points", "cheat_sheet", "flashcards"]).default("summary"),
+    format: z.enum(["summary", "key_points", "cheat_sheet", "flashcards"]).optional(),
   }),
   z.object({
     action: z.literal("update"),
     noteId: z.string().uuid(),
     title: z.string().optional(),
-    content: z.record(z.unknown()).optional(),
+    content: z.record(z.string(), z.unknown()).optional(),
     contentText: z.string().optional(),
     tags: z.array(z.string()).optional(),
   }),
@@ -49,7 +49,7 @@ const NotesRequestSchema = z.discriminatedUnion("action", [
     action: z.literal("list"),
     conceptId: z.string().optional(),
     sessionId: z.string().uuid().optional(),
-    limit: z.number().int().min(1).max(100).default(20),
+    limit: z.number().int().min(1).max(100).optional(),
   }),
   z.object({
     action: z.literal("get"),
@@ -127,7 +127,7 @@ export const Route = createFileRoute("/api/learning/notes")({
               messages: [
                 {
                   role: "user",
-                  content: `Source material:\n${parsed.data.sourceText.slice(0, 15000)}\n\nConcept: ${concept.title} (${concept.standard_code})\n${formatInstructions[parsed.data.format]}`,
+                  content: `Source material:\n${parsed.data.sourceText.slice(0, 15000)}\n\nConcept: ${concept.title} (${concept.standard_code})\n${formatInstructions[parsed.data.format ?? "summary"]}`,
                 },
               ],
               maxOutputTokens: 2000,

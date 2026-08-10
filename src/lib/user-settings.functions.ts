@@ -41,10 +41,10 @@ export const updateUserSettings = createServerFn({ method: "POST" })
   .validator((input: unknown) => SettingsSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const payload = { user_id: userId, ...data, updated_at: new Date().toISOString() };
+    const payload = { user_id: userId, ...data, updated_at: new Date().toISOString() } as Record<string, unknown>;
     const { error } = await supabase
       .from("user_settings")
-      .upsert(payload, { onConflict: "user_id" });
+      .upsert(payload as any, { onConflict: "user_id" });
     if (error) {
       console.error("[updateUserSettings] supabase upsert error:", error);
       throw error;

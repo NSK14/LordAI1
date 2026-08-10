@@ -1,15 +1,11 @@
 import { createHighlighterCore } from "shiki/core";
 import { createJavaScriptRegexEngine } from "shiki/engine/javascript";
-import { createOnigurumaEngine } from "shiki/engine/oniguruma";
-import type { HighlighterGeneric } from "shiki";
-import type { Langs } from "shiki";
-import type { Themes } from "shiki";
 
-let highlighterPromise: Promise<HighlighterGeneric<"html">> | null = null;
+let highlighterPromise: Promise<any> | null = null;
 
 export class ShikiHighlighter {
   private static instance: ShikiHighlighter;
-  private highlighter: HighlighterGeneric<"html"> | null = null;
+  private highlighter: any = null;
 
   private constructor() {}
 
@@ -20,7 +16,7 @@ export class ShikiHighlighter {
     return ShikiHighlighter.instance;
   }
 
-  async getHighlighter(): Promise<HighlighterGeneric<"html">> {
+  async getHighlighter(): Promise<any> {
     if (this.highlighter) return this.highlighter;
 
     if (!highlighterPromise) {
@@ -31,64 +27,34 @@ export class ShikiHighlighter {
     return this.highlighter;
   }
 
-  private async createHighlighter(): Promise<HighlighterGeneric<"html">> {
-    if (typeof window === "undefined") {
-      return createHighlighterCore({
-        themes: [import("shiki/themes/github-dark.mjs")],
-        langs: [
-          import("shiki/langs/typescript.mjs"),
-          import("shiki/langs/javascript.mjs"),
-          import("shiki/langs/python.mjs"),
-          import("shiki/langs/json.mjs"),
-          import("shiki/langs/bash.mjs"),
-          import("shiki/langs/sql.mjs"),
-          import("shiki/langs/html.mjs"),
-          import("shiki/langs/css.mjs"),
-          import("shiki/langs/markdown.mjs"),
-          import("shiki/langs/yaml.mjs"),
-          import("shiki/langs/rust.mjs"),
-          import("shiki/langs/go.mjs"),
-          import("shiki/langs/java.mjs"),
-          import("shiki/langs/cpp.mjs"),
-          import("shiki/langs/csharp.mjs"),
-          import("shiki/langs/php.mjs"),
-          import("shiki/langs/ruby.mjs"),
-          import("shiki/langs/swift.mjs"),
-          import("shiki/langs/kotlin.mjs"),
-          import("shiki/langs/dart.mjs"),
-          import("shiki/langs/xml.mjs"),
-        ],
-        engine: createOnigurumaEngine(import("shiki/wasm")),
-      });
-    }
-
+  private async createHighlighter(): Promise<any> {
     return createHighlighterCore({
-      themes: [import("shiki/themes/github-dark.mjs")],
+      themes: ["github-dark"],
       langs: [
-        import("shiki/langs/typescript.mjs"),
-        import("shiki/langs/javascript.mjs"),
-        import("shiki/langs/python.mjs"),
-        import("shiki/langs/json.mjs"),
-        import("shiki/langs/bash.mjs"),
-        import("shiki/langs/sql.mjs"),
-        import("shiki/langs/html.mjs"),
-        import("shiki/langs/css.mjs"),
-        import("shiki/langs/markdown.mjs"),
-        import("shiki/langs/yaml.mjs"),
-        import("shiki/langs/rust.mjs"),
-        import("shiki/langs/go.mjs"),
-        import("shiki/langs/java.mjs"),
-        import("shiki/langs/cpp.mjs"),
-        import("shiki/langs/csharp.mjs"),
-        import("shiki/langs/php.mjs"),
-        import("shiki/langs/ruby.mjs"),
-        "shiki/langs/swift.mjs",
-        "shiki/langs/kotlin.mjs",
-        "shiki/langs/dart.mjs",
-        "shiki/langs/xml.mjs",
+        "typescript",
+        "javascript",
+        "python",
+        "json",
+        "bash",
+        "sql",
+        "html",
+        "css",
+        "markdown",
+        "yaml",
+        "rust",
+        "go",
+        "java",
+        "cpp",
+        "csharp",
+        "php",
+        "ruby",
+        "swift",
+        "kotlin",
+        "dart",
+        "xml",
       ],
       engine: createJavaScriptRegexEngine(),
-    });
+    } as any);
   }
 
   rehypePlugin() {

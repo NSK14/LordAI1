@@ -61,6 +61,8 @@ export const Route = createFileRoute("/api/learning/ocr")({
 
             if (error) throw error;
 
+            const processSourceId = parsed.data.sourceId;
+
             // In production, process OCR asynchronously with Tesseract.js, Google Vision, or AWS Textract
             // For now, simulate processing
             setTimeout(async () => {
@@ -81,11 +83,11 @@ export const Route = createFileRoute("/api/learning/ocr")({
                   .eq("id", job.id);
 
                 // Update source with extracted text if source exists
-                if (parsed.data.sourceId) {
+                if (processSourceId) {
                   await db
                     .from("learning_sources")
                     .update({ extracted_text: extractedText })
-                    .eq("id", parsed.data.sourceId)
+                    .eq("id", processSourceId)
                     .eq("user_id", userId);
                 }
               } catch (e) {

@@ -127,9 +127,9 @@ function NavItem({
               }
             : undefined
         }
-        onKeyDown={(e) => {
+        onKeyDown={(e: React.KeyboardEvent) => {
           if (e.key === "Enter" || e.key === " ") {
-            e.currentTarget.click();
+            (e.currentTarget as HTMLButtonElement).click();
           }
         }}
       >

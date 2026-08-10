@@ -5,6 +5,7 @@
 import ReactMarkdown from "react-markdown";
 import rehypeShiki from "@shikijs/rehype";
 import remarkGfm from "remark-gfm";
+import type { ComponentPropsWithoutRef } from "react";
 import {
   Blockquote,
   Bold,
@@ -26,7 +27,10 @@ import {
   TableRow,
 } from "./components/index";
 
-const shikiHighlighter = rehypeShiki({
+const shikiHighlighter: any = (rehypeShiki as unknown as (options: {
+  themes: { light: string; dark: string };
+  defaultColor: boolean;
+}) => any)({
   themes: {
     light: "github-light",
     dark: "github-dark",
@@ -47,14 +51,14 @@ export function MarkdownRenderer({
     <div className={className}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[[shikiHighlighter]]}
+        rehypePlugins={[[shikiHighlighter]] as any}
         components={{
-          h1: (props) => <Heading level={1} {...props} />,
-          h2: (props) => <Heading level={2} {...props} />,
-          h3: (props) => <Heading level={3} {...props} />,
-          h4: (props) => <Heading level={4} {...props} />,
-          h5: (props) => <Heading level={5} {...props} />,
-          h6: (props) => <Heading level={6} {...props} />,
+          h1: (props: ComponentPropsWithoutRef<"h1">) => <Heading level={1} {...props} />,
+          h2: (props: ComponentPropsWithoutRef<"h2">) => <Heading level={2} {...props} />,
+          h3: (props: ComponentPropsWithoutRef<"h3">) => <Heading level={3} {...props} />,
+          h4: (props: ComponentPropsWithoutRef<"h4">) => <Heading level={4} {...props} />,
+          h5: (props: ComponentPropsWithoutRef<"h5">) => <Heading level={5} {...props} />,
+          h6: (props: ComponentPropsWithoutRef<"h6">) => <Heading level={6} {...props} />,
           p: Paragraph,
           code: InlineCode,
           strong: Bold,
@@ -62,8 +66,8 @@ export function MarkdownRenderer({
           em: Italic,
           i: Italic,
           blockquote: Blockquote,
-          ul: (props) => <List {...props} ordered={false} />,
-          ol: (props) => <List {...props} ordered={true} />,
+          ul: (props: ComponentPropsWithoutRef<"ul">) => <List {...props} ordered={false} />,
+          ol: (props: ComponentPropsWithoutRef<"ol">) => <List {...props} ordered={true} />,
           li: ListItem,
           a: Link,
           hr: HorizontalRule,
@@ -74,7 +78,7 @@ export function MarkdownRenderer({
           th: TableHead,
           td: TableCell,
           caption: TableCaption,
-        }}
+        } as any}
         {...props}
       >
         {children}

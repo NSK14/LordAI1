@@ -45,39 +45,39 @@ const RequestSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("question"),
     conceptId: z.string().min(1),
-    difficulty: z.number().int().min(1).max(5).default(2),
+    difficulty: z.number().int().min(1).max(5).optional(),
     topic: z.string().optional(),
-    questionType: z.enum(["mcq", "numerical", "short_answer", "diagram", "essay"]).default("mcq"),
+    questionType: z.enum(["mcq", "numerical", "short_answer", "diagram", "essay"]).optional(),
   }),
   z.object({
     action: z.literal("plan"),
     conceptIds: z.array(z.string().min(1)).min(1).max(12),
-    weeklyMinutes: z.number().int().min(30).max(1680).default(180),
+    weeklyMinutes: z.number().int().min(30).max(1680).optional(),
     examDate: z.string().optional(),
     syllabus: z.array(z.string()).optional(),
   }),
   z.object({
     action: z.literal("flashcards"),
     conceptId: z.string().min(1),
-    count: z.number().int().min(1).max(20).default(8),
-    difficulty: z.number().int().min(1).max(5).default(3),
+    count: z.number().int().min(1).max(20).optional(),
+    difficulty: z.number().int().min(1).max(5).optional(),
   }),
   z.object({
     action: z.literal("exam"),
     conceptIds: z.array(z.string().min(1)).min(1).max(20),
     examType: z
       .enum(["mock", "chapter", "full_syllabus", "custom", "timed_quiz"])
-      .default("chapter"),
-    questionCount: z.number().int().min(5).max(50).default(10),
+      .optional(),
+    questionCount: z.number().int().min(5).max(50).optional(),
     timeLimitMinutes: z.number().int().min(5).max(180).optional(),
-    difficulty: z.number().int().min(1).max(5).default(3),
+    difficulty: z.number().int().min(1).max(5).optional(),
   }),
   z.object({
     action: z.literal("tutor"),
     conceptId: z.string().optional(),
     mode: z
       .enum(["socratic", "direct", "hint", "worked_example", "simplified", "analogy", "diagnostic"])
-      .default("socratic"),
+      .optional(),
     userMessage: z.string().min(1),
     conversationHistory: z
       .array(
@@ -88,17 +88,17 @@ const RequestSchema = z.discriminatedUnion("action", [
       )
       .max(20)
       .optional(),
-    subject: z.string().default("Mathematics"),
-    explanationDepth: z.enum(["concise", "standard", "detailed"]).default("standard"),
-    gradeBand: z.enum(["middle", "high"]).default("high"),
-    curriculum: z.string().default("CBSE"),
+    subject: z.string().optional(),
+    explanationDepth: z.enum(["concise", "standard", "detailed"]).optional(),
+    gradeBand: z.enum(["middle", "high"]).optional(),
+    curriculum: z.string().optional(),
     sourceContext: z.string().optional(),
   }),
   z.object({
     action: z.literal("summary"),
     conceptId: z.string().min(1),
     sourceText: z.string().min(50),
-    format: z.enum(["summary", "key_points", "cheat_sheet", "flashcards"]).default("summary"),
+    format: z.enum(["summary", "key_points", "cheat_sheet", "flashcards"]).optional(),
   }),
   z.object({
     action: z.literal("revision_schedule"),
@@ -125,7 +125,7 @@ const QuestionSchema = z.object({
   hint: z.string(),
   explanation: z.string(),
   rubric: z.string().optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 function buildQuestionPrompt(
@@ -656,16 +656,16 @@ export const Route = createFileRoute("/api/learning/session")({
               question = await generateAIQuestion(
                 concept,
                 mastery,
-                parsed.data.difficulty,
+                parsed.data.difficulty ?? 2,
                 parsed.data.topic,
-                parsed.data.questionType,
+                parsed.data.questionType ?? "mcq",
               );
             } catch {
               question = fallbackQuestion(
                 concept,
-                parsed.data.difficulty,
+                parsed.data.difficulty ?? 2,
                 parsed.data.topic,
-                parsed.data.questionType,
+                parsed.data.questionType ?? "mcq",
               );
             }
 
@@ -675,7 +675,7 @@ export const Route = createFileRoute("/api/learning/session")({
           if (parsed.data.action === "plan") {
             const plan = await generatePlan(
               parsed.data.conceptIds,
-              parsed.data.weeklyMinutes,
+              parsed.data.weeklyMinutes ?? 180,
               parsed.data.examDate,
               parsed.data.syllabus,
               db,
@@ -698,8 +698,8 @@ export const Route = createFileRoute("/api/learning/session")({
             const cards = await generateFlashcards(
               concept,
               mastery,
-              parsed.data.count,
-              parsed.data.difficulty,
+              parsed.data.count ?? 8,
+              parsed.data.difficulty ?? 3,
               db,
             );
             return Response.json({ cards, aiGenerated: true });
@@ -708,10 +708,10 @@ export const Route = createFileRoute("/api/learning/session")({
           if (parsed.data.action === "exam") {
             const exam = await generateExam(
               parsed.data.conceptIds,
-              parsed.data.examType,
-              parsed.data.questionCount,
+              parsed.data.examType ?? "chapter",
+              parsed.data.questionCount ?? 10,
               parsed.data.timeLimitMinutes,
-              parsed.data.difficulty,
+              parsed.data.difficulty ?? 3,
               db,
             );
             return Response.json(exam);
@@ -724,14 +724,14 @@ export const Route = createFileRoute("/api/learning/session")({
             }
 
             const result = await generateTutorResponse(
-              parsed.data.mode,
+              parsed.data.mode ?? "socratic",
               parsed.data.userMessage,
               parsed.data.conversationHistory ?? [],
-              parsed.data.subject,
+              parsed.data.subject ?? "Mathematics",
               concept,
-              parsed.data.explanationDepth,
-              parsed.data.gradeBand,
-              parsed.data.curriculum,
+              parsed.data.explanationDepth ?? "standard",
+              parsed.data.gradeBand ?? "high",
+              parsed.data.curriculum ?? "CBSE",
               parsed.data.sourceContext,
             );
 
@@ -746,7 +746,7 @@ export const Route = createFileRoute("/api/learning/session")({
             const result = await generateSummary(
               concept,
               parsed.data.sourceText,
-              parsed.data.format,
+              parsed.data.format ?? "summary",
             );
             return Response.json({ content: result, format: parsed.data.format });
           }

@@ -22,16 +22,16 @@ const ExamRequestSchema = z.discriminatedUnion("action", [
     conceptIds: z.array(z.string().min(1)).min(1).max(20),
     examType: z
       .enum(["mock", "chapter", "full_syllabus", "custom", "timed_quiz"])
-      .default("chapter"),
-    questionCount: z.number().int().min(5).max(50).default(10),
+      .optional(),
+    questionCount: z.number().int().min(5).max(50).optional(),
     timeLimitMinutes: z.number().int().min(5).max(180).optional(),
-    difficulty: z.number().int().min(1).max(5).default(3),
+    difficulty: z.number().int().min(1).max(5).optional(),
   }),
   z.object({
     action: z.literal("submit_answer"),
     examId: z.string().uuid(),
     questionId: z.string().uuid(),
-    userAnswer: z.record(z.unknown()),
+    userAnswer: z.record(z.string(), z.unknown()),
     timeSpentSeconds: z.number().int().optional(),
   }),
   z.object({
@@ -45,7 +45,7 @@ const ExamRequestSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("list"),
     status: z.enum(["draft", "in_progress", "completed", "abandoned"]).optional(),
-    limit: z.number().int().min(1).max(50).default(20),
+    limit: z.number().int().min(1).max(50).optional(),
   }),
 ]);
 
@@ -56,7 +56,7 @@ const RevisionRequestSchema = z.discriminatedUnion("action", [
   }),
   z.object({
     action: z.literal("due"),
-    limit: z.number().int().min(1).max(100).default(20),
+    limit: z.number().int().min(1).max(100).optional(),
   }),
   z.object({
     action: z.literal("complete_review"),
@@ -69,19 +69,19 @@ const VoiceRequestSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("stt"),
     audioBase64: z.string().min(1),
-    language: z.string().default("en"),
+    language: z.string().optional(),
   }),
   z.object({
     action: z.literal("tts"),
     text: z.string().min(1).max(5000),
-    voice: z.string().default("alloy"),
-    language: z.string().default("en"),
+    voice: z.string().optional(),
+    language: z.string().optional(),
   }),
   z.object({
     action: z.literal("start_session"),
     conceptId: z.string().optional(),
-    mode: z.enum(["stt", "tts", "conversational"]).default("conversational"),
-    language: z.string().default("en"),
+    mode: z.enum(["stt", "tts", "conversational"]).optional(),
+    language: z.string().optional(),
   }),
   z.object({
     action: z.literal("end_session"),
@@ -110,18 +110,18 @@ const WhiteboardRequestSchema = z.discriminatedUnion("action", [
     conceptId: z.string().optional(),
     sessionId: z.string().uuid().optional(),
     title: z.string().min(1).max(200),
-    canvasData: z.record(z.unknown()).default({}),
+    canvasData: z.record(z.string(), z.unknown()).optional(),
   }),
   z.object({
     action: z.literal("update"),
     whiteboardId: z.string().uuid(),
-    canvasData: z.record(z.unknown()),
-    aiAnnotations: z.array(z.record(z.unknown())).optional(),
+    canvasData: z.record(z.string(), z.unknown()),
+    aiAnnotations: z.array(z.record(z.string(), z.unknown())).optional(),
   }),
   z.object({
     action: z.literal("annotate"),
     whiteboardId: z.string().uuid(),
-    canvasData: z.record(z.unknown()),
+    canvasData: z.record(z.string(), z.unknown()),
     instruction: z.string().min(1),
   }),
   z.object({
@@ -131,7 +131,7 @@ const WhiteboardRequestSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("list"),
     conceptId: z.string().optional(),
-    limit: z.number().int().min(1).max(50).default(20),
+    limit: z.number().int().min(1).max(50).optional(),
   }),
 ]);
 
@@ -141,21 +141,21 @@ const NotesRequestSchema = z.discriminatedUnion("action", [
     conceptId: z.string().optional(),
     sessionId: z.string().uuid().optional(),
     title: z.string().min(1).max(200),
-    content: z.record(z.unknown()),
+    content: z.record(z.string(), z.unknown()),
     contentText: z.string().optional(),
-    tags: z.array(z.string()).default([]),
-    isAiGenerated: z.boolean().default(false),
+    tags: z.array(z.string()).optional(),
+    isAiGenerated: z.boolean().optional(),
   }),
   z.object({
     action: z.literal("generate_summary"),
     noteId: z.string().uuid(),
-    format: z.enum(["summary", "key_points", "cheat_sheet", "flashcards"]).default("summary"),
+    format: z.enum(["summary", "key_points", "cheat_sheet", "flashcards"]).optional(),
   }),
   z.object({
     action: z.literal("update"),
     noteId: z.string().uuid(),
     title: z.string().optional(),
-    content: z.record(z.unknown()).optional(),
+    content: z.record(z.string(), z.unknown()).optional(),
     contentText: z.string().optional(),
     tags: z.array(z.string()).optional(),
   }),
@@ -167,7 +167,7 @@ const NotesRequestSchema = z.discriminatedUnion("action", [
     action: z.literal("list"),
     conceptId: z.string().optional(),
     sessionId: z.string().uuid().optional(),
-    limit: z.number().int().min(1).max(50).default(20),
+    limit: z.number().int().min(1).max(50).optional(),
   }),
 ]);
 
@@ -175,15 +175,15 @@ const GoalsRequestSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("set_daily"),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    targetMinutes: z.number().int().min(5).max(480).default(30),
-    targetConcepts: z.number().int().min(1).max(20).default(1),
+    targetMinutes: z.number().int().min(5).max(480).optional(),
+    targetConcepts: z.number().int().min(1).max(20).optional(),
   }),
   z.object({
     action: z.literal("set_weekly"),
     weekStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    targetMinutes: z.number().int().min(30).max(1680).default(180),
-    targetConcepts: z.number().int().min(1).max(50).default(5),
-    targetExams: z.number().int().min(0).max(10).default(0),
+    targetMinutes: z.number().int().min(30).max(1680).optional(),
+    targetConcepts: z.number().int().min(1).max(50).optional(),
+    targetExams: z.number().int().min(0).max(10).optional(),
   }),
   z.object({
     action: z.literal("get_daily"),
@@ -202,8 +202,8 @@ const GoalsRequestSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("update_progress"),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    minutesStudied: z.number().int().min(0).default(0),
-    conceptsCompleted: z.number().int().min(0).default(0),
+    minutesStudied: z.number().int().min(0).optional(),
+    conceptsCompleted: z.number().int().min(0).optional(),
   }),
 ]);
 
@@ -220,11 +220,11 @@ const MemoryRequestSchema = z.discriminatedUnion("action", [
     ]),
     conceptId: z.string().optional(),
     sessionId: z.string().uuid().optional(),
-    content: z.record(z.unknown()),
+    content: z.record(z.string(), z.unknown()),
     summary: z.string().optional(),
-    importance: z.number().min(0).max(1).default(1),
-    confidence: z.number().min(0).max(1).default(1),
-    tags: z.array(z.string()).default([]),
+    importance: z.number().min(0).max(1).optional(),
+    confidence: z.number().min(0).max(1).optional(),
+    tags: z.array(z.string()).optional(),
   }),
   z.object({
     action: z.literal("retrieve"),
@@ -232,7 +232,7 @@ const MemoryRequestSchema = z.discriminatedUnion("action", [
       .enum(["conversation", "mistake", "strength", "preference", "goal", "misconception"])
       .optional(),
     conceptId: z.string().optional(),
-    limit: z.number().int().min(1).max(100).default(50),
+    limit: z.number().int().min(1).max(100).optional(),
   }),
   z.object({
     action: z.literal("extract_from_session"),
@@ -244,17 +244,17 @@ const AnalyticsRequestSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("record"),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    studyTimeSeconds: z.number().int().min(0).default(0),
-    conceptsStudied: z.number().int().min(0).default(0),
-    questionsAnswered: z.number().int().min(0).default(0),
-    correctAnswers: z.number().int().min(0).default(0),
-    tutorMessages: z.number().int().min(0).default(0),
-    flashcardsReviewed: z.number().int().min(0).default(0),
-    notesCreated: z.number().int().min(0).default(0),
-    examsCompleted: z.number().int().min(0).default(0),
-    voiceMinutes: z.number().int().min(0).default(0),
-    whiteboardSessions: z.number().int().min(0).default(0),
-    xpEarned: z.number().int().min(0).default(0),
+    studyTimeSeconds: z.number().int().min(0).optional(),
+    conceptsStudied: z.number().int().min(0).optional(),
+    questionsAnswered: z.number().int().min(0).optional(),
+    correctAnswers: z.number().int().min(0).optional(),
+    tutorMessages: z.number().int().min(0).optional(),
+    flashcardsReviewed: z.number().int().min(0).optional(),
+    notesCreated: z.number().int().min(0).optional(),
+    examsCompleted: z.number().int().min(0).optional(),
+    voiceMinutes: z.number().int().min(0).optional(),
+    whiteboardSessions: z.number().int().min(0).optional(),
+    xpEarned: z.number().int().min(0).optional(),
   }),
   z.object({
     action: z.literal("get_range"),
@@ -263,7 +263,7 @@ const AnalyticsRequestSchema = z.discriminatedUnion("action", [
   }),
   z.object({
     action: z.literal("get_summary"),
-    days: z.number().int().min(1).max(365).default(30),
+    days: z.number().int().min(1).max(365).optional(),
   }),
 ]);
 
@@ -284,7 +284,7 @@ const HistoryRequestSchema = z.discriminatedUnion("action", [
     conceptId: z.string().optional(),
     title: z.string().min(1).max(200),
     summary: z.string().optional(),
-    metadata: z.record(z.unknown()).default({}),
+    metadata: z.record(z.string(), z.unknown()).optional(),
     durationSeconds: z.number().int().min(0).optional(),
     outcomeScore: z.number().min(0).max(1).optional(),
   }),
@@ -304,7 +304,7 @@ const HistoryRequestSchema = z.discriminatedUnion("action", [
       ])
       .optional(),
     conceptId: z.string().optional(),
-    limit: z.number().int().min(1).max(100).default(50),
+    limit: z.number().int().min(1).max(100).optional(),
   }),
 ]);
 
@@ -342,7 +342,7 @@ export const Route = createFileRoute("/api/learning/features")({
             const questions = [];
             const questionsPerConcept = Math.max(
               1,
-              Math.floor(parsed.data.questionCount / validConcepts.length),
+              Math.floor((parsed.data.questionCount ?? 10) / validConcepts.length),
             );
 
             for (const concept of validConcepts) {
@@ -355,12 +355,12 @@ export const Route = createFileRoute("/api/learning/features")({
 
               for (
                 let i = 0;
-                i < questionsPerConcept && questions.length < parsed.data.questionCount;
+                i < questionsPerConcept && questions.length < (parsed.data.questionCount ?? 10);
                 i++
               ) {
                 const difficulty = mastery
                   ? Math.ceil((1 - (mastery.score ?? 0.35)) * 5)
-                  : parsed.data.difficulty;
+                  : parsed.data.difficulty ?? 3;
                 let question;
                 try {
                   question = await generateAIQuestion(
@@ -388,8 +388,8 @@ export const Route = createFileRoute("/api/learning/features")({
               .from("learning_exams")
               .insert({
                 user_id: userId,
-                title: `${parsed.data.examType.charAt(0).toUpperCase() + parsed.data.examType.slice(1)} exam`,
-                exam_type: parsed.data.examType,
+                title: `${(parsed.data.examType ?? "chapter").charAt(0).toUpperCase() + (parsed.data.examType ?? "chapter").slice(1)} exam`,
+                exam_type: parsed.data.examType ?? "chapter",
                 concept_ids: parsed.data.conceptIds,
                 status: "draft",
                 time_limit_seconds: parsed.data.timeLimitMinutes
@@ -487,7 +487,7 @@ export const Route = createFileRoute("/api/learning/features")({
               .eq("exam_id", parsed.data.examId);
 
             const totalQuestions = answers?.length ?? 0;
-            const correctAnswers = answers?.filter((a) => a.is_correct).length ?? 0;
+            const correctAnswers = answers?.filter((a: any) => a.is_correct).length ?? 0;
             const score =
               totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
 
@@ -567,7 +567,7 @@ export const Route = createFileRoute("/api/learning/features")({
               .select("*")
               .eq("user_id", userId)
               .order("created_at", { ascending: false })
-              .limit(parsed.data.limit);
+              .limit(parsed.data.limit ?? 20);
 
             if (parsed.data.status) {
               query = query.eq("status", parsed.data.status);

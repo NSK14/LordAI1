@@ -58,7 +58,7 @@ export const Route = createFileRoute("/api/learning/goals")({
         if (!parsed.success)
           return apiErrorResponse(400, "INVALID_REQUEST", "Invalid goals request.", requestId);
 
-        const auth = context as { userId?: string; supabase?: { from: (table: string) => any } };
+        const auth = context as unknown as { userId?: string; supabase?: { from: (table: string) => any; raw: (sql: string) => any } };
         if (!auth.userId || !auth.supabase)
           return apiErrorResponse(
             401,

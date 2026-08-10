@@ -22,18 +22,18 @@ const WhiteboardRequestSchema = z.discriminatedUnion("action", [
     conceptId: z.string().optional(),
     sessionId: z.string().uuid().optional(),
     title: z.string().min(1).max(200),
-    canvasData: z.record(z.unknown()).default({}),
+    canvasData: z.record(z.string(), z.unknown()).optional(),
   }),
   z.object({
     action: z.literal("update"),
     whiteboardId: z.string().uuid(),
-    canvasData: z.record(z.unknown()),
-    aiAnnotations: z.array(z.record(z.unknown())).optional(),
+    canvasData: z.record(z.string(), z.unknown()),
+    aiAnnotations: z.array(z.record(z.string(), z.unknown())).optional(),
   }),
   z.object({
     action: z.literal("annotate"),
     whiteboardId: z.string().uuid(),
-    canvasData: z.record(z.unknown()),
+    canvasData: z.record(z.string(), z.unknown()),
     instruction: z.string().min(1),
   }),
   z.object({
@@ -43,7 +43,7 @@ const WhiteboardRequestSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("list"),
     conceptId: z.string().optional(),
-    limit: z.number().int().min(1).max(50).default(20),
+    limit: z.number().int().min(1).max(50).optional(),
   }),
   z.object({
     action: z.literal("delete"),

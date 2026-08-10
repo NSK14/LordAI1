@@ -111,21 +111,36 @@ export const Route = createFileRoute("/api/learning/analytics")({
 
             if (error) throw error;
 
+            const rows = (data ?? []) as Array<{
+              date: string;
+              study_time_seconds: number;
+              concepts_studied: number;
+              questions_answered: number;
+              correct_answers: number;
+              tutor_messages: number;
+              flashcards_reviewed: number;
+              notes_created: number;
+              exams_completed: number;
+              voice_minutes: number;
+              whiteboard_sessions: number;
+              xp_earned: number;
+            }>;
+
             const summary = {
-              totalStudyTime: data?.reduce((sum, d) => sum + (d.study_time_seconds || 0), 0) || 0,
-              totalConcepts: data?.reduce((sum, d) => sum + (d.concepts_studied || 0), 0) || 0,
-              totalQuestions: data?.reduce((sum, d) => sum + (d.questions_answered || 0), 0) || 0,
-              totalCorrect: data?.reduce((sum, d) => sum + (d.correct_answers || 0), 0) || 0,
-              totalTutorMessages: data?.reduce((sum, d) => sum + (d.tutor_messages || 0), 0) || 0,
-              totalFlashcards: data?.reduce((sum, d) => sum + (d.flashcards_reviewed || 0), 0) || 0,
-              totalNotes: data?.reduce((sum, d) => sum + (d.notes_created || 0), 0) || 0,
-              totalExams: data?.reduce((sum, d) => sum + (d.exams_completed || 0), 0) || 0,
-              totalVoiceMinutes: data?.reduce((sum, d) => sum + (d.voice_minutes || 0), 0) || 0,
+              totalStudyTime: rows.reduce((sum: number, d) => sum + (d.study_time_seconds || 0), 0),
+              totalConcepts: rows.reduce((sum: number, d) => sum + (d.concepts_studied || 0), 0),
+              totalQuestions: rows.reduce((sum: number, d) => sum + (d.questions_answered || 0), 0),
+              totalCorrect: rows.reduce((sum: number, d) => sum + (d.correct_answers || 0), 0),
+              totalTutorMessages: rows.reduce((sum: number, d) => sum + (d.tutor_messages || 0), 0),
+              totalFlashcards: rows.reduce((sum: number, d) => sum + (d.flashcards_reviewed || 0), 0),
+              totalNotes: rows.reduce((sum: number, d) => sum + (d.notes_created || 0), 0),
+              totalExams: rows.reduce((sum: number, d) => sum + (d.exams_completed || 0), 0),
+              totalVoiceMinutes: rows.reduce((sum: number, d) => sum + (d.voice_minutes || 0), 0),
               totalWhiteboards:
-                data?.reduce((sum, d) => sum + (d.whiteboard_sessions || 0), 0) || 0,
-              totalXP: data?.reduce((sum, d) => sum + (d.xp_earned || 0), 0) || 0,
-              daysActive: data?.filter((d) => (d.study_time_seconds || 0) > 0).length || 0,
-              dailyData: data ?? [],
+                rows.reduce((sum: number, d) => sum + (d.whiteboard_sessions || 0), 0),
+              totalXP: rows.reduce((sum: number, d) => sum + (d.xp_earned || 0), 0),
+              daysActive: rows.filter((d) => (d.study_time_seconds || 0) > 0).length,
+              dailyData: rows,
             };
 
             return Response.json({ summary });
@@ -145,7 +160,7 @@ export const Route = createFileRoute("/api/learning/analytics")({
             const today = new Date().toISOString().slice(0, 10);
             let checkDate = today;
 
-            const activeDays = new Set(data?.map((d) => d.date) || []);
+            const activeDays = new Set(data?.map((d: { date: string }) => d.date) || []);
 
             while (activeDays.has(checkDate)) {
               streak++;
