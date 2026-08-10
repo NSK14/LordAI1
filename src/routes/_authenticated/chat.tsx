@@ -1409,11 +1409,13 @@ function ChatPage() {
       const existing = qc
         .getQueryData<ConversationRow[]>(conversationsQueryKey)
         ?.find((c) => c.id === convId);
-      maybeGenerateTitle(convId, text, existing ? existing.title : "");
-      const { error: touchError } = await supabase
+      const touchPromise = supabase
         .from("conversations")
         .update({ last_message_at: new Date().toISOString() })
-        .eq("id", convId);
+        .eq("id", convId)
+        .then(({ error }) => error);
+      maybeGenerateTitle(convId, text, existing ? existing.title : "");
+      const touchError = await touchPromise;
       if (touchError) {
         console.error(
           JSON.stringify({

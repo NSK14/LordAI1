@@ -48,6 +48,21 @@ function logChat(event: string, payload: Record<string, unknown>) {
   console.info(JSON.stringify({ event, ...payload }));
 }
 
+interface LatencyMeasurement {
+  event: "ai_latency";
+  requestId: string;
+  authMs: number;
+  dbMs: number;
+  modelWaitMs: number;
+  ttftMs: number;
+  streamMs: number;
+  totalMs: number;
+}
+
+function logLatency(m: LatencyMeasurement) {
+  console.info(JSON.stringify(m));
+}
+
 function getLastUserText(messages: UIMessage[]) {
   const lastUser = messages
     .slice()
@@ -110,6 +125,8 @@ async function buildMemoryPrompt(
       updated_at: r.updated_at,
     }));
 
+  if (memories.length === 0) return "";
+
   let ranked = memories;
   try {
     const retrieved = await retrieveMemories(query, memories, { lightweight: false });
@@ -131,6 +148,7 @@ export const Route = createFileRoute("/api/chat")({
     handlers: {
       POST: async ({ request, context }) => {
         const requestId = crypto.randomUUID();
+        const t0 = performance.now();
         logChat("api_chat_request_start", {
           requestId,
           hasOpenRouterKey: !!process.env.OPENROUTER_API_KEY,
@@ -180,6 +198,8 @@ export const Route = createFileRoute("/api/chat")({
         const authContext = context as
           { userId?: string; supabase?: SupabaseClient<Database> } | undefined;
         let memoryPrompt = "";
+        const authMs = Math.round(performance.now() - t0);
+        const tAfterAuth = performance.now();
 
         if (authContext?.userId && authContext.supabase) {
           try {
@@ -195,6 +215,8 @@ export const Route = createFileRoute("/api/chat")({
             });
           }
         }
+        const dbMs = Math.round(performance.now() - tAfterAuth);
+        const tAfterDb = performance.now();
 
         const appContextPrompt = body.context
           ? `CURRENT APPLICATION CONTEXT:\n${JSON.stringify(body.context, null, 2)}`
@@ -214,6 +236,7 @@ export const Route = createFileRoute("/api/chat")({
         const gateway = createOpenRouterProvider(apiKey);
         const modelMessages = await convertToModelMessages(uiMessages);
         let tokenUsageEvent: TokenUsageEvent | null = null;
+        const modelWaitStart = performance.now();
 
         try {
           const { result, model } = await streamWithFallback({
@@ -228,6 +251,22 @@ export const Route = createFileRoute("/api/chat")({
             onTokenUsage: (event) => {
               tokenUsageEvent = event;
             },
+          });
+
+          const modelWaitMs = Math.round(performance.now() - modelWaitStart);
+          const ttftMs = (result as unknown as { ttftMs?: number }).ttftMs ?? 0;
+          const streamMs = (result as unknown as { streamMs?: number }).streamMs ?? 0;
+          const totalMs = Math.round(performance.now() - t0);
+
+          logLatency({
+            event: "ai_latency",
+            requestId,
+            authMs,
+            dbMs,
+            modelWaitMs,
+            ttftMs,
+            streamMs,
+            totalMs,
           });
 
           return result.toUIMessageStreamResponse({

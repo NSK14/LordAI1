@@ -31,7 +31,7 @@ const OPENROUTER_TIMEOUT_MS = 45_000;
 // backend transparently try the next candidate. Only after a candidate passes
 // the probe do we open the real stream to the user.
 const PROBE_MAX_OUTPUT_TOKENS = 1;
-const PROBE_TIMEOUT_MS = 20_000;
+const PROBE_TIMEOUT_MS = 6_000;
 const REASON_LABELS: Record<string, string> = {
   invalid_api_key: "Invalid API key",
   malformed_request: "Malformed request",
@@ -344,6 +344,14 @@ export interface StreamWithFallbackResult {
   result: Awaited<ReturnType<typeof streamText>>;
   model: string;
   attempts: ModelAttempt[];
+  /** Milliseconds from streamText call until first chunk arrives (TTFT). */
+  ttftMs: number;
+  /** Milliseconds from first chunk until stream end. */
+  streamMs: number;
+}
+
+function logGateway(event: string, payload: Record<string, unknown>) {
+  console.info(JSON.stringify({ event, ...payload }));
 }
 
 // Tries each candidate model for `mode` in order. A candidate is validated with
@@ -354,12 +362,54 @@ export interface StreamWithFallbackResult {
 // either stream it or complete it. Throws only when every candidate fails (or a
 // non-retryable error is hit), so the user never sees an error unless all models
 // are down.
+
+// ---------------------------------------------------------------------------
+// Model probe cache (module-level, shared across requests in the same process)
+// ---------------------------------------------------------------------------
+// Caches the first-working model per `mode` so we skip re-probing on every
+// request. Positive results are cached for PROBE_CACHE_TTL_MS; a failure
+// immediately invalidates the entry so we don't blindly stream to a dead model.
+
+const PROBE_CACHE_TTL_MS = 45_000; // 45 seconds
+interface ProbeCacheEntry {
+  model: string;
+  ts: number;
+}
+
+const probeCache = new Map<string, ProbeCacheEntry>();
+
+function getCachedModel(mode: string): string | null {
+  const entry = probeCache.get(mode);
+  if (!entry) return null;
+  if (Date.now() - entry.ts > PROBE_CACHE_TTL_MS) {
+    probeCache.delete(mode);
+    return null;
+  }
+  return entry.model;
+}
+
+function setCachedModel(mode: string, model: string): void {
+  probeCache.set(mode, { model, ts: Date.now() });
+}
+
+function invalidateCachedModel(mode: string): void {
+  probeCache.delete(mode);
+}
 export async function findFirstWorkingModel(
   opts: StreamWithFallbackOptions,
-): Promise<{ model: string; attempts: ModelAttempt[] }> {
+): Promise<{ model: string; attempts: ModelAttempt[]; probeMs: number }> {
   const { mode, requestId } = opts;
   const candidates = buildCandidates(mode, opts.explicitModelId);
   const modeLabel = LORD_MODE_LABELS[mode];
+  const probeStart = performance.now();
+
+  // Fast-path: if we have a fresh cache hit for this mode, use it directly
+  // (unless an explicit modelId was requested, in which case we must probe it).
+  const cachedModel = opts.explicitModelId ? null : getCachedModel(mode);
+  if (cachedModel && candidates.includes(cachedModel)) {
+    logGateway("openrouter_probe_cache_hit", { requestId, mode, model: cachedModel });
+    return { model: cachedModel, attempts: [], probeMs: 0 };
+  }
 
   console.info(`Mode: ${modeLabel}`);
 
@@ -407,11 +457,27 @@ export async function findFirstWorkingModel(
       continue;
     }
 
+    // Success: cache this model as the preferred choice for this mode.
+    setCachedModel(mode, modelId);
     console.info("Success");
-    return { model: modelId, attempts };
+    const probeMs = Math.round(performance.now() - probeStart);
+    logGateway("openrouter_probe_complete", {
+      requestId,
+      mode,
+      model: modelId,
+      probeMs,
+      attempts: attempts.length,
+    });
+    return { model: modelId, attempts, probeMs };
   }
 
-  console.error(JSON.stringify({ event: "lord_mode_exhausted", requestId, mode, attempts }));
+  // All probes failed: invalidate any stale cache entry for this mode so the
+  // next request starts fresh instead of blindly streaming to a dead model.
+  invalidateCachedModel(mode);
+  const probeMs = Math.round(performance.now() - probeStart);
+  console.error(
+    JSON.stringify({ event: "lord_mode_exhausted", requestId, mode, attempts, probeMs }),
+  );
   const exhausted = new Error(`All models failed for mode "${mode}".`);
   (exhausted as unknown as { lordAttempts: ModelAttempt[] }).lordAttempts = attempts;
   throw exhausted;
@@ -421,9 +487,13 @@ export async function streamWithFallback(
   opts: StreamWithFallbackOptions,
 ): Promise<StreamWithFallbackResult> {
   const { mode, requestId } = opts;
-  const { model: modelId, attempts } = await findFirstWorkingModel(opts);
+  const { model: modelId, attempts, probeMs } = await findFirstWorkingModel(opts);
 
   let firstChunkLogged = false;
+  const streamStart = performance.now();
+  let firstChunkTime = 0;
+  let streamEndTime = 0;
+
   const result = streamText({
     model: opts.gateway(modelId),
     system: opts.system,
@@ -434,18 +504,27 @@ export async function streamWithFallback(
     timeout: opts.timeoutMs ?? OPENROUTER_TIMEOUT_MS,
     experimental_onStart: () => {
       console.info(
-        JSON.stringify({ event: "openrouter_stream_start", requestId, mode, model: modelId }),
+        JSON.stringify({
+          event: "openrouter_stream_start",
+          requestId,
+          mode,
+          model: modelId,
+          probeMs,
+        }),
       );
     },
     onChunk: ({ chunk }) => {
       if (!firstChunkLogged && chunk.type === "text-delta") {
         firstChunkLogged = true;
+        firstChunkTime = performance.now();
         console.info(
           JSON.stringify({
             event: "openrouter_stream_first_chunk",
             requestId,
             mode,
             model: modelId,
+            ttftMs: Math.round(firstChunkTime - streamStart),
+            probeMs,
           }),
         );
       }
@@ -462,6 +541,9 @@ export async function streamWithFallback(
       );
     },
     onFinish: ({ finishReason, usage }) => {
+      streamEndTime = performance.now();
+      const ttftMs = firstChunkTime > 0 ? Math.round(firstChunkTime - streamStart) : 0;
+      const streamMs = firstChunkTime > 0 ? Math.round(streamEndTime - firstChunkTime) : 0;
       const cost = estimateCost(modelId, usage.inputTokens ?? 0, usage.outputTokens ?? 0);
       console.info(
         JSON.stringify({
@@ -470,6 +552,9 @@ export async function streamWithFallback(
           mode,
           model: modelId,
           finishReason,
+          probeMs,
+          ttftMs,
+          streamMs,
           usage: {
             inputTokens: usage.inputTokens ?? 0,
             outputTokens: usage.outputTokens ?? 0,
@@ -496,7 +581,11 @@ export async function streamWithFallback(
     },
   });
 
-  return { result, model: modelId, attempts };
+  const ttftMs = firstChunkTime > 0 ? Math.round(firstChunkTime - streamStart) : 0;
+  const finalStreamMs =
+    firstChunkTime > 0 ? Math.round((streamEndTime || performance.now()) - firstChunkTime) : 0;
+
+  return { result, model: modelId, attempts, ttftMs, streamMs: finalStreamMs };
 }
 
 // Non-streaming variant used for diagnostics (task 11): verifies normal
