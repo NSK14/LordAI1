@@ -26,6 +26,7 @@ export interface ApiErrorBody {
       errorCode?: string;
       requestId?: string;
     }>;
+    configuredProviders?: string[];
   };
 }
 
@@ -44,6 +45,7 @@ export function apiErrorResponse(
       errorCode?: string;
       requestId?: string;
     }>;
+    configuredProviders?: string[];
   },
 ) {
   return Response.json(
@@ -53,6 +55,7 @@ export function apiErrorResponse(
         message,
         requestId,
         ...(extra?.attempts && { attempts: extra.attempts }),
+        ...(extra?.configuredProviders && { configuredProviders: extra.configuredProviders }),
       },
     } satisfies ApiErrorBody,
     {
@@ -62,17 +65,11 @@ export function apiErrorResponse(
   );
 }
 
-export function apiOkResponse(
-  data: unknown,
-  status = 200,
-): Response {
-  return Response.json(
-    data,
-    {
-      status,
-      headers: { "Cache-Control": "no-store" },
-    },
-  );
+export function apiOkResponse(data: unknown, status = 200): Response {
+  return Response.json(data, {
+    status,
+    headers: { "Cache-Control": "no-store" },
+  });
 }
 
 export function apiNoContentResponse(): Response {

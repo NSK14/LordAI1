@@ -263,6 +263,17 @@ body {
     opacity: 0.3;
   }
 }
+@keyframes caret-blink {
+  0%,
+  50%,
+  100% {
+    opacity: 1;
+  }
+  25%,
+  75% {
+    opacity: 0;
+  }
+}
 @keyframes neon-breathe {
   0%,
   100% {
@@ -307,6 +318,12 @@ body {
 }
 .animate-blink {
   animation: blink 1.4s ease-in-out infinite;
+}
+.markdown-streaming::after {
+  content: "|";
+  margin-left: 2px;
+  animation: caret-blink 1s step-end infinite;
+  opacity: 0.7;
 }
 .animate-neon-breathe {
   animation: neon-breathe 3.5s ease-in-out infinite;

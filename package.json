@@ -20,6 +20,8 @@
     "build:ios": "npm run build && npx cap sync ios"
   },
   "dependencies": {
+    "@ai-sdk/google": "^3.0.104",
+    "@ai-sdk/openai": "^3.0.91",
     "@ai-sdk/openai-compatible": "^2.0.48",
     "@ai-sdk/react": "^3.0.198",
     "@capacitor/android": "^8.4.0",

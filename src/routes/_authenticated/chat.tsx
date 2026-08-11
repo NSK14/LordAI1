@@ -1612,6 +1612,7 @@ function ChatPage() {
             .filter((p) => p.type === "text")
             .map((p) => (p as { text?: string }).text ?? "")
             .join("");
+          const isStreaming = isLast && m.role === "assistant" && busy;
           return (
             <li
               key={m.id}
@@ -1633,24 +1634,29 @@ function ChatPage() {
                   </div>
                 ) : (
                   <div className="text-sm text-foreground">
-                    <RichMessage text={text} />
-                    <MessageActions
-                      text={text}
-                      canRegenerate={isLast && !busy}
-                      onRegenerate={regenerateLast}
-                    />
+                    <RichMessage text={text} streaming={isStreaming} />
+                    {!isStreaming && (
+                      <MessageActions
+                        text={text}
+                        canRegenerate={isLast && !busy}
+                        onRegenerate={regenerateLast}
+                      />
+                    )}
                   </div>
                 )}
               </div>
             </li>
           );
         })}
-        {busy && (
-          <li className="flex items-center gap-3">
-            <Avatar />
-            <TypingDots />
-          </li>
-        )}
+        {busy &&
+          !(
+            safeMessages.length > 0 && safeMessages[safeMessages.length - 1]?.role === "assistant"
+          ) && (
+            <li className="flex items-center gap-3">
+              <Avatar />
+              <TypingDots />
+            </li>
+          )}
         {error && (
           <li className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
             {error.message || "The AI request failed. Please retry."}

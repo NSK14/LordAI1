@@ -1,63 +1,103 @@
-// Backend-owned model lists. The frontend never sees these ids — it only
-// knows about capability `LordMode`s. Order matters: earlier models are tried
-// first, and the backend automatically falls back through the rest.
-// Models validated against OpenRouter catalog (https://openrouter.ai/models)
-export const LORD_MODELS = {
-  // ⚡ Lowest latency / everyday chat
+// Backend-owned model configuration. The frontend never sees model ids — it only
+// knows about capability `LordMode`s. The backend owns provider selection and
+// automatic fallback.
+//
+// A `Candidate` pairs a provider with the model id understood by that
+// provider. This makes routing deterministic (no fragile string-prefix guessing)
+// and lets every provider be configured in one place.
+export type ProviderName = "gemini" | "openrouter" | "openai";
+
+export interface Candidate {
+  provider: ProviderName;
+  modelId: string;
+}
+
+// Current, available model ids per provider. Update model ids here only — they
+// are never hard-coded elsewhere. The `@ai-sdk/openai-compatible`, `@ai-sdk/openai`
+// and `@ai-sdk/google` providers each receive the bare model id (no prefix).
+export const PROVIDER_CONFIG: Record<ProviderName, { apiKeyEnv: string; models: string[] }> = {
+  gemini: {
+    apiKeyEnv: "GEMINI_API_KEY",
+    models: ["gemini-2.5-flash", "gemini-2.5-pro"],
+  },
+  openrouter: {
+    apiKeyEnv: "OPENROUTER_API_KEY",
+    models: [
+      "google/gemma-3-27b-it:free",
+      "openai/gpt-oss-20b:free",
+      "google/gemma-4-26b-a4b-it:free",
+      "nvidia/nemotron-nano-9b-v2:free",
+      "google/gemini-2.5-flash:free",
+      "openai/gpt-oss-120b:free",
+      "meta-llama/llama-3.3-70b-instruct:free",
+      "qwen/qwen3-235b-a22b:free",
+    ],
+  },
+  openai: {
+    apiKeyEnv: "OPENAI_API_KEY",
+    models: ["gpt-4o-mini", "gpt-4o"],
+  },
+};
+
+// Routing modes map a user-facing capability to a provider-ordered candidate
+// list. Earlier entries are tried first; the backend falls back sequentially
+// through the rest only when the selected provider fails, times out, is
+// rate-limited, returns 5xx, or has no configured key.
+export const LORD_MODELS: Record<LordMode, Candidate[]> = {
+  // ⚡ Lowest latency / everyday chat — prefer free/fast providers.
   fast: [
-    "google/gemma-3-27b-it:free",
-    "openai/gpt-oss-20b:free",
-    "google/gemma-4-26b-a4b-it:free",
-    "nvidia/nemotron-nano-9b-v2:free",
+    candidate("gemini", "gemini-2.5-flash"),
+    candidate("openrouter", "openai/gpt-oss-20b:free"),
+    candidate("openrouter", "google/gemma-3-27b-it:free"),
+    candidate("openai", "gpt-4o-mini"),
   ],
 
-  // 💬 Best general-purpose assistants
+  // 💬 Best general-purpose — Gemini first, then OpenRouter, then OpenAI.
   balanced: [
-    "google/gemini-2.5-flash:free",
-    "fish-audio/s2.1-pro-free:free",
-    "tencent/hy3:free",
-    "google/gemma-4-31b-it:free",
-    "openai/gpt-oss-120b:free",
-    "nvidia/nemotron-3-super-120b-a12b:free",
+    candidate("gemini", "gemini-2.5-flash"),
+    candidate("openrouter", "google/gemini-2.5-flash:free"),
+    candidate("openrouter", "openai/gpt-oss-120b:free"),
+    candidate("openai", "gpt-4o"),
   ],
 
-  // 🧠 Deep reasoning & planning
+  // 🧠 Deep reasoning & planning — premium providers first.
   reasoning: [
-    "qwen/qwen3-235b-a22b:free",
-    "tencent/hy3:free",
-    "nvidia/nemotron-3-ultra-550b-a55b:free",
-    "openai/gpt-oss-120b:free",
-    "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
-    "liquid/lfm-2.5-1.2b-thinking:free",
+    candidate("openai", "gpt-4o"),
+    candidate("openrouter", "qwen/qwen3-235b-a22b:free"),
+    candidate("gemini", "gemini-2.5-pro"),
+    candidate("openrouter", "openai/gpt-oss-120b:free"),
   ],
 
-  // 💻 Software engineering
+  // 💻 Software engineering — coding-capable models first.
   coding: [
-    "meta-llama/llama-3.3-70b-instruct:free",
-    "poolside/laguna-m.1:free",
-    "cohere/north-mini-code:free",
-    "tencent/hy3:free",
-    "openai/gpt-oss-120b:free",
-    "google/gemma-4-31b-it:free",
+    candidate("openai", "gpt-4o"),
+    candidate("openrouter", "meta-llama/llama-3.3-70b-instruct:free"),
+    candidate("openrouter", "poolside/laguna-m.1:free"),
+    candidate("gemini", "gemini-2.5-flash"),
   ],
 
   // 🎨 Writing, storytelling & content creation
   creative: [
-    "google/gemma-4-31b-it:free",
-    "tencent/hy3:free",
-    "openai/gpt-oss-120b:free",
-    "nvidia/nemotron-3-super-120b-a12b:free",
+    candidate("openai", "gpt-4o"),
+    candidate("openrouter", "google/gemma-4-31b-it:free"),
+    candidate("gemini", "gemini-2.5-flash"),
+    candidate("openrouter", "openai/gpt-oss-120b:free"),
   ],
 
-  // 🖥️ Lightweight fallback
+  // 🖥️ Lightweight fallback — smallest available models.
   local: [
-    "openai/gpt-oss-20b:free",
-    "nvidia/nemotron-nano-9b-v2:free",
-    "liquid/lfm-2.5-1.2b-instruct:free",
+    candidate("openrouter", "openai/gpt-oss-20b:free"),
+    candidate("openrouter", "nvidia/nemotron-nano-9b-v2:free"),
+    candidate("openrouter", "liquid/lfm-2.5-1.2b-instruct:free"),
+    candidate("gemini", "gemini-2.5-flash"),
   ],
-} as const;
+};
 
-export type LordMode = keyof typeof LORD_MODELS;
+function candidate(provider: ProviderName, modelId: string): Candidate {
+  return { provider, modelId };
+}
+
+export type LordMode = "fast" | "balanced" | "coding" | "creative" | "reasoning" | "local";
 
 export const LORD_MODE_LABELS: Record<LordMode, string> = {
   fast: "Fast",
@@ -68,17 +108,126 @@ export const LORD_MODE_LABELS: Record<LordMode, string> = {
   local: "Local",
 };
 
-// Build the ordered candidate list for a mode. An explicit `modelId` (kept for
-// backwards compatibility) is tried first, then the mode's own list. Duplicates
-// are removed while preserving order.
+// Build the ordered candidate list (bare model id strings) for a mode. An
+// explicit `modelId` (kept for backwards compatibility) is tried first, then the
+// mode's own list. Duplicates are removed while preserving order. Returns bare
+// model ids so existing callers (e.g. dashboard label lookups) keep working.
 export function buildCandidates(mode: LordMode, explicitModelId?: string): string[] {
   const base = LORD_MODELS[mode] ?? [];
-  const list = explicitModelId ? [explicitModelId, ...base] : [...base];
+  const list = explicitModelId
+    ? [explicitModelId, ...base.map((c) => c.modelId)]
+    : [...base.map((c) => c.modelId)];
   return Array.from(new Set(list));
 }
 
 // Backwards-compatible wrapper
 export const getLordModelCandidates = buildCandidates;
+
+// Flatten every candidate across all modes into provider+modelId pairs. Used
+// for bare-id resolution and diagnostics.
+export function buildAllCandidates(): Candidate[] {
+  const seen = new Set<string>();
+  const out: Candidate[] = [];
+  for (const mode of Object.keys(LORD_MODELS) as LordMode[]) {
+    for (const c of LORD_MODELS[mode]) {
+      const key = `${c.provider}:${c.modelId}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(c);
+    }
+  }
+  return out;
+}
+
+// Resolve a bare model id to the provider that owns it. An explicit provider
+// tag is always preferred; otherwise we match against the known candidate
+// registry, then fall back to legacy OpenRouter-style prefix matching.
+export function resolveProvider(
+  modelId: string,
+  explicitProvider?: ProviderName,
+): ProviderName | null {
+  if (explicitProvider) return explicitProvider;
+  for (const c of buildAllCandidates()) {
+    if (c.modelId === modelId) return c.provider;
+  }
+  if (
+    modelId.startsWith("google/") ||
+    modelId.startsWith("openai/") ||
+    modelId.startsWith("meta-llama/")
+  ) {
+    return "openrouter";
+  }
+  if (
+    modelId.startsWith("gemma") ||
+    modelId.startsWith("llama") ||
+    modelId.startsWith("nemotron") ||
+    modelId.startsWith("qwen")
+  ) {
+    return "openrouter";
+  }
+  return null;
+}
+
+// Resolve a bare model id to a full Candidate. Prefers an explicit provider,
+// then matches against the known candidate registry, then treats known
+// provider prefixes as OpenRouter/legacy ids.
+export function resolveCandidate(
+  modelId: string,
+  explicitProvider?: ProviderName,
+): Candidate | null {
+  if (explicitProvider) return { provider: explicitProvider, modelId };
+  const known = buildAllCandidates().find((c) => c.modelId === modelId);
+  if (known) return known;
+  if (
+    modelId.startsWith("google/") ||
+    modelId.startsWith("openai/") ||
+    modelId.startsWith("meta-llama/")
+  ) {
+    return { provider: "openrouter", modelId };
+  }
+  if (
+    modelId.startsWith("gemma") ||
+    modelId.startsWith("llama") ||
+    modelId.startsWith("nemotron") ||
+    modelId.startsWith("qwen")
+  ) {
+    return { provider: "openrouter", modelId };
+  }
+  return null;
+}
+
+// Return the ordered candidate list for a mode, optionally preferring a known
+// working provider/model (passed in from the probe cache) so we skip
+// re-probing on every request. Duplicates are removed while preserving order.
+export function getModeCandidates(
+  mode: LordMode,
+  explicitModelId?: string,
+  preferredProvider?: ProviderName,
+  preferredModelId?: string,
+): Candidate[] {
+  const base = LORD_MODELS[mode] ?? [];
+  const ordered =
+    preferredProvider && preferredModelId
+      ? [
+          { provider: preferredProvider, modelId: preferredModelId },
+          ...base.filter(
+            (c) => !(c.provider === preferredProvider && c.modelId === preferredModelId),
+          ),
+        ]
+      : [...base];
+  const list = explicitModelId
+    ? [{ provider: preferredProvider ?? "openrouter", modelId: explicitModelId }, ...ordered]
+    : ordered;
+  const seen = new Set<string>();
+  const out: Candidate[] = [];
+  for (const c of list) {
+    const key = `${c.provider}:${c.modelId}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(c);
+  }
+  return out;
+}
 
 // Typed, structured client error produced by the OpenRouter fetch wrapper so
 // classification never has to guess from a free-form message. It is attached to

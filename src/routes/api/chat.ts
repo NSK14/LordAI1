@@ -2,11 +2,15 @@ import { createFileRoute } from "@tanstack/react-router";
 import { convertToModelMessages, type UIMessage } from "ai";
 import { z } from "zod";
 import {
-  createOpenRouterProvider,
   streamWithFallback,
   LORD_MODELS,
   LORD_SYSTEM_PROMPT,
   classifyModelError,
+  createLordProviders,
+  createLordGateway,
+  getConfiguredProviders,
+  type LordModelGateway,
+  type LordProvidersState,
   type LordMode,
   type ModelAttempt,
 } from "@/lib/ai-gateway.server";
@@ -51,6 +55,8 @@ function logChat(event: string, payload: Record<string, unknown>) {
 interface LatencyMeasurement {
   event: "ai_latency";
   requestId: string;
+  provider?: string;
+  model?: string;
   authMs: number;
   dbMs: number;
   modelWaitMs: number;
@@ -149,18 +155,26 @@ export const Route = createFileRoute("/api/chat")({
       POST: async ({ request, context }) => {
         const requestId = crypto.randomUUID();
         const t0 = performance.now();
+        const configuredProviders = getConfiguredProviders();
         logChat("api_chat_request_start", {
           requestId,
+          configuredProviders,
+          hasGeminiKey: !!process.env.GEMINI_API_KEY,
           hasOpenRouterKey: !!process.env.OPENROUTER_API_KEY,
+          hasOpenAiKey: !!process.env.OPENAI_API_KEY,
         });
-        const apiKey = process.env.OPENROUTER_API_KEY;
-        if (!apiKey) {
-          logChat("api_chat_config_error", { requestId, missing: "OPENROUTER_API_KEY" });
+
+        if (configuredProviders.length === 0) {
+          logChat("api_chat_config_error", {
+            requestId,
+            missing: ["GEMINI_API_KEY", "OPENROUTER_API_KEY", "OPENAI_API_KEY"],
+          });
           return apiErrorResponse(
             503,
             "AI_NOT_CONFIGURED",
-            "AI is not configured. Add OPENROUTER_API_KEY to the server environment.",
+            "AI is not configured. Add at least one of GEMINI_API_KEY, OPENROUTER_API_KEY, or OPENAI_API_KEY to the server environment.",
             requestId,
+            { configuredProviders },
           );
         }
 
@@ -233,14 +247,16 @@ export const Route = createFileRoute("/api/chat")({
           lastUserPreview: getLastUserText(uiMessages),
         });
 
-        const gateway = createOpenRouterProvider(apiKey);
+        const lordState: LordProvidersState = createLordProviders();
+        const gateway: LordModelGateway = createLordGateway(lordState);
         const modelMessages = await convertToModelMessages(uiMessages);
         let tokenUsageEvent: TokenUsageEvent | null = null;
         const modelWaitStart = performance.now();
 
         try {
-          const { result, model } = await streamWithFallback({
+          const { result, model, provider } = await streamWithFallback({
             gateway,
+            state: lordState,
             mode,
             explicitModelId,
             system: systemPrompt,
@@ -248,6 +264,7 @@ export const Route = createFileRoute("/api/chat")({
             requestId,
             maxOutputTokens: 1024,
             timeoutMs: 45_000,
+            abortSignal: request.signal,
             onTokenUsage: (event) => {
               tokenUsageEvent = event;
             },
@@ -261,6 +278,8 @@ export const Route = createFileRoute("/api/chat")({
           logLatency({
             event: "ai_latency",
             requestId,
+            provider,
+            model,
             authMs,
             dbMs,
             modelWaitMs,
@@ -274,6 +293,7 @@ export const Route = createFileRoute("/api/chat")({
               "Cache-Control": "no-store",
               "X-LordAI-Request-Id": requestId,
               "X-LordAI-Model": model,
+              "X-LordAI-Provider": provider,
             },
             messageMetadata: ({ part }) => {
               if (part.type !== "finish") return undefined;

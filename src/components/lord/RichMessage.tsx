@@ -2,10 +2,16 @@
 
 import { MarkdownRenderer } from "./chat/markdown/MarkdownRenderer";
 
-export function RichMessage({ text }: { text: string | null | undefined }) {
+export function RichMessage({
+  text,
+  streaming,
+}: {
+  text: string | null | undefined;
+  streaming?: boolean;
+}) {
   const safeText = typeof text === "string" ? text : "";
   if (!safeText.trim()) {
     return <span className="whitespace-pre-wrap">{safeText}</span>;
   }
-  return <MarkdownRenderer>{safeText}</MarkdownRenderer>;
+  return <MarkdownRenderer streaming={streaming}>{safeText}</MarkdownRenderer>;
 }

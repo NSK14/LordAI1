@@ -1,8 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import {
-  testOpenRouterConnection,
-  getOpenRouterEnvironmentDiagnostics,
-} from "@/lib/ai-gateway.server";
+import { testOpenRouterConnection, getLordEnvironmentDiagnostics } from "@/lib/ai-gateway.server";
 
 // Standalone OpenRouter health probe. Intentionally does NOT require auth and
 // does NOT go through the chat pipeline — it talks to OpenRouter with a raw
@@ -21,7 +18,7 @@ export const Route = createFileRoute("/api/openrouter-test")({
                 name: "ConfigError",
                 message: "OPENROUTER_API_KEY is not set on the server.",
               },
-              diagnostics: getOpenRouterEnvironmentDiagnostics(),
+              diagnostics: getLordEnvironmentDiagnostics(),
             },
             { status: 503 },
           );
