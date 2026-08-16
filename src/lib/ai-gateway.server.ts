@@ -266,6 +266,53 @@ function makeProviderFetch(provider: ProviderName, timeoutMs: number, logger: Lo
 }
 
 // ---------------------------------------------------------------------------
+// Provider parameter normalization
+// ---------------------------------------------------------------------------
+
+interface ProviderParamLimits {
+  minOutputTokens: number;
+  defaultTemperature: number;
+  maxTemperature: number;
+}
+
+const PROVIDER_PARAM_LIMITS: Record<ProviderName, ProviderParamLimits> = {
+  gemini: {
+    minOutputTokens: 1,
+    defaultTemperature: 0.7,
+    maxTemperature: 2.0,
+  },
+  openrouter: {
+    minOutputTokens: 1,
+    defaultTemperature: 0.7,
+    maxTemperature: 2.0,
+  },
+  openai: {
+    minOutputTokens: 16,
+    defaultTemperature: 0.7,
+    maxTemperature: 2.0,
+  },
+};
+
+export function normalizeProviderParams(
+  provider: ProviderName,
+  params: {
+    maxOutputTokens?: number;
+    temperature?: number;
+  },
+): {
+  maxOutputTokens: number;
+  temperature: number;
+} {
+  const limits = PROVIDER_PARAM_LIMITS[provider];
+  const maxOutputTokens = Math.max(params.maxOutputTokens ?? 1024, limits.minOutputTokens);
+  const temperature = Math.min(
+    Math.max(params.temperature ?? limits.defaultTemperature, 0),
+    limits.maxTemperature,
+  );
+  return { maxOutputTokens, temperature };
+}
+
+// ---------------------------------------------------------------------------
 // Provider factories
 // ---------------------------------------------------------------------------
 
@@ -498,6 +545,7 @@ export interface StartupValidationResult {
   provider: string;
   healthy: string[];
   unhealthy: Array<{ model: string; reason: string; status?: string }>;
+  disabledModels: Array<{ model: string; reason: string; disabledUntil: number }>;
 }
 
 export async function validateProvidersAtStartup(
@@ -515,24 +563,37 @@ export async function validateProvidersAtStartup(
     const prov = state.providers[provider];
     const healthy: string[] = [];
     const unhealthy: Array<{ model: string; reason: string; status?: string }> = [];
+    const disabledModels: Array<{ model: string; reason: string; disabledUntil: number }> = [];
 
     if (!prov) {
       const models = PROVIDER_CONFIG[provider].models;
       for (const modelId of models) {
         unhealthy.push({ model: modelId, reason: "Provider not configured (missing API key)" });
       }
-      results.push({ provider: name, healthy, unhealthy });
+      results.push({ provider: name, healthy, unhealthy, disabledModels });
       continue;
     }
 
     const models = PROVIDER_CONFIG[provider].models;
     for (const modelId of models) {
+      const existingEntry = infra.healthCache.get(provider, modelId);
+      if (existingEntry && existingEntry.status !== "healthy") {
+        disabledModels.push({
+          model: modelId,
+          reason: existingEntry.reason,
+          disabledUntil: existingEntry.expiresAt,
+        });
+        continue;
+      }
+
       try {
         await generateText({
           model: prov(modelId),
           system: "Reply with OK",
           messages: [{ role: "user", content: "OK" }],
-          maxOutputTokens: GATEWAY_CONFIG.probeMaxOutputTokens,
+          maxOutputTokens:
+            GATEWAY_CONFIG.probeMaxOutputTokensByProvider[provider] ??
+            GATEWAY_CONFIG.probeMaxOutputTokens,
           temperature: 0,
           maxRetries: 0,
           timeout: GATEWAY_CONFIG.startupValidationTimeoutMs,
@@ -554,6 +615,14 @@ export async function validateProvidersAtStartup(
         const statusStr =
           classification.status !== undefined ? String(classification.status) : undefined;
         unhealthy.push({ model: modelId, reason: reasonLabel, status: statusStr });
+        if (classification.retryable) {
+          disabledModels.push({
+            model: modelId,
+            reason: reasonLabel,
+            disabledUntil:
+              Date.now() + infra.healthCache.getTtlForStatus(classification.status ?? "unknown"),
+          });
+        }
         infra.healthCache.set({
           provider,
           model: modelId,
@@ -569,7 +638,7 @@ export async function validateProvidersAtStartup(
       }
     }
 
-    results.push({ provider: name, healthy, unhealthy });
+    results.push({ provider: name, healthy, unhealthy, disabledModels });
   }
 
   return results;
@@ -765,7 +834,9 @@ export async function findFirstWorkingModel(opts: StreamWithFallbackOptions): Pr
           model: opts.gateway(candidate),
           system: "Reply with OK",
           messages: [{ role: "user", content: "OK" }],
-          maxOutputTokens: GATEWAY_CONFIG.probeMaxOutputTokens,
+          maxOutputTokens:
+            GATEWAY_CONFIG.probeMaxOutputTokensByProvider[provider] ??
+            GATEWAY_CONFIG.probeMaxOutputTokens,
           temperature: 0,
           maxRetries: 0,
           timeout: GATEWAY_CONFIG.probeTimeoutMs,
@@ -924,12 +995,17 @@ export async function streamWithFallback(
   const providerTimeout =
     state.meta[provider]?.timeoutMs ?? GATEWAY_CONFIG.providerTimeoutDefaultMs;
 
+  const normalizedParams = normalizeProviderParams(provider, {
+    maxOutputTokens: opts.maxOutputTokens,
+    temperature: opts.temperature,
+  });
+
   const result = streamText({
     model: opts.gateway(candidate),
     system: opts.system,
     messages: opts.messages,
-    maxOutputTokens: opts.maxOutputTokens ?? 1024,
-    temperature: opts.temperature ?? 0.7,
+    maxOutputTokens: normalizedParams.maxOutputTokens,
+    temperature: normalizedParams.temperature,
     maxRetries: GATEWAY_CONFIG.maxRetriesDefault,
     timeout: opts.timeoutMs ?? providerTimeout,
     abortSignal: opts.abortSignal,
@@ -1095,12 +1171,16 @@ export async function generateTextWithFallback(opts: StreamWithFallbackOptions):
   const modelId = candidate.modelId;
   const providerTimeout =
     opts.state.meta[provider]?.timeoutMs ?? GATEWAY_CONFIG.providerTimeoutDefaultMs;
+  const normalizedParams = normalizeProviderParams(provider, {
+    maxOutputTokens: opts.maxOutputTokens,
+    temperature: opts.temperature,
+  });
   const { text } = await generateText({
     model: opts.gateway(candidate),
     system: opts.system,
     messages: opts.messages,
-    maxOutputTokens: opts.maxOutputTokens ?? 1024,
-    temperature: opts.temperature ?? 0.7,
+    maxOutputTokens: normalizedParams.maxOutputTokens,
+    temperature: normalizedParams.temperature,
     maxRetries: GATEWAY_CONFIG.maxRetriesDefault,
     timeout: opts.timeoutMs ?? providerTimeout,
     abortSignal: opts.abortSignal,

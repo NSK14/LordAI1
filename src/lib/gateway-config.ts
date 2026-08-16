@@ -1,5 +1,10 @@
 export const PROBE_TIMEOUT_MS = 6_000;
-export const PROBE_MAX_OUTPUT_TOKENS = 1;
+export const PROBE_MAX_OUTPUT_TOKENS = 16;
+export const PROBE_MAX_OUTPUT_TOKENS_BY_PROVIDER: Record<string, number> = {
+  gemini: 16,
+  openrouter: 16,
+  openai: 16,
+};
 export const PROBE_CACHE_TTL_MS = 45_000;
 export const PROBE_MAX_ATTEMPTS = 2;
 
@@ -12,6 +17,8 @@ export const PROVIDER_TIMEOUTS = {
 export const PROVIDER_TIMEOUT_DEFAULT_MS = 45_000;
 
 export const HEALTH_CACHE_TTL_BY_STATUS = {
+  401: 60 * 60 * 1_000,
+  403: 60 * 60 * 1_000,
   404: 6 * 60 * 60 * 1_000,
   410: 24 * 60 * 60 * 1_000,
   429: 30_000,
@@ -19,6 +26,8 @@ export const HEALTH_CACHE_TTL_BY_STATUS = {
   503: 60_000,
   timeout: 30_000,
   network: 30_000,
+  model_unavailable: 6 * 60 * 60 * 1_000,
+  invalid_api_key: 60 * 60 * 1_000,
 } as const;
 
 export const HEALTH_CACHE_DEFAULT_TTL_MS = 15_000;
@@ -71,6 +80,7 @@ export const ERROR_REASON_LABELS: Record<string, string> = {
 export type GatewayConfig = {
   probeTimeoutMs: number;
   probeMaxOutputTokens: number;
+  probeMaxOutputTokensByProvider: Record<string, number>;
   probeCacheTtlMs: number;
   probeMaxAttempts: number;
   providerTimeouts: Record<string, number>;
@@ -98,6 +108,7 @@ export type GatewayConfig = {
 export const GATEWAY_CONFIG: GatewayConfig = {
   probeTimeoutMs: PROBE_TIMEOUT_MS,
   probeMaxOutputTokens: PROBE_MAX_OUTPUT_TOKENS,
+  probeMaxOutputTokensByProvider: PROBE_MAX_OUTPUT_TOKENS_BY_PROVIDER,
   probeCacheTtlMs: PROBE_CACHE_TTL_MS,
   probeMaxAttempts: PROBE_MAX_ATTEMPTS,
   providerTimeouts: PROVIDER_TIMEOUTS,

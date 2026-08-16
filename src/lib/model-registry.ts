@@ -8,8 +8,9 @@ export type ModelRegistryEntry = {
 };
 
 // Single source of truth for all selectable models.
-// Update/add models only here.
-// Only stable, officially supported models are listed.
+// This registry is derived from PROVIDER_CONFIG in lord-config.ts.
+// Only models that are actively configured for a provider appear here.
+// Update/add models in lord-config.ts PROVIDER_CONFIG first.
 export const MODEL_REGISTRY: ModelRegistryEntry[] = [
   {
     id: "openai/gpt-4o",
@@ -24,18 +25,6 @@ export const MODEL_REGISTRY: ModelRegistryEntry[] = [
     description: "Fast, cost-effective GPT-4o variant",
   },
   {
-    id: "anthropic/claude-sonnet-4",
-    label: "Claude Sonnet 4",
-    provider: "Anthropic",
-    description: "Anthropic's balanced intelligence and speed",
-  },
-  {
-    id: "anthropic/claude-haiku-4.5",
-    label: "Claude Haiku 4.5",
-    provider: "Anthropic",
-    description: "Anthropic's fastest model",
-  },
-  {
     id: "google/gemini-2.5-pro",
     label: "Gemini 2.5 Pro",
     provider: "Google",
@@ -46,30 +35,6 @@ export const MODEL_REGISTRY: ModelRegistryEntry[] = [
     label: "Gemini 2.5 Flash",
     provider: "Google",
     description: "Google's fast, efficient model",
-  },
-  {
-    id: "deepseek/deepseek-chat",
-    label: "DeepSeek V3",
-    provider: "DeepSeek",
-    description: "DeepSeek's flagship chat model",
-  },
-  {
-    id: "qwen/qwen-2.5-coder-32b-instruct",
-    label: "Qwen 2.5 Coder 32B",
-    provider: "Alibaba",
-    description: "Strong code generation model",
-  },
-  {
-    id: "meta-llama/llama-3.3-70b-instruct:free",
-    label: "Llama 3.3 70B Instruct (Free)",
-    provider: "OpenRouter",
-    description: "Meta's open-weight model, free tier",
-  },
-  {
-    id: "google/gemini-2.5-flash:free",
-    label: "Gemini 2.5 Flash (Free)",
-    provider: "OpenRouter",
-    description: "Google's fast model, free tier",
   },
 ];
 

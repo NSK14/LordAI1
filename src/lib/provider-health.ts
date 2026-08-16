@@ -22,6 +22,7 @@ export interface HealthCache {
   clearModel(provider: ProviderName, model: string): void;
   getAll(): HealthCacheEntry[];
   isHealthy(provider: ProviderName, model: string): boolean;
+  getDisabledModels(): HealthCacheEntry[];
   getTtlForStatus(status: number | "timeout" | "network" | "unknown"): number;
 }
 
@@ -79,6 +80,11 @@ export function createHealthCache(config: {
       const entry = this.get(provider, model);
       if (!entry) return true;
       return entry.status === "healthy";
+    },
+
+    getDisabledModels() {
+      pruneExpired();
+      return Array.from(cache.values()).filter((e) => e.status !== "healthy");
     },
 
     getTtlForStatus(status) {

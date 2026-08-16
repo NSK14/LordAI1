@@ -5,14 +5,13 @@ export interface ModelDef {
 }
 
 export const MODELS: ModelDef[] = [
-  { id: "openai/gpt-5", label: "GPT-5", provider: "OpenAI" },
-  { id: "anthropic/claude-sonnet-4", label: "Claude Sonnet", provider: "Anthropic" },
-  { id: "google/gemini-2.5-pro", label: "Gemini", provider: "Google" },
-  { id: "deepseek/deepseek-r1", label: "DeepSeek", provider: "DeepSeek" },
-  { id: "local", label: "Local", provider: "On-device" },
+  { id: "openai/gpt-4o", label: "GPT-4o", provider: "OpenAI" },
+  { id: "openai/gpt-4o-mini", label: "GPT-4o Mini", provider: "OpenAI" },
+  { id: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro", provider: "Google" },
+  { id: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash", provider: "Google" },
 ];
 
-export const DEFAULT_MODEL_ID = "openai/gpt-5";
+export const DEFAULT_MODEL_ID = "google/gemini-2.5-flash";
 
 export function getModelDef(id: string): ModelDef {
   return MODELS.find((m) => m.id === id) ?? MODELS[0];

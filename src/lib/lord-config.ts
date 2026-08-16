@@ -28,7 +28,7 @@ export const PROVIDER_CONFIG: Record<
   },
   openrouter: {
     apiKeyEnv: "OPENROUTER_API_KEY",
-    models: ["meta-llama/llama-3.3-70b-instruct:free", "google/gemini-2.5-flash:free"],
+    models: [],
   },
   openai: {
     apiKeyEnv: "OPENAI_API_KEY",
@@ -44,45 +44,22 @@ const candidate = (provider: ProviderName, modelId: string): Candidate => ({ pro
 // rate-limited, returns 5xx, or has no configured key.
 export const LORD_MODELS: Record<LordMode, readonly Candidate[]> = {
   // ⚡ Lowest latency / everyday chat — prefer free/fast providers.
-  fast: [
-    candidate("gemini", "gemini-2.5-flash"),
-    candidate("openrouter", "google/gemini-2.5-flash:free"),
-    candidate("openai", "gpt-4o-mini"),
-  ],
+  fast: [candidate("gemini", "gemini-2.5-flash"), candidate("openai", "gpt-4o-mini")],
 
-  // 💬 Best general-purpose — Gemini first, then OpenRouter, then OpenAI.
-  balanced: [
-    candidate("gemini", "gemini-2.5-flash"),
-    candidate("openrouter", "meta-llama/llama-3.3-70b-instruct:free"),
-    candidate("openai", "gpt-4o"),
-  ],
+  // 💬 Best general-purpose — Gemini first, then OpenAI.
+  balanced: [candidate("gemini", "gemini-2.5-flash"), candidate("openai", "gpt-4o")],
 
   // 🧠 Deep reasoning & planning — premium providers first.
-  reasoning: [
-    candidate("openai", "gpt-4o"),
-    candidate("gemini", "gemini-2.5-pro"),
-    candidate("openrouter", "meta-llama/llama-3.3-70b-instruct:free"),
-  ],
+  reasoning: [candidate("openai", "gpt-4o"), candidate("gemini", "gemini-2.5-pro")],
 
   // 💻 Software engineering — coding-capable models first.
-  coding: [
-    candidate("openai", "gpt-4o"),
-    candidate("gemini", "gemini-2.5-flash"),
-    candidate("openrouter", "meta-llama/llama-3.3-70b-instruct:free"),
-  ],
+  coding: [candidate("openai", "gpt-4o"), candidate("gemini", "gemini-2.5-flash")],
 
   // 🎨 Writing, storytelling & content creation
-  creative: [
-    candidate("openai", "gpt-4o"),
-    candidate("gemini", "gemini-2.5-flash"),
-    candidate("openrouter", "meta-llama/llama-3.3-70b-instruct:free"),
-  ],
+  creative: [candidate("openai", "gpt-4o"), candidate("gemini", "gemini-2.5-flash")],
 
   // 🖥️ Lightweight fallback — smallest available models.
-  local: [
-    candidate("openrouter", "meta-llama/llama-3.3-70b-instruct:free"),
-    candidate("gemini", "gemini-2.5-flash"),
-  ],
+  local: [candidate("gemini", "gemini-2.5-flash"), candidate("openai", "gpt-4o-mini")],
 };
 
 export type LordMode = "fast" | "balanced" | "coding" | "creative" | "reasoning" | "local";

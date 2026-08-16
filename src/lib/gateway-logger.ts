@@ -12,6 +12,7 @@ export interface Logger {
       provider: string;
       healthy: string[];
       unhealthy: Array<{ model: string; reason: string; status?: string }>;
+      disabledModels?: Array<{ model: string; reason: string; disabledUntil: number }>;
     }>,
   ): void;
 }
@@ -79,9 +80,9 @@ export function createLogger(config: GatewayConfig): Logger {
     },
     startupValidation(providers) {
       console.info("");
-      console.info("----------------------------------");
-      console.info("LORD AI Provider Validation");
-      console.info("----------------------------------");
+      console.info("━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.info("LORD Provider Validation");
+      console.info("━━━━━━━━━━━━━━━━━━━━━━━━━━");
       for (const p of providers) {
         console.info("");
         console.info(p.provider);
@@ -93,9 +94,15 @@ export function createLogger(config: GatewayConfig): Logger {
           console.info(`  ✖ ${u.model}${statusStr}`);
           console.info(`    ${u.reason}`);
         }
+        const disabled = p.disabledModels ?? [];
+        for (const d of disabled) {
+          const ts = new Date(d.disabledUntil).toISOString();
+          console.info(`  ⊘ ${d.model} (disabled until ${ts})`);
+          console.info(`    ${d.reason}`);
+        }
       }
       console.info("");
-      console.info("----------------------------------");
+      console.info("━━━━━━━━━━━━━━━━━━━━━━━━━━");
       console.info("");
     },
   };

@@ -92,20 +92,12 @@ async function main() {
     process.exit(1);
   }
 
-  // Models from lord-config.ts and model-registry.ts
+  // Models from lord-config.ts PROVIDER_CONFIG
   const configuredModels = [
-    // From lord-config.ts
-    "meta-llama/llama-3.3-70b-instruct:free",
-    "google/gemma-4-26b-a4b-it:free",
+    "gemini-2.5-flash",
+    "gemini-2.5-pro",
     "openai/gpt-4o-mini",
     "openai/gpt-4o",
-    "anthropic/claude-sonnet-4",
-    "deepseek/deepseek-chat",
-    "qwen/qwen-2.5-coder-32b-instruct",
-    "google/gemini-2.5-flash",
-    // From model-registry.ts
-    "anthropic/claude-haiku-4.5",
-    "google/gemini-2.5-pro",
   ];
 
   console.log("Fetching OpenRouter model catalog...");
