@@ -9,17 +9,22 @@ import {
   createLordProviders,
   createLordGateway,
   getConfiguredProviders,
+  validateProvidersAtStartup,
+  getGatewayInfrastructure,
   type LordModelGateway,
   type LordProvidersState,
   type LordMode,
   type ModelAttempt,
+  type StartupValidationResult,
 } from "@/lib/ai-gateway.server";
 import type { TokenUsageEvent } from "@/lib/token-usage-store";
-import { apiErrorResponse, getSafeErrorMessage } from "@/lib/api-error";
+import { apiErrorResponse, getSafeErrorMessage, type ProviderStatus } from "@/lib/api-error";
 import { requireSupabaseRequestAuth } from "@/integrations/supabase/auth-middleware";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { retrieveMemories, type MemoryRecord } from "@/lib/memory";
+import { GATEWAY_CONFIG } from "@/lib/gateway-config";
+import { createLogger } from "@/lib/gateway-logger";
 
 const MODE_ENUM = Object.keys(LORD_MODELS) as [LordMode, ...LordMode[]];
 
@@ -35,8 +40,6 @@ const ChatRequestSchema = z.object({
     )
     .min(1)
     .max(100),
-  // Frontend sends a capability mode only — the backend owns model selection
-  // and automatic fallback. `modelId` is kept for backwards compatibility.
   mode: z.enum(MODE_ENUM).optional(),
   modelId: z.string().min(1).optional(),
   context: z
@@ -70,28 +73,18 @@ function logLatency(m: LatencyMeasurement) {
 }
 
 function getLastUserText(messages: UIMessage[]) {
-  const lastUser = messages
-    .slice()
-    .reverse()
-    .find((message) => message.role === "user");
   return (
-    lastUser?.parts
-      ?.filter((part) => part.type === "text")
+    messages
+      .slice()
+      .reverse()
+      .find((message) => message.role === "user")
+      ?.parts?.filter((part) => part.type === "text")
       .map((part) => (part as { text: string }).text)
       .join("")
       .slice(0, 120) ?? ""
   );
 }
 
-/**
- * Build a memory section for the system prompt using semantic retrieval.
- *
- * Fetches the user's memories (including embeddings) and ranks them by relevance
- * to the latest user turn. Pinned memories are always included; unrelated ones
- * are dropped entirely so we never bloat the context or waste tokens. Falls back
- * to a lightweight keyword ranking if embeddings are unavailable. Returns "" when
- * the user has no memories or memory is disabled.
- */
 async function buildMemoryPrompt(
   supabase: SupabaseClient<Database>,
   userId: string,
@@ -146,6 +139,78 @@ async function buildMemoryPrompt(
   const lines = ranked.map((m) => `- ${m.content.replace(/\s+/g, " ").trim()}`).slice(0, 12);
   if (lines.length === 0) return "";
   return `USER MEMORY (relevant context only):\n${lines.join("\n")}\n\nUse relevant memories naturally when helpful. Ignore irrelevant memories. Do not mention stored memories unless the user asks. Do not invent memories.`;
+}
+
+function buildProviderStatuses(validationResults: StartupValidationResult[]): ProviderStatus[] {
+  const statuses: ProviderStatus[] = [];
+  for (const result of validationResults) {
+    if (result.unhealthy.length === 0) {
+      statuses.push({ provider: result.provider, status: "healthy" });
+    } else {
+      const allInvalid = result.unhealthy.every(
+        (u) => u.reason === "Provider not configured (missing API key)",
+      );
+      const allUnavailable = result.unhealthy.every(
+        (u) => u.reason !== "Provider not configured (missing API key)",
+      );
+      if (allInvalid) {
+        statuses.push({ provider: result.provider, status: "missing_api_key" });
+      } else if (allUnavailable) {
+        statuses.push({ provider: result.provider, status: "unavailable" });
+      } else {
+        statuses.push({ provider: result.provider, status: "unavailable" });
+      }
+    }
+  }
+  return statuses;
+}
+
+function buildUserFriendlyMessage(
+  attempts: ModelAttempt[],
+  providerStatuses: ProviderStatus[],
+): string {
+  if (providerStatuses.length === 0) {
+    return "No AI providers are currently available. Please try again in a few moments.";
+  }
+
+  const parts: string[] = [];
+  for (const ps of providerStatuses) {
+    switch (ps.status) {
+      case "missing_api_key":
+        parts.push(`${ps.provider} is missing an API key.`);
+        break;
+      case "unavailable":
+        parts.push(`${ps.provider} is temporarily unavailable.`);
+        break;
+      case "rate_limited":
+        parts.push(`${ps.provider} is rate limited.`);
+        break;
+      case "invalid":
+        parts.push(`${ps.provider} has an invalid configuration.`);
+        break;
+      default:
+        parts.push(`${ps.provider} is experiencing issues.`);
+    }
+  }
+
+  if (parts.length === 0) {
+    return "All AI providers are currently unavailable. Please try again in a few moments.";
+  }
+
+  return parts.join(" ") + " Please try again in a few moments.";
+}
+
+let startupValidationPromise: Promise<StartupValidationResult[]> | null = null;
+
+async function getStartupValidation(state: LordProvidersState): Promise<StartupValidationResult[]> {
+  if (!startupValidationPromise) {
+    const infra = getGatewayInfrastructure();
+    startupValidationPromise = validateProvidersAtStartup(state, infra).then((results) => {
+      infra.logger.startupValidation(results);
+      return results;
+    });
+  }
+  return startupValidationPromise;
 }
 
 export const Route = createFileRoute("/api/chat")({
@@ -247,11 +312,19 @@ export const Route = createFileRoute("/api/chat")({
           lastUserPreview: getLastUserText(uiMessages),
         });
 
-        const lordState: LordProvidersState = createLordProviders();
+        const logger = createLogger(GATEWAY_CONFIG);
+        const lordState: LordProvidersState = createLordProviders(logger);
         const gateway: LordModelGateway = createLordGateway(lordState);
         const modelMessages = await convertToModelMessages(uiMessages);
         let tokenUsageEvent: TokenUsageEvent | null = null;
         const modelWaitStart = performance.now();
+
+        // Run lightweight startup validation in the background so the first
+        // real request benefits from it without blocking the user. Subsequent
+        // requests reuse the cached result.
+        getStartupValidation(lordState).catch(() => {
+          // Startup validation is best-effort; never block the chat endpoint.
+        });
 
         try {
           const { result, model, provider } = await streamWithFallback({
@@ -263,7 +336,7 @@ export const Route = createFileRoute("/api/chat")({
             messages: modelMessages,
             requestId,
             maxOutputTokens: 1024,
-            timeoutMs: 45_000,
+            timeoutMs: GATEWAY_CONFIG.providerTimeoutDefaultMs,
             abortSignal: request.signal,
             onTokenUsage: (event) => {
               tokenUsageEvent = event;
@@ -298,8 +371,6 @@ export const Route = createFileRoute("/api/chat")({
             messageMetadata: ({ part }) => {
               if (part.type !== "finish") return undefined;
               if (tokenUsageEvent) return { tokenUsage: tokenUsageEvent };
-              // Fallback: build from the stream's own usage if the probe
-              // callback hasn't populated it yet.
               const usage = part.totalUsage;
               return {
                 tokenUsage: {
@@ -337,6 +408,9 @@ export const Route = createFileRoute("/api/chat")({
             })),
           });
 
+          const providerStatuses = (err as unknown as { providerStatuses?: ProviderStatus[] })
+            ?.providerStatuses;
+
           // When credits/rate-limits fail for one model they fail for all, so
           // surface the most specific status we have.
           if (attempts?.some((a) => a.reason === "Insufficient credits")) {
@@ -356,6 +430,7 @@ export const Route = createFileRoute("/api/chat")({
                     errorCode: a.errorCode,
                     requestId: a.requestId,
                   })) ?? [],
+                providerStatuses,
               },
             );
           }
@@ -376,6 +451,7 @@ export const Route = createFileRoute("/api/chat")({
                     errorCode: a.errorCode,
                     requestId: a.requestId,
                   })) ?? [],
+                providerStatuses,
               },
             );
           }
@@ -397,6 +473,7 @@ export const Route = createFileRoute("/api/chat")({
                   errorCode: a.errorCode,
                   requestId: a.requestId,
                 })),
+                providerStatuses,
               },
             );
           }
@@ -416,29 +493,29 @@ export const Route = createFileRoute("/api/chat")({
                   errorCode: a.errorCode,
                   requestId: a.requestId,
                 })),
+                providerStatuses,
               },
             );
           }
 
-          // Return detailed error with all attempts
-          return apiErrorResponse(
-            502,
-            "AI_UPSTREAM_ERROR",
-            "All configured models failed.",
-            requestId,
-            {
-              attempts:
-                attempts?.map((a) => ({
-                  model: a.model,
-                  status: a.status,
-                  reason: a.reason,
-                  retryable: a.retryable,
-                  providerMessage: a.providerMessage,
-                  errorCode: a.errorCode,
-                  requestId: a.requestId,
-                })) ?? [],
-            },
-          );
+          const userMessage =
+            providerStatuses && providerStatuses.length > 0
+              ? buildUserFriendlyMessage(attempts ?? [], providerStatuses)
+              : "All configured models failed.";
+
+          return apiErrorResponse(502, "AI_UPSTREAM_ERROR", userMessage, requestId, {
+            attempts:
+              attempts?.map((a) => ({
+                model: a.model,
+                status: a.status,
+                reason: a.reason,
+                retryable: a.retryable,
+                providerMessage: a.providerMessage,
+                errorCode: a.errorCode,
+                requestId: a.requestId,
+              })) ?? [],
+            providerStatuses,
+          });
         }
       },
     },

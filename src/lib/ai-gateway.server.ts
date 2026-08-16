@@ -19,43 +19,22 @@ import {
   type ModelAttempt,
   type ProviderName,
   type Candidate,
+  type ModelErrorClassification,
   PROVIDER_CONFIG,
   getModeCandidates,
   resolveCandidate,
+  buildAllCandidates,
 } from "./lord-config";
+import { GATEWAY_CONFIG } from "./gateway-config";
+import { createHealthCache, type HealthCacheEntry, type HealthCache } from "./provider-health";
+import { createCircuitBreaker, type CircuitBreaker } from "./circuit-breaker";
+import { createModelStatsStore, type ModelStatsStore } from "./model-stats";
+import { createLogger, type Logger } from "./gateway-logger";
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const OPENROUTER_CHAT_PATH = "/chat/completions";
 const OPENROUTER_REFERER = process.env.OPENROUTER_REFERER || "https://lordai.app";
 const OPENROUTER_TITLE = process.env.OPENROUTER_TITLE || "LordAI";
-const OPENROUTER_TIMEOUT_MS = 45_000;
-
-// Default per-provider timeouts (ms). Each provider can override these when
-// constructed; the values below are conservative upper bounds.
-const PROVIDER_TIMEOUTS: Record<ProviderName, number> = {
-  gemini: 45_000,
-  openrouter: 45_000,
-  openai: 45_000,
-};
-
-// A tiny, non-streaming pre-flight ("probe") is used to confirm a candidate
-// model actually works before we commit to streaming it to the client. This is
-// what makes automatic fallback reliable: most failures (credits, rate limits,
-// unavailable models, timeouts, network errors) surface here, letting the
-// backend transparently try the next candidate. Only after a candidate passes
-// the probe do we open the real stream to the user.
-const PROBE_MAX_OUTPUT_TOKENS = 1;
-const PROBE_TIMEOUT_MS = 6_000;
-const REASON_LABELS: Record<string, string> = {
-  invalid_api_key: "Invalid API key",
-  malformed_request: "Malformed request",
-  invalid_messages: "Invalid messages",
-  insufficient_credits: "Insufficient credits",
-  rate_limit: "Rate limited",
-  model_unavailable: "Model unavailable",
-  provider_error: "Provider error",
-  unknown: "Unknown error",
-};
 
 // ---------------------------------------------------------------------------
 // Key validation (never logs the key itself)
@@ -189,11 +168,11 @@ function summarizePayload(body?: BodyInit | null): Record<string, unknown> {
   }
 }
 
-// Create a provider-aware fetch wrapper. Logs structured `ai_provider_*` events
+// Create a provider-aware fetch wrapper. Logs structured events
 // and throws `OpenRouterClientError` (the existing classification machinery
 // understands it). The error carries the provider name so callers can record
 // circuit-breaker / health state.
-function makeProviderFetch(provider: ProviderName, timeoutMs: number) {
+function makeProviderFetch(provider: ProviderName, timeoutMs: number, logger: Logger) {
   return async function providerFetch(input: RequestInfo | URL, init?: RequestInit) {
     const url =
       typeof input === "string"
@@ -206,17 +185,14 @@ function makeProviderFetch(provider: ProviderName, timeoutMs: number) {
     const xGoogKey = readHeader(init?.headers, "x-goog-api-key");
     const contentType = readHeader(init?.headers, "content-type");
 
-    console.info(
-      JSON.stringify({
-        event: "ai_provider_request",
-        provider,
-        url,
-        hasAuth: !!authHeader && authHeader.startsWith("Bearer "),
-        hasGoogleKey: !!xGoogKey,
-        contentType,
-        payload: summarizePayload(init?.body as string | undefined),
-      }),
-    );
+    logger.debug("ai_provider_request", {
+      provider,
+      url,
+      hasAuth: !!authHeader && authHeader.startsWith("Bearer "),
+      hasGoogleKey: !!xGoogKey,
+      contentType,
+      payload: summarizePayload(init?.body as string | undefined),
+    });
 
     const timeout = AbortSignal.timeout(timeoutMs);
     const signal = init?.signal ? mergeAbortSignals([init.signal, timeout]) : timeout;
@@ -230,44 +206,35 @@ function makeProviderFetch(provider: ProviderName, timeoutMs: number) {
       }
       const requestId = response.headers.get("x-request-id") ?? undefined;
 
-      console.info(
-        JSON.stringify({
-          event: "ai_provider_response",
-          provider,
-          url,
-          status: response.status,
-          statusText: response.statusText,
-          requestId,
-          headers: responseHeaders,
-        }),
-      );
+      logger.info("ai_provider_response", {
+        provider,
+        url,
+        status: response.status,
+        statusText: response.statusText,
+        requestId,
+        headers: responseHeaders,
+      });
 
       if (response.ok) {
         return response;
       }
 
       const bodyText = await response.text();
-      console.error(
-        JSON.stringify({
-          event: "ai_provider_response_error",
-          provider,
-          url,
-          status: response.status,
-          statusText: response.statusText,
-          requestId,
-          body: bodyText,
-        }),
-      );
+      logger.error("ai_provider_response_error", {
+        provider,
+        url,
+        status: response.status,
+        statusText: response.statusText,
+        requestId,
+        body: bodyText,
+      });
 
       if (response.status === 429 || response.status === 404 || response.status >= 500) {
-        console.warn(
-          JSON.stringify({
-            event: "ai_provider_recoverable_response",
-            provider,
-            status: response.status,
-            requestId,
-          }),
-        );
+        logger.warn("ai_provider_recoverable_response", {
+          provider,
+          status: response.status,
+          requestId,
+        });
       }
 
       throw new OpenRouterClientError(
@@ -278,17 +245,14 @@ function makeProviderFetch(provider: ProviderName, timeoutMs: number) {
       const { kind, name, message, stack } = classifyFetchError(error);
       const effectiveKind = error instanceof OpenRouterClientError ? error.kind : kind;
 
-      console.error(
-        JSON.stringify({
-          event: "ai_provider_network_error",
-          provider,
-          url,
-          kind: effectiveKind,
-          name,
-          message,
-          stack,
-        }),
-      );
+      logger.error("ai_provider_network_error", {
+        provider,
+        url,
+        kind: effectiveKind,
+        name,
+        message,
+        stack,
+      });
 
       if (error instanceof OpenRouterClientError) throw error;
       const structured = new OpenRouterClientError(
@@ -299,96 +263,6 @@ function makeProviderFetch(provider: ProviderName, timeoutMs: number) {
       throw structured;
     }
   };
-}
-
-// ---------------------------------------------------------------------------
-// Circuit breaker + provider health cache
-// ---------------------------------------------------------------------------
-// A per-provider circuit breaker prevents hammering a repeatedly failing
-// provider (rate limits, 5xx, outages). After `CB_FAILURE_THRESHOLD` consecutive
-// failures the provider is tripped "open" for `CB_RECOVERY_MS`, during which
-// candidates for that provider are skipped immediately. This keeps request
-// latency bounded instead of waiting on a dead provider every time.
-//
-// The health cache records the most recent success/failure timestamp per
-// provider so routing can prefer healthy providers when several are available.
-
-const CB_FAILURE_THRESHOLD = 3;
-const CB_RECOVERY_MS = 30_000;
-const HEALTH_CACHE_TTL_MS = 15_000;
-
-interface CircuitBreakerState {
-  failureCount: number;
-  openedAt: number;
-}
-
-interface ProviderHealth {
-  healthy: boolean;
-  lastCheck: number;
-  lastError?: string;
-}
-
-const circuitBreakers = new Map<ProviderName, CircuitBreakerState>();
-const healthCache = new Map<ProviderName, ProviderHealth>();
-
-function getCircuitState(name: ProviderName): CircuitBreakerState {
-  let state = circuitBreakers.get(name);
-  if (!state) {
-    state = { failureCount: 0, openedAt: 0 };
-    circuitBreakers.set(name, state);
-  }
-  return state;
-}
-
-export function isProviderCircuitOpen(name: ProviderName): boolean {
-  const state = getCircuitState(name);
-  if (state.failureCount < CB_FAILURE_THRESHOLD) return false;
-  const recoveryAt = state.openedAt + CB_RECOVERY_MS;
-  if (Date.now() < recoveryAt) return true;
-  // Recovery window elapsed: half-open — reset and allow a probe.
-  state.failureCount = 0;
-  state.openedAt = 0;
-  return false;
-}
-
-export function recordProviderFailure(name: ProviderName, error: string): void {
-  const state = getCircuitState(name);
-  state.failureCount += 1;
-  if (state.failureCount >= CB_FAILURE_THRESHOLD && state.openedAt === 0) {
-    state.openedAt = Date.now();
-  }
-  healthCache.set(name, { healthy: false, lastError: error, lastCheck: Date.now() });
-}
-
-export function recordProviderSuccess(name: ProviderName): void {
-  const state = getCircuitState(name);
-  state.failureCount = 0;
-  state.openedAt = 0;
-  healthCache.set(name, { healthy: true, lastCheck: Date.now() });
-}
-
-export function getProviderHealth(name: ProviderName): ProviderHealth {
-  const state = healthCache.get(name);
-  if (!state) return { healthy: true, lastCheck: 0 };
-  if (Date.now() - state.lastCheck > HEALTH_CACHE_TTL_MS) {
-    healthCache.delete(name);
-    return { healthy: true, lastCheck: 0 };
-  }
-  return state;
-}
-
-// Extract the provider name attached to a structured error so circuit-breaker
-// bookkeeping works even when the AI SDK re-throws our error as `cause`.
-export function getProviderFromError(error: unknown): ProviderName | undefined {
-  const seen = new Set<unknown>();
-  let cur: unknown = error;
-  while (cur && typeof cur === "object" && !seen.has(cur)) {
-    seen.add(cur);
-    const p = (cur as Record<string, unknown>).lordProvider;
-    if (typeof p === "string") return p as ProviderName;
-    cur = (cur as { cause?: unknown }).cause;
-  }
-  return undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -414,7 +288,7 @@ export interface LordProvidersState {
 // Lazily construct each provider only if its key is present. Missing keys are
 // graceful: the provider stays `null` and candidates for it are skipped during
 // routing, so LORD continues using whichever providers are configured.
-export function createLordProviders(): LordProvidersState {
+export function createLordProviders(logger: Logger): LordProvidersState {
   logDiagnosticsOnce();
 
   const geminiKey = process.env.GEMINI_API_KEY;
@@ -429,15 +303,15 @@ export function createLordProviders(): LordProvidersState {
 
   const meta: Record<ProviderName, LordProviderMeta> = {
     gemini: {
-      timeoutMs: PROVIDER_TIMEOUTS.gemini,
+      timeoutMs: GATEWAY_CONFIG.providerTimeouts.gemini,
       hasKey: !!geminiKey && validateApiKey(geminiKey).valid,
     },
     openrouter: {
-      timeoutMs: PROVIDER_TIMEOUTS.openrouter,
+      timeoutMs: GATEWAY_CONFIG.providerTimeouts.openrouter,
       hasKey: !!openRouterKey && validateApiKey(openRouterKey).valid,
     },
     openai: {
-      timeoutMs: PROVIDER_TIMEOUTS.openai,
+      timeoutMs: GATEWAY_CONFIG.providerTimeouts.openai,
       hasKey: !!openaiKey && validateApiKey(openaiKey).valid,
     },
   };
@@ -445,17 +319,14 @@ export function createLordProviders(): LordProvidersState {
   if (geminiKey) {
     const validation = validateApiKey(geminiKey);
     if (!validation.valid) {
-      console.error(
-        JSON.stringify({
-          event: "ai_provider_invalid_key",
-          provider: "gemini",
-          issue: validation.issue,
-        }),
-      );
+      logger.error("ai_provider_invalid_key", {
+        provider: "gemini",
+        issue: validation.issue,
+      });
     } else {
       providers.gemini = createGoogleGenerativeAI({
         apiKey: geminiKey,
-        fetch: makeProviderFetch("gemini", PROVIDER_TIMEOUTS.gemini),
+        fetch: makeProviderFetch("gemini", GATEWAY_CONFIG.providerTimeouts.gemini, logger),
       });
     }
   }
@@ -463,13 +334,10 @@ export function createLordProviders(): LordProvidersState {
   if (openRouterKey) {
     const validation = validateApiKey(openRouterKey);
     if (!validation.valid) {
-      console.error(
-        JSON.stringify({
-          event: "ai_provider_invalid_key",
-          provider: "openrouter",
-          issue: validation.issue,
-        }),
-      );
+      logger.error("ai_provider_invalid_key", {
+        provider: "openrouter",
+        issue: validation.issue,
+      });
     } else {
       providers.openrouter = createOpenAICompatible({
         name: "openrouter",
@@ -479,7 +347,7 @@ export function createLordProviders(): LordProvidersState {
           "HTTP-Referer": OPENROUTER_REFERER,
           "X-Title": OPENROUTER_TITLE,
         },
-        fetch: makeProviderFetch("openrouter", PROVIDER_TIMEOUTS.openrouter),
+        fetch: makeProviderFetch("openrouter", GATEWAY_CONFIG.providerTimeouts.openrouter, logger),
         includeUsage: true,
       });
     }
@@ -488,17 +356,14 @@ export function createLordProviders(): LordProvidersState {
   if (openaiKey) {
     const validation = validateApiKey(openaiKey);
     if (!validation.valid) {
-      console.error(
-        JSON.stringify({
-          event: "ai_provider_invalid_key",
-          provider: "openai",
-          issue: validation.issue,
-        }),
-      );
+      logger.error("ai_provider_invalid_key", {
+        provider: "openai",
+        issue: validation.issue,
+      });
     } else {
       providers.openai = createOpenAI({
         apiKey: openaiKey,
-        fetch: makeProviderFetch("openai", PROVIDER_TIMEOUTS.openai),
+        fetch: makeProviderFetch("openai", GATEWAY_CONFIG.providerTimeouts.openai, logger),
       });
     }
   }
@@ -509,10 +374,10 @@ export function createLordProviders(): LordProvidersState {
 // Backwards-compatible: create a single OpenRouter provider from a key. Still
 // exported for any callers/tests that relied on it; the multi-provider path
 // prefers `createLordProviders` + `createLordGateway`.
-export function createOpenRouterProvider(apiKey: string) {
+export function createOpenRouterProvider(apiKey: string, logger: Logger) {
   const validation = validateApiKey(apiKey);
   if (!validation.valid) {
-    console.error(JSON.stringify({ event: "openrouter_invalid_api_key", issue: validation.issue }));
+    logger.error("openrouter_invalid_api_key", { issue: validation.issue });
     throw new OpenRouterClientError(`Invalid OPENROUTER_API_KEY: ${validation.issue}`, {
       kind: "api",
       status: 401,
@@ -529,7 +394,7 @@ export function createOpenRouterProvider(apiKey: string) {
       "HTTP-Referer": OPENROUTER_REFERER,
       "X-Title": OPENROUTER_TITLE,
     },
-    fetch: makeProviderFetch("openrouter", OPENROUTER_TIMEOUT_MS),
+    fetch: makeProviderFetch("openrouter", GATEWAY_CONFIG.providerTimeoutDefaultMs, logger),
     includeUsage: true,
   });
 }
@@ -543,12 +408,176 @@ export function getConfiguredProviders(): ProviderName[] {
   });
 }
 
-// Clear all circuit-breaker and health-cache state. Intended for tests and
-// hot-reload safety so a previous process' failure counts are not inherited.
-export function resetCircuitBreakers(): void {
-  circuitBreakers.clear();
-  healthCache.clear();
+// ---------------------------------------------------------------------------
+// Gateway infrastructure (health cache, circuit breaker, model stats)
+// ---------------------------------------------------------------------------
+
+export interface GatewayInfrastructure {
+  healthCache: HealthCache;
+  circuitBreaker: CircuitBreaker;
+  modelStats: ModelStatsStore;
+  logger: Logger;
 }
+
+let sharedInfrastructure: GatewayInfrastructure | null = null;
+
+export function getGatewayInfrastructure(logger?: Logger): GatewayInfrastructure {
+  if (!sharedInfrastructure) {
+    const resolvedLogger = logger ?? createLogger(GATEWAY_CONFIG);
+    sharedInfrastructure = {
+      healthCache: createHealthCache({
+        defaultTtlMs: GATEWAY_CONFIG.healthCacheDefaultTtlMs,
+        ttlByStatus: GATEWAY_CONFIG.healthCacheTtlByStatus,
+      }),
+      circuitBreaker: createCircuitBreaker({
+        failureThreshold: GATEWAY_CONFIG.cbFailureThreshold,
+        recoveryMs: GATEWAY_CONFIG.cbRecoveryMs,
+        halfOpenSuccessThreshold: GATEWAY_CONFIG.cbHalfOpenSuccessThreshold,
+      }),
+      modelStats: createModelStatsStore({
+        maxSamples: GATEWAY_CONFIG.modelStatsMaxSamples,
+      }),
+      logger: resolvedLogger,
+    };
+  }
+  return sharedInfrastructure;
+}
+
+export function resetGatewayInfrastructure(): void {
+  sharedInfrastructure = null;
+}
+
+// ---------------------------------------------------------------------------
+// Model probe cache (module-level, shared across requests in the same process)
+// ---------------------------------------------------------------------------
+// Caches the first-working candidate per `mode` so we skip re-probing on every
+// request. Positive results are cached for PROBE_CACHE_TTL_MS; a failure
+// immediately invalidates the entry so we don't blindly stream to a dead model.
+
+interface ProbeCacheEntry {
+  provider: ProviderName;
+  model: string;
+  ts: number;
+}
+
+const probeCache = new Map<string, ProbeCacheEntry>();
+
+function getCachedCandidate(mode: string): ProbeCacheEntry | null {
+  const entry = probeCache.get(mode);
+  if (!entry) return null;
+  if (Date.now() - entry.ts > GATEWAY_CONFIG.probeCacheTtlMs) {
+    probeCache.delete(mode);
+    return null;
+  }
+  return entry;
+}
+
+function setCachedCandidate(mode: string, entry: ProbeCacheEntry): void {
+  probeCache.set(mode, entry);
+}
+
+function invalidateCachedCandidate(mode: string): void {
+  probeCache.delete(mode);
+}
+
+// Exponential backoff retry for transient probe/stream errors. Returns the
+// delay (ms) before the next retry attempt, or 0 if no more retries remain.
+function probeBackoff(attempt: number, maxAttempts: number): number {
+  if (attempt >= maxAttempts) return 0;
+  return Math.min(
+    GATEWAY_CONFIG.retryBackoffBaseMs * GATEWAY_CONFIG.retryBackoffMultiplier ** attempt,
+    GATEWAY_CONFIG.retryBackoffMaxMs,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Startup validation
+// ---------------------------------------------------------------------------
+
+export interface StartupValidationResult {
+  provider: string;
+  healthy: string[];
+  unhealthy: Array<{ model: string; reason: string; status?: string }>;
+}
+
+export async function validateProvidersAtStartup(
+  state: LordProvidersState,
+  infra: GatewayInfrastructure,
+): Promise<StartupValidationResult[]> {
+  const results: StartupValidationResult[] = [];
+  const providerOrder: Array<{ name: string; provider: ProviderName }> = [
+    { name: "Gemini", provider: "gemini" },
+    { name: "OpenRouter", provider: "openrouter" },
+    { name: "OpenAI", provider: "openai" },
+  ];
+
+  for (const { name, provider } of providerOrder) {
+    const prov = state.providers[provider];
+    const healthy: string[] = [];
+    const unhealthy: Array<{ model: string; reason: string; status?: string }> = [];
+
+    if (!prov) {
+      const models = PROVIDER_CONFIG[provider].models;
+      for (const modelId of models) {
+        unhealthy.push({ model: modelId, reason: "Provider not configured (missing API key)" });
+      }
+      results.push({ provider: name, healthy, unhealthy });
+      continue;
+    }
+
+    const models = PROVIDER_CONFIG[provider].models;
+    for (const modelId of models) {
+      try {
+        await generateText({
+          model: prov(modelId),
+          system: "Reply with OK",
+          messages: [{ role: "user", content: "OK" }],
+          maxOutputTokens: GATEWAY_CONFIG.probeMaxOutputTokens,
+          temperature: 0,
+          maxRetries: 0,
+          timeout: GATEWAY_CONFIG.startupValidationTimeoutMs,
+        });
+        healthy.push(modelId);
+        infra.healthCache.set({
+          provider,
+          model: modelId,
+          status: "healthy",
+          reason: "",
+          timestamp: Date.now(),
+          expiresAt: Date.now() + GATEWAY_CONFIG.healthCacheDefaultTtlMs,
+        });
+        infra.circuitBreaker.recordSuccess(provider, modelId);
+      } catch (err) {
+        const classification = classifyModelError(err);
+        const reasonLabel =
+          GATEWAY_CONFIG.errorReasonLabels[classification.reason] ?? classification.reason;
+        const statusStr =
+          classification.status !== undefined ? String(classification.status) : undefined;
+        unhealthy.push({ model: modelId, reason: reasonLabel, status: statusStr });
+        infra.healthCache.set({
+          provider,
+          model: modelId,
+          status: classification.retryable ? "unavailable" : "invalid",
+          reason: reasonLabel,
+          timestamp: Date.now(),
+          expiresAt:
+            Date.now() + infra.healthCache.getTtlForStatus(classification.status ?? "unknown"),
+          httpStatus: classification.status,
+          retryable: classification.retryable,
+        });
+        infra.circuitBreaker.recordFailure(provider, modelId);
+      }
+    }
+
+    results.push({ provider: name, healthy, unhealthy });
+  }
+
+  return results;
+}
+
+// ---------------------------------------------------------------------------
+// Core gateway logic
+// ---------------------------------------------------------------------------
 
 export type LordModelGateway = (candidate: Candidate) => LanguageModel;
 
@@ -598,8 +627,20 @@ export interface StreamWithFallbackResult {
   streamMs: number;
 }
 
-function logGateway(event: string, payload: Record<string, unknown>) {
-  console.info(JSON.stringify({ event, ...payload }));
+function logGateway(logger: Logger, event: string, payload: Record<string, unknown>) {
+  logger.info(event, payload);
+}
+
+// Get the retry policy for a given error classification.
+function getRetryPolicy(classification: ModelErrorClassification) {
+  const statusKey =
+    classification.status !== undefined ? String(classification.status) : classification.reason;
+  return (
+    GATEWAY_CONFIG.retryPolicy[statusKey] ?? {
+      retryable: classification.retryable,
+      maxRetries: classification.retryable ? GATEWAY_CONFIG.maxRetriesDefault : 0,
+    }
+  );
 }
 
 // Tries each candidate model for `mode` in order. A candidate is validated with
@@ -610,48 +651,6 @@ function logGateway(event: string, payload: Record<string, unknown>) {
 // either stream it or complete it. Throws only when every candidate fails (or a
 // non-retryable error is hit), so the user never sees an error unless all models
 // are down.
-
-// ---------------------------------------------------------------------------
-// Model probe cache (module-level, shared across requests in the same process)
-// ---------------------------------------------------------------------------
-// Caches the first-working candidate per `mode` so we skip re-probing on every
-// request. Positive results are cached for PROBE_CACHE_TTL_MS; a failure
-// immediately invalidates the entry so we don't blindly stream to a dead model.
-
-const PROBE_CACHE_TTL_MS = 45_000; // 45 seconds
-interface ProbeCacheEntry {
-  provider: ProviderName;
-  model: string;
-  ts: number;
-}
-
-const probeCache = new Map<string, ProbeCacheEntry>();
-
-function getCachedCandidate(mode: string): ProbeCacheEntry | null {
-  const entry = probeCache.get(mode);
-  if (!entry) return null;
-  if (Date.now() - entry.ts > PROBE_CACHE_TTL_MS) {
-    probeCache.delete(mode);
-    return null;
-  }
-  return entry;
-}
-
-function setCachedCandidate(mode: string, entry: ProbeCacheEntry): void {
-  probeCache.set(mode, entry);
-}
-
-function invalidateCachedCandidate(mode: string): void {
-  probeCache.delete(mode);
-}
-
-// Exponential backoff retry for transient probe/stream errors. Returns the
-// delay (ms) before the next retry attempt, or 0 if no more retries remain.
-function probeBackoff(attempt: number, maxAttempts: number): number {
-  if (attempt >= maxAttempts) return 0;
-  return Math.min(1000 * 2 ** attempt, 4_000);
-}
-
 export async function findFirstWorkingModel(opts: StreamWithFallbackOptions): Promise<{
   candidate: Candidate;
   provider: ProviderName;
@@ -659,13 +658,36 @@ export async function findFirstWorkingModel(opts: StreamWithFallbackOptions): Pr
   probeMs: number;
 }> {
   const { mode, requestId, state } = opts;
+  const infra = getGatewayInfrastructure();
+  const logger = infra.logger;
   const resolvedExplicit = opts.explicitModelId ? resolveCandidate(opts.explicitModelId) : null;
   const candidates = getModeCandidates(
     mode,
     resolvedExplicit ? undefined : opts.explicitModelId,
     resolvedExplicit?.provider,
     resolvedExplicit?.modelId,
-  ).filter((c) => !isProviderCircuitOpen(c.provider) && state.meta[c.provider]?.hasKey);
+  ).filter((c) => {
+    const cbOpen = infra.circuitBreaker.isOpen(c.provider, c.modelId);
+    const healthOk = infra.healthCache.isHealthy(c.provider, c.modelId);
+    const hasKey = state.meta[c.provider]?.hasKey;
+    return !cbOpen && healthOk && hasKey;
+  });
+
+  // Dynamic routing: sort candidates by health and performance when enabled.
+  if (GATEWAY_CONFIG.dynamicRoutingEnabled && !opts.explicitModelId) {
+    candidates.sort((a, b) => {
+      const statsA = infra.modelStats.getStats(a.provider, a.modelId);
+      const statsB = infra.modelStats.getStats(b.provider, b.modelId);
+      const failureRateA = statsA.requests > 0 ? statsA.failures / statsA.requests : 0;
+      const failureRateB = statsB.requests > 0 ? statsB.failures / statsB.requests : 0;
+      const avgTTFTA = statsA.successes > 0 ? statsA.totalTTFTMs / statsA.successes : Infinity;
+      const avgTTFTB = statsB.successes > 0 ? statsB.totalTTFTMs / statsB.successes : Infinity;
+
+      if (failureRateA !== failureRateB) return failureRateA - failureRateB;
+      if (avgTTFTA !== avgTTFTB) return avgTTFTA - avgTTFTB;
+      return 0;
+    });
+  }
   const modeLabel = LORD_MODE_LABELS[mode];
   const probeStart = performance.now();
 
@@ -675,9 +697,11 @@ export async function findFirstWorkingModel(opts: StreamWithFallbackOptions): Pr
   const cached = opts.explicitModelId ? null : getCachedCandidate(mode);
   if (cached && !opts.explicitModelId) {
     const stillConfigured =
-      state.meta[cached.provider]?.hasKey && !isProviderCircuitOpen(cached.provider);
+      state.meta[cached.provider]?.hasKey &&
+      !infra.circuitBreaker.isOpen(cached.provider, cached.model) &&
+      infra.healthCache.isHealthy(cached.provider, cached.model);
     if (stillConfigured) {
-      logGateway("ai_probe_cache_hit", {
+      logGateway(logger, "ai_probe_cache_hit", {
         requestId,
         mode,
         provider: cached.provider,
@@ -693,7 +717,7 @@ export async function findFirstWorkingModel(opts: StreamWithFallbackOptions): Pr
     invalidateCachedCandidate(mode);
   }
 
-  console.info(`Mode: ${modeLabel}`);
+  logger.info("ai_mode", { mode: modeLabel });
 
   const attempts: ModelAttempt[] = [];
   const configuredProviders = getConfiguredProviders();
@@ -702,8 +726,14 @@ export async function findFirstWorkingModel(opts: StreamWithFallbackOptions): Pr
     const candidate = candidates[i];
     const { provider, modelId } = candidate;
     const attemptNum = i + 1;
-    console.info(`Attempt ${attemptNum}:\n${provider}:${modelId}`);
-    logGateway("ai_provider_selected", {
+    logger.info("Attempt " + attemptNum + ":\n" + provider + ":" + modelId, {
+      requestId,
+      mode,
+      attempt: attemptNum,
+      provider,
+      model: modelId,
+    });
+    logGateway(logger, "ai_provider_selected", {
       requestId,
       mode,
       attempt: attemptNum,
@@ -716,7 +746,7 @@ export async function findFirstWorkingModel(opts: StreamWithFallbackOptions): Pr
       const attempt: ModelAttempt = {
         model: modelId,
         status: 0,
-        reason: "Provider not configured (missing API key)",
+        reason: GATEWAY_CONFIG.errorReasonLabels.missing_api_key,
         retryable: false,
         providerMessage: `Provider "${provider}" has no valid API key`,
         timestamp: Date.now(),
@@ -727,7 +757,7 @@ export async function findFirstWorkingModel(opts: StreamWithFallbackOptions): Pr
 
     // Exponential retry for transient probe failures: a provider may be
     // flapping, so we retry a couple of times before giving up on it.
-    const maxProbeAttempts = 2;
+    const maxProbeAttempts = GATEWAY_CONFIG.probeMaxAttempts;
     let probed = false;
     for (let probeTry = 0; probeTry < maxProbeAttempts && !probed; probeTry++) {
       try {
@@ -735,20 +765,24 @@ export async function findFirstWorkingModel(opts: StreamWithFallbackOptions): Pr
           model: opts.gateway(candidate),
           system: "Reply with OK",
           messages: [{ role: "user", content: "OK" }],
-          maxOutputTokens: PROBE_MAX_OUTPUT_TOKENS,
+          maxOutputTokens: GATEWAY_CONFIG.probeMaxOutputTokens,
           temperature: 0,
           maxRetries: 0,
-          timeout: PROBE_TIMEOUT_MS,
+          timeout: GATEWAY_CONFIG.probeTimeoutMs,
           abortSignal: opts.abortSignal,
         });
         probed = true;
       } catch (err) {
         const classification = classifyModelError(err);
-        const errProvider = getProviderFromError(err) ?? provider;
+        const errProvider: ProviderName =
+          err instanceof OpenRouterClientError
+            ? (((err as unknown as { lordProvider?: string }).lordProvider ??
+                provider) as ProviderName)
+            : provider;
         const attempt: ModelAttempt = {
           model: modelId,
           status: classification.status ?? 0,
-          reason: REASON_LABELS[classification.reason] ?? classification.reason,
+          reason: GATEWAY_CONFIG.errorReasonLabels[classification.reason] ?? classification.reason,
           retryable: classification.retryable,
           providerMessage: classification.providerMessage,
           errorCode: classification.errorCode,
@@ -756,25 +790,63 @@ export async function findFirstWorkingModel(opts: StreamWithFallbackOptions): Pr
           timestamp: Date.now(),
         };
         attempts.push(attempt);
-        console.info(
-          `Failed:\n${attempt.reason} (status: ${attempt.status}, retryable: ${attempt.retryable})`,
+        logger.info(
+          "Failed:\n" +
+            attempt.reason +
+            " (status: " +
+            attempt.status +
+            ", retryable: " +
+            attempt.retryable +
+            ")",
+          {
+            requestId,
+            provider,
+            model: modelId,
+            reason: attempt.reason,
+            status: attempt.status,
+            retryable: attempt.retryable,
+          },
         );
 
-        // Record circuit-breaker / health state for the failing provider.
-        recordProviderFailure(errProvider, attempt.providerMessage ?? attempt.reason);
+        // Record circuit-breaker / health state for the failing provider/model.
+        infra.circuitBreaker.recordFailure(errProvider, modelId);
+        infra.healthCache.set({
+          provider: errProvider,
+          model: modelId,
+          status: classification.retryable ? "unavailable" : "invalid",
+          reason: attempt.reason,
+          timestamp: Date.now(),
+          expiresAt:
+            Date.now() + infra.healthCache.getTtlForStatus(classification.status ?? "unknown"),
+          httpStatus: classification.status,
+          retryable: classification.retryable,
+        });
+        infra.modelStats.record(errProvider, modelId, {
+          success: false,
+          ttftMs: 0,
+          streamMs: 0,
+          reason: attempt.reason,
+        });
 
         if (!classification.retryable) {
           // Non-retryable (e.g. invalid key) for THIS provider — move on to the
           // next candidate rather than aborting the whole request.
-          console.warn(`Skipping invalid model ${modelId}: ${classification.providerMessage}`);
+          logger.warn("Skipping invalid model " + modelId + ": " + classification.providerMessage, {
+            requestId,
+            provider,
+            model: modelId,
+          });
           break;
         }
 
-        // Retryable: back off briefly and retry the same candidate.
-        const delay = probeBackoff(probeTry, maxProbeAttempts);
-        if (delay > 0) {
-          await new Promise((r) => setTimeout(r, delay));
-          continue;
+        // Retryable: check retry policy and back off briefly if retries remain.
+        const policy = getRetryPolicy(classification);
+        if (probeTry < policy.maxRetries - 1) {
+          const delay = probeBackoff(probeTry, maxProbeAttempts);
+          if (delay > 0) {
+            await new Promise((r) => setTimeout(r, delay));
+            continue;
+          }
         }
         // No retries left: fall through to the next candidate.
         break;
@@ -784,10 +856,28 @@ export async function findFirstWorkingModel(opts: StreamWithFallbackOptions): Pr
     if (probed) {
       // Success: cache this candidate as the preferred choice for this mode.
       setCachedCandidate(mode, { provider, model: modelId, ts: Date.now() });
-      recordProviderSuccess(provider);
-      console.info("Success");
+      infra.circuitBreaker.recordSuccess(provider, modelId);
+      infra.healthCache.set({
+        provider,
+        model: modelId,
+        status: "healthy",
+        reason: "",
+        timestamp: Date.now(),
+        expiresAt: Date.now() + GATEWAY_CONFIG.healthCacheDefaultTtlMs,
+      });
+      infra.modelStats.record(provider, modelId, {
+        success: true,
+        ttftMs: 0,
+        streamMs: 0,
+      });
+      logger.info("Success", {
+        requestId,
+        mode,
+        provider,
+        model: modelId,
+      });
       const probeMs = Math.round(performance.now() - probeStart);
-      logGateway("ai_probe_complete", {
+      logGateway(logger, "ai_probe_complete", {
         requestId,
         mode,
         provider,
@@ -803,16 +893,13 @@ export async function findFirstWorkingModel(opts: StreamWithFallbackOptions): Pr
   // next request starts fresh instead of blindly streaming to a dead model.
   invalidateCachedCandidate(mode);
   const probeMs = Math.round(performance.now() - probeStart);
-  console.error(
-    JSON.stringify({
-      event: "lord_mode_exhausted",
-      requestId,
-      mode,
-      configuredProviders,
-      attempts,
-      probeMs,
-    }),
-  );
+  logger.error("lord_mode_exhausted", {
+    requestId,
+    mode,
+    configuredProviders,
+    attempts,
+    probeMs,
+  });
   const exhausted = new Error(`All models failed for mode "${mode}".`);
   (exhausted as unknown as { lordAttempts: ModelAttempt[] }).lordAttempts = attempts;
   throw exhausted;
@@ -822,15 +909,20 @@ export async function streamWithFallback(
   opts: StreamWithFallbackOptions,
 ): Promise<StreamWithFallbackResult> {
   const { mode, requestId, state } = opts;
+  const infra = getGatewayInfrastructure();
+  const logger = infra.logger;
   const { candidate, provider, attempts, probeMs } = await findFirstWorkingModel(opts);
   const modelId = candidate.modelId;
 
   let firstChunkLogged = false;
+  let tokensEmitted = 0;
   const streamStart = performance.now();
   let firstChunkTime = 0;
   let streamEndTime = 0;
+  let streamError: Error | null = null;
 
-  const providerTimeout = state.meta[provider]?.timeoutMs ?? OPENROUTER_TIMEOUT_MS;
+  const providerTimeout =
+    state.meta[provider]?.timeoutMs ?? GATEWAY_CONFIG.providerTimeoutDefaultMs;
 
   const result = streamText({
     model: opts.gateway(candidate),
@@ -838,11 +930,11 @@ export async function streamWithFallback(
     messages: opts.messages,
     maxOutputTokens: opts.maxOutputTokens ?? 1024,
     temperature: opts.temperature ?? 0.7,
-    maxRetries: 2,
+    maxRetries: GATEWAY_CONFIG.maxRetriesDefault,
     timeout: opts.timeoutMs ?? providerTimeout,
     abortSignal: opts.abortSignal,
     experimental_onStart: () => {
-      logGateway("ai_stream_start", {
+      logGateway(logger, "ai_stream_start", {
         requestId,
         mode,
         provider,
@@ -855,7 +947,7 @@ export async function streamWithFallback(
         firstChunkLogged = true;
         firstChunkTime = performance.now();
         const ttft = Math.round(firstChunkTime - streamStart);
-        logGateway("ai_stream_first_chunk", {
+        logGateway(logger, "ai_stream_first_chunk", {
           requestId,
           mode,
           provider,
@@ -864,28 +956,64 @@ export async function streamWithFallback(
           probeMs,
         });
       }
+      if (chunk.type === "text-delta") {
+        tokensEmitted += 1;
+      }
     },
     onError: ({ error }) => {
-      const errProvider = getProviderFromError(error) ?? provider;
-      recordProviderFailure(errProvider, error instanceof Error ? error.message : String(error));
-      console.error(
-        JSON.stringify({
-          event: "ai_stream_error",
-          requestId,
-          mode,
-          provider,
-          model: modelId,
-          error: error instanceof Error ? error.message : String(error),
-        }),
-      );
+      const errProvider: ProviderName =
+        error instanceof OpenRouterClientError
+          ? (((error as unknown as { lordProvider?: string }).lordProvider ??
+              provider) as ProviderName)
+          : provider;
+      infra.circuitBreaker.recordFailure(errProvider, modelId);
+      const classification = classifyModelError(error);
+      infra.healthCache.set({
+        provider: errProvider,
+        model: modelId,
+        status: classification.retryable ? "unavailable" : "invalid",
+        reason: GATEWAY_CONFIG.errorReasonLabels[classification.reason] ?? classification.reason,
+        timestamp: Date.now(),
+        expiresAt:
+          Date.now() + infra.healthCache.getTtlForStatus(classification.status ?? "unknown"),
+        httpStatus: classification.status,
+        retryable: classification.retryable,
+      });
+      infra.modelStats.record(errProvider, modelId, {
+        success: false,
+        ttftMs: firstChunkTime > 0 ? Math.round(firstChunkTime - streamStart) : 0,
+        streamMs: 0,
+        reason: GATEWAY_CONFIG.errorReasonLabels[classification.reason] ?? classification.reason,
+      });
+      logger.error("ai_stream_error", {
+        requestId,
+        mode,
+        provider,
+        model: modelId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      streamError = error instanceof Error ? error : new Error(String(error));
     },
     onFinish: ({ finishReason, usage }) => {
       streamEndTime = performance.now();
       const ttftMs = firstChunkTime > 0 ? Math.round(firstChunkTime - streamStart) : 0;
       const streamMs = firstChunkTime > 0 ? Math.round(streamEndTime - firstChunkTime) : 0;
       const cost = estimateCost(modelId, usage.inputTokens ?? 0, usage.outputTokens ?? 0);
-      recordProviderSuccess(provider);
-      logGateway("ai_stream_end", {
+      infra.circuitBreaker.recordSuccess(provider, modelId);
+      infra.healthCache.set({
+        provider,
+        model: modelId,
+        status: "healthy",
+        reason: "",
+        timestamp: Date.now(),
+        expiresAt: Date.now() + GATEWAY_CONFIG.healthCacheDefaultTtlMs,
+      });
+      infra.modelStats.record(provider, modelId, {
+        success: true,
+        ttftMs,
+        streamMs,
+      });
+      logGateway(logger, "ai_stream_end", {
         requestId,
         mode,
         provider,
@@ -923,6 +1051,35 @@ export async function streamWithFallback(
   const finalStreamMs =
     firstChunkTime > 0 ? Math.round((streamEndTime || performance.now()) - firstChunkTime) : 0;
 
+  // If the stream errored before emitting any tokens, treat as a failed probe
+  // so the caller can retry with another provider.
+  if (streamError && tokensEmitted === 0 && GATEWAY_CONFIG.streamingRetryIfNoTokens) {
+    infra.circuitBreaker.recordFailure(provider, modelId);
+    infra.healthCache.set({
+      provider,
+      model: modelId,
+      status: "unavailable",
+      reason: "Stream interrupted before first token",
+      timestamp: Date.now(),
+      expiresAt: Date.now() + GATEWAY_CONFIG.healthCacheTtlByStatus.timeout,
+      retryable: true,
+    });
+    throw streamError;
+  }
+
+  // If the stream errored after emitting tokens, do NOT silently retry —
+  // surface the partial result with the error so the caller can decide.
+  if (streamError && tokensEmitted > 0) {
+    logger.warn("ai_stream_partial_error", {
+      requestId,
+      mode,
+      provider,
+      model: modelId,
+      tokensEmitted,
+      error: String(streamError),
+    });
+  }
+
   return { result, model: modelId, provider, attempts, ttftMs, streamMs: finalStreamMs };
 }
 
@@ -936,14 +1093,15 @@ export async function generateTextWithFallback(opts: StreamWithFallbackOptions):
 }> {
   const { candidate, provider, attempts } = await findFirstWorkingModel(opts);
   const modelId = candidate.modelId;
-  const providerTimeout = opts.state.meta[provider]?.timeoutMs ?? OPENROUTER_TIMEOUT_MS;
+  const providerTimeout =
+    opts.state.meta[provider]?.timeoutMs ?? GATEWAY_CONFIG.providerTimeoutDefaultMs;
   const { text } = await generateText({
     model: opts.gateway(candidate),
     system: opts.system,
     messages: opts.messages,
     maxOutputTokens: opts.maxOutputTokens ?? 1024,
     temperature: opts.temperature ?? 0.7,
-    maxRetries: 2,
+    maxRetries: GATEWAY_CONFIG.maxRetriesDefault,
     timeout: opts.timeoutMs ?? providerTimeout,
     abortSignal: opts.abortSignal,
   });
@@ -984,9 +1142,10 @@ export async function testOpenRouterConnection(opts: {
     temperature: 0,
   };
   const diagnostics = getLordEnvironmentDiagnostics();
+  const logger = getGatewayInfrastructure().logger;
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), OPENROUTER_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), GATEWAY_CONFIG.providerTimeoutDefaultMs);
 
   try {
     const res = await fetch(url, {
@@ -1029,6 +1188,10 @@ export async function testOpenRouterConnection(opts: {
     const name = error instanceof Error ? error.name : typeof error;
     const message = error instanceof Error ? error.message : String(error);
     const stack = error instanceof Error ? error.stack : undefined;
+    logger.error("openrouter_test_failed", {
+      model,
+      error: message,
+    });
     return {
       ok: false,
       url,
@@ -1039,6 +1202,15 @@ export async function testOpenRouterConnection(opts: {
   } finally {
     clearTimeout(timer);
   }
+}
+
+// Clear all circuit-breaker and health-cache state. Intended for tests and
+// hot-reload safety so a previous process' failure counts are not inherited.
+export function resetCircuitBreakers(): void {
+  const infra = getGatewayInfrastructure();
+  infra.circuitBreaker.resetAll();
+  infra.healthCache.clear();
+  resetGatewayInfrastructure();
 }
 
 export {

@@ -15,23 +15,20 @@ export interface Candidate {
 // Current, available model ids per provider. Update model ids here only — they
 // are never hard-coded elsewhere. The `@ai-sdk/openai-compatible`, `@ai-sdk/openai`
 // and `@ai-sdk/google` providers each receive the bare model id (no prefix).
-export const PROVIDER_CONFIG: Record<ProviderName, { apiKeyEnv: string; models: string[] }> = {
+//
+// Only stable, officially supported models are listed. Experimental and obsolete
+// slugs are removed to avoid wasting probe cycles on dead endpoints.
+export const PROVIDER_CONFIG: Record<
+  ProviderName,
+  { apiKeyEnv: string; models: readonly string[] }
+> = {
   gemini: {
     apiKeyEnv: "GEMINI_API_KEY",
     models: ["gemini-2.5-flash", "gemini-2.5-pro"],
   },
   openrouter: {
     apiKeyEnv: "OPENROUTER_API_KEY",
-    models: [
-      "google/gemma-3-27b-it:free",
-      "openai/gpt-oss-20b:free",
-      "google/gemma-4-26b-a4b-it:free",
-      "nvidia/nemotron-nano-9b-v2:free",
-      "google/gemini-2.5-flash:free",
-      "openai/gpt-oss-120b:free",
-      "meta-llama/llama-3.3-70b-instruct:free",
-      "qwen/qwen3-235b-a22b:free",
-    ],
+    models: ["meta-llama/llama-3.3-70b-instruct:free", "google/gemini-2.5-flash:free"],
   },
   openai: {
     apiKeyEnv: "OPENAI_API_KEY",
@@ -39,63 +36,54 @@ export const PROVIDER_CONFIG: Record<ProviderName, { apiKeyEnv: string; models: 
   },
 };
 
+const candidate = (provider: ProviderName, modelId: string): Candidate => ({ provider, modelId });
+
 // Routing modes map a user-facing capability to a provider-ordered candidate
 // list. Earlier entries are tried first; the backend falls back sequentially
 // through the rest only when the selected provider fails, times out, is
 // rate-limited, returns 5xx, or has no configured key.
-export const LORD_MODELS: Record<LordMode, Candidate[]> = {
+export const LORD_MODELS: Record<LordMode, readonly Candidate[]> = {
   // ⚡ Lowest latency / everyday chat — prefer free/fast providers.
   fast: [
     candidate("gemini", "gemini-2.5-flash"),
-    candidate("openrouter", "openai/gpt-oss-20b:free"),
-    candidate("openrouter", "google/gemma-3-27b-it:free"),
+    candidate("openrouter", "google/gemini-2.5-flash:free"),
     candidate("openai", "gpt-4o-mini"),
   ],
 
   // 💬 Best general-purpose — Gemini first, then OpenRouter, then OpenAI.
   balanced: [
     candidate("gemini", "gemini-2.5-flash"),
-    candidate("openrouter", "google/gemini-2.5-flash:free"),
-    candidate("openrouter", "openai/gpt-oss-120b:free"),
+    candidate("openrouter", "meta-llama/llama-3.3-70b-instruct:free"),
     candidate("openai", "gpt-4o"),
   ],
 
   // 🧠 Deep reasoning & planning — premium providers first.
   reasoning: [
     candidate("openai", "gpt-4o"),
-    candidate("openrouter", "qwen/qwen3-235b-a22b:free"),
     candidate("gemini", "gemini-2.5-pro"),
-    candidate("openrouter", "openai/gpt-oss-120b:free"),
+    candidate("openrouter", "meta-llama/llama-3.3-70b-instruct:free"),
   ],
 
   // 💻 Software engineering — coding-capable models first.
   coding: [
     candidate("openai", "gpt-4o"),
-    candidate("openrouter", "meta-llama/llama-3.3-70b-instruct:free"),
-    candidate("openrouter", "poolside/laguna-m.1:free"),
     candidate("gemini", "gemini-2.5-flash"),
+    candidate("openrouter", "meta-llama/llama-3.3-70b-instruct:free"),
   ],
 
   // 🎨 Writing, storytelling & content creation
   creative: [
     candidate("openai", "gpt-4o"),
-    candidate("openrouter", "google/gemma-4-31b-it:free"),
     candidate("gemini", "gemini-2.5-flash"),
-    candidate("openrouter", "openai/gpt-oss-120b:free"),
+    candidate("openrouter", "meta-llama/llama-3.3-70b-instruct:free"),
   ],
 
   // 🖥️ Lightweight fallback — smallest available models.
   local: [
-    candidate("openrouter", "openai/gpt-oss-20b:free"),
-    candidate("openrouter", "nvidia/nemotron-nano-9b-v2:free"),
-    candidate("openrouter", "liquid/lfm-2.5-1.2b-instruct:free"),
+    candidate("openrouter", "meta-llama/llama-3.3-70b-instruct:free"),
     candidate("gemini", "gemini-2.5-flash"),
   ],
 };
-
-function candidate(provider: ProviderName, modelId: string): Candidate {
-  return { provider, modelId };
-}
 
 export type LordMode = "fast" | "balanced" | "coding" | "creative" | "reasoning" | "local";
 
@@ -141,7 +129,8 @@ export function buildAllCandidates(): Candidate[] {
 
 // Resolve a bare model id to the provider that owns it. An explicit provider
 // tag is always preferred; otherwise we match against the known candidate
-// registry, then fall back to legacy OpenRouter-style prefix matching.
+// registry. OpenRouter-style prefix matching is retained only for IDs that
+// follow the `vendor/model` pattern.
 export function resolveProvider(
   modelId: string,
   explicitProvider?: ProviderName,
@@ -150,19 +139,7 @@ export function resolveProvider(
   for (const c of buildAllCandidates()) {
     if (c.modelId === modelId) return c.provider;
   }
-  if (
-    modelId.startsWith("google/") ||
-    modelId.startsWith("openai/") ||
-    modelId.startsWith("meta-llama/")
-  ) {
-    return "openrouter";
-  }
-  if (
-    modelId.startsWith("gemma") ||
-    modelId.startsWith("llama") ||
-    modelId.startsWith("nemotron") ||
-    modelId.startsWith("qwen")
-  ) {
+  if (modelId.includes("/")) {
     return "openrouter";
   }
   return null;
@@ -178,19 +155,7 @@ export function resolveCandidate(
   if (explicitProvider) return { provider: explicitProvider, modelId };
   const known = buildAllCandidates().find((c) => c.modelId === modelId);
   if (known) return known;
-  if (
-    modelId.startsWith("google/") ||
-    modelId.startsWith("openai/") ||
-    modelId.startsWith("meta-llama/")
-  ) {
-    return { provider: "openrouter", modelId };
-  }
-  if (
-    modelId.startsWith("gemma") ||
-    modelId.startsWith("llama") ||
-    modelId.startsWith("nemotron") ||
-    modelId.startsWith("qwen")
-  ) {
+  if (modelId.includes("/")) {
     return { provider: "openrouter", modelId };
   }
   return null;
@@ -229,7 +194,7 @@ export function getModeCandidates(
   return out;
 }
 
-// Typed, structured client error produced by the OpenRouter fetch wrapper so
+// Typed, structured client error produced by the fetch wrapper so
 // classification never has to guess from a free-form message. It is attached to
 // the thrown Error via a symbol marker so it survives SDK error wrapping
 // (the AI SDK re-throws our error as `cause`), and its message also carries a
@@ -259,7 +224,7 @@ export class OpenRouterClientError extends Error {
   }
 }
 
-// Extract a human-readable message from a raw OpenRouter error body (JSON or text).
+// Extract a human-readable message from a raw provider error body (JSON or text).
 function extractMessageFromBody(body?: string): string | undefined {
   if (!body) return undefined;
   try {
@@ -354,7 +319,7 @@ function extractStatus(message: string): number | undefined {
   return match ? parseInt(match[1], 10) : undefined;
 }
 
-// Extract provider error details from OpenRouter error response
+// Extract provider error details from provider error response
 function extractProviderDetails(error: unknown): {
   providerMessage?: string;
   errorCode?: string;
@@ -404,7 +369,7 @@ export function classifyModelError(error: unknown): ModelErrorClassification {
     }
     // network / abort / timeout / parse — always retryable, with real detail.
     const message = error instanceof Error ? error.message : String(error);
-    const providerMessage = `OpenRouter client ${clientErr.kind}: ${message}`;
+    const providerMessage = `Provider client ${clientErr.kind}: ${message}`;
     return {
       retryable: true,
       reason: "provider_error",
@@ -481,7 +446,7 @@ export function classifyModelError(error: unknown): ModelErrorClassification {
     reason: "unknown",
     status,
     providerMessage:
-      providerDetails.providerMessage ?? (raw.trim() || "Unclassified OpenRouter error"),
+      providerDetails.providerMessage ?? (raw.trim() || "Unclassified provider error"),
     ...providerDetails,
   };
 }
@@ -762,7 +727,7 @@ Never pretend to have access to information, tools, files, APIs, databases, brow
 
 When tools are available, use them.
 
-When tools are unavailable, provide the best solution possible from the available information.
+When tools are unavailable, provide the best solution possible with the available information.
 
 PRIORITY ORDER
 

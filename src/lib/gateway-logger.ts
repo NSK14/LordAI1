@@ -1,0 +1,102 @@
+import { GATEWAY_CONFIG, type GatewayConfig } from "./gateway-config";
+
+export type LogLevel = "debug" | "info" | "warn" | "error";
+
+export interface Logger {
+  debug(event: string, payload: Record<string, unknown>): void;
+  info(event: string, payload: Record<string, unknown>): void;
+  warn(event: string, payload: Record<string, unknown>): void;
+  error(event: string, payload: Record<string, unknown>): void;
+  startupValidation(
+    providers: Array<{
+      provider: string;
+      healthy: string[];
+      unhealthy: Array<{ model: string; reason: string; status?: string }>;
+    }>,
+  ): void;
+}
+
+export function createLogger(config: GatewayConfig): Logger {
+  const prefix = "[lord-gateway]";
+
+  function formatPayload(payload: Record<string, unknown>): Record<string, unknown> {
+    const out: Record<string, unknown> = { ...payload, timestamp: Date.now() };
+    return out;
+  }
+
+  function emit(level: LogLevel, event: string, payload: Record<string, unknown>) {
+    const formatted = formatPayload(payload);
+    if (config.logFormat === "pretty") {
+      const lines = [
+        `${prefix} ${level.toUpperCase()} ${event}`,
+        JSON.stringify(formatted, null, 2),
+      ];
+      switch (level) {
+        case "debug":
+          console.debug(lines.join("\n"));
+          break;
+        case "info":
+          console.info(lines.join("\n"));
+          break;
+        case "warn":
+          console.warn(lines.join("\n"));
+          break;
+        case "error":
+          console.error(lines.join("\n"));
+          break;
+      }
+    } else {
+      const entry = { level, event, ...formatted };
+      switch (level) {
+        case "debug":
+          console.debug(JSON.stringify(entry));
+          break;
+        case "info":
+          console.info(JSON.stringify(entry));
+          break;
+        case "warn":
+          console.warn(JSON.stringify(entry));
+          break;
+        case "error":
+          console.error(JSON.stringify(entry));
+          break;
+      }
+    }
+  }
+
+  return {
+    debug(event, payload) {
+      emit("debug", event, payload);
+    },
+    info(event, payload) {
+      emit("info", event, payload);
+    },
+    warn(event, payload) {
+      emit("warn", event, payload);
+    },
+    error(event, payload) {
+      emit("error", event, payload);
+    },
+    startupValidation(providers) {
+      console.info("");
+      console.info("----------------------------------");
+      console.info("LORD AI Provider Validation");
+      console.info("----------------------------------");
+      for (const p of providers) {
+        console.info("");
+        console.info(p.provider);
+        for (const m of p.healthy) {
+          console.info(`  ✔ ${m}`);
+        }
+        for (const u of p.unhealthy) {
+          const statusStr = u.status ? ` (${u.status})` : "";
+          console.info(`  ✖ ${u.model}${statusStr}`);
+          console.info(`    ${u.reason}`);
+        }
+      }
+      console.info("");
+      console.info("----------------------------------");
+      console.info("");
+    },
+  };
+}

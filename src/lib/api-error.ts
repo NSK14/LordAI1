@@ -12,6 +12,11 @@ export type ApiErrorCode =
   | "INTERNAL_ERROR"
   | "NOT_FOUND";
 
+export interface ProviderStatus {
+  provider: string;
+  status: "healthy" | "rate_limited" | "unavailable" | "missing_api_key" | "invalid";
+}
+
 export interface ApiErrorBody {
   error: {
     code: ApiErrorCode;
@@ -27,6 +32,7 @@ export interface ApiErrorBody {
       requestId?: string;
     }>;
     configuredProviders?: string[];
+    providerStatuses?: ProviderStatus[];
   };
 }
 
@@ -46,6 +52,7 @@ export function apiErrorResponse(
       requestId?: string;
     }>;
     configuredProviders?: string[];
+    providerStatuses?: ProviderStatus[];
   },
 ) {
   return Response.json(
@@ -56,6 +63,7 @@ export function apiErrorResponse(
         requestId,
         ...(extra?.attempts && { attempts: extra.attempts }),
         ...(extra?.configuredProviders && { configuredProviders: extra.configuredProviders }),
+        ...(extra?.providerStatuses && { providerStatuses: extra.providerStatuses }),
       },
     } satisfies ApiErrorBody,
     {

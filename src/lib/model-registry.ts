@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export type ModelRegistryEntry = {
-  id: string; // actual OpenRouter model ID
+  id: string; // actual model ID
   label: string;
   provider: string;
   description?: string;
@@ -9,54 +9,54 @@ export type ModelRegistryEntry = {
 
 // Single source of truth for all selectable models.
 // Update/add models only here.
-// Models validated against OpenRouter catalog (https://openrouter.ai/models)
+// Only stable, officially supported models are listed.
 export const MODEL_REGISTRY: ModelRegistryEntry[] = [
   {
     id: "openai/gpt-4o",
     label: "GPT-4o",
-    provider: "OpenRouter",
+    provider: "OpenAI",
     description: "OpenAI's most capable multimodal model",
   },
   {
     id: "openai/gpt-4o-mini",
     label: "GPT-4o Mini",
-    provider: "OpenRouter",
+    provider: "OpenAI",
     description: "Fast, cost-effective GPT-4o variant",
   },
   {
     id: "anthropic/claude-sonnet-4",
     label: "Claude Sonnet 4",
-    provider: "OpenRouter",
+    provider: "Anthropic",
     description: "Anthropic's balanced intelligence and speed",
   },
   {
     id: "anthropic/claude-haiku-4.5",
     label: "Claude Haiku 4.5",
-    provider: "OpenRouter",
+    provider: "Anthropic",
     description: "Anthropic's fastest model",
   },
   {
     id: "google/gemini-2.5-pro",
     label: "Gemini 2.5 Pro",
-    provider: "OpenRouter",
+    provider: "Google",
     description: "Google's most capable reasoning model",
   },
   {
     id: "google/gemini-2.5-flash",
     label: "Gemini 2.5 Flash",
-    provider: "OpenRouter",
+    provider: "Google",
     description: "Google's fast, efficient model",
   },
   {
     id: "deepseek/deepseek-chat",
     label: "DeepSeek V3",
-    provider: "OpenRouter",
+    provider: "DeepSeek",
     description: "DeepSeek's flagship chat model",
   },
   {
     id: "qwen/qwen-2.5-coder-32b-instruct",
     label: "Qwen 2.5 Coder 32B",
-    provider: "OpenRouter",
+    provider: "Alibaba",
     description: "Strong code generation model",
   },
   {
@@ -66,10 +66,10 @@ export const MODEL_REGISTRY: ModelRegistryEntry[] = [
     description: "Meta's open-weight model, free tier",
   },
   {
-    id: "google/gemma-4-26b-a4b-it:free",
-    label: "Gemma 4 26B IT (Free)",
+    id: "google/gemini-2.5-flash:free",
+    label: "Gemini 2.5 Flash (Free)",
     provider: "OpenRouter",
-    description: "Google's open model, free tier",
+    description: "Google's fast model, free tier",
   },
 ];
 
