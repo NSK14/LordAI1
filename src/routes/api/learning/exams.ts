@@ -27,7 +27,12 @@ export const Route = createFileRoute("/api/learning/exams")({
           supabase?: { from: (table: string) => any };
         };
         if (!auth.userId || !auth.supabase) {
-          return apiErrorResponse(401, "AI_AUTH_ERROR", "Sign in to use learning tools.", requestId);
+          return apiErrorResponse(
+            401,
+            "AI_AUTH_ERROR",
+            "Sign in to use learning tools.",
+            requestId,
+          );
         }
 
         const supabase = auth.supabase as SupabaseClient<Database>;

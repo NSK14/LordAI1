@@ -46,6 +46,7 @@ const ChatRequestSchema = z.object({
     .object({
       page: z.string().max(200).optional(),
       workflow: z.string().max(200).nullable().optional(),
+      projectId: z.string().uuid().optional().nullable(),
     })
     .passthrough()
     .optional(),
@@ -85,60 +86,31 @@ function getLastUserText(messages: UIMessage[]) {
   );
 }
 
+import { buildBrainContext, type BrainContextOptions } from "@/lib/brain/context";
+
 async function buildMemoryPrompt(
   supabase: SupabaseClient<Database>,
   userId: string,
   query: string,
+  projectId?: string | null,
 ): Promise<string> {
-  const { data, error } = await supabase
-    .from("memories")
-    .select("id, content, category, pinned, confidence, embedding, created_at, updated_at")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(200);
-  if (error) throw error;
-  const rows = (data ?? []) as Array<{
-    id: string;
-    content: string;
-    category: string;
-    pinned: boolean;
-    confidence: number;
-    embedding: unknown | null;
-    created_at: string;
-    updated_at: string;
-  }>;
-  if (rows.length === 0) return "";
-
-  const memories: MemoryRecord[] = rows
-    .filter((r) => typeof r.content === "string" && r.content.trim())
-    .map((r) => ({
-      id: r.id,
-      user_id: userId,
-      content: r.content,
-      category: (r.category as "profile" | "preference" | "fact" | "project" | "note") ?? "note",
-      pinned: r.pinned,
-      confidence: typeof r.confidence === "number" ? r.confidence : 1,
-      source: "auto" as const,
-      embedding: Array.isArray(r.embedding) ? (r.embedding as number[]) : null,
-      created_at: r.created_at,
-      updated_at: r.updated_at,
-    }));
-
-  if (memories.length === 0) return "";
-
-  let ranked = memories;
   try {
-    const retrieved = await retrieveMemories(query, memories, { lightweight: true });
-    if (retrieved.length > 0) {
-      ranked = retrieved.map((r) => r.memory);
-    }
+    const opts: BrainContextOptions = {
+      userId,
+      projectId: projectId ?? null,
+      query,
+      maxMemories: 8,
+      maxKnowledgeChunks: 3,
+      maxRecentChats: 3,
+      includePinnedNotes: true,
+      includeRecentTasks: false,
+      tokenBudget: 800,
+    };
+    const result = await buildBrainContext(opts);
+    return result.systemPromptSnippet;
   } catch {
-    // Ranking failed — keep newest-first order as a safe fallback.
+    return "";
   }
-
-  const lines = ranked.map((m) => `- ${m.content.replace(/\s+/g, " ").trim()}`).slice(0, 12);
-  if (lines.length === 0) return "";
-  return `USER MEMORY (relevant context only):\n${lines.join("\n")}\n\nUse relevant memories naturally when helpful. Ignore irrelevant memories. Do not mention stored memories unless the user asks. Do not invent memories.`;
 }
 
 function buildProviderStatuses(validationResults: StartupValidationResult[]): ProviderStatus[] {
@@ -286,6 +258,7 @@ export const Route = createFileRoute("/api/chat")({
               authContext.supabase,
               authContext.userId,
               getLastUserText(uiMessages),
+              body.context?.projectId ?? null,
             );
           } catch (err) {
             logChat("api_chat_memory_fetch_error", {

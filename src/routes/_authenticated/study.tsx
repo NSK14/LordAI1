@@ -13,6 +13,7 @@ export const studySearchSchema = z.object({
       "exams",
       "planner",
       "progress",
+      "ai-entry",
     ])
     .optional()
     .default("dashboard"),

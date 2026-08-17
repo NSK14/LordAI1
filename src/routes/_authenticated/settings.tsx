@@ -223,7 +223,7 @@ function SettingsPage() {
   const [theme, setTheme] = useState("dark");
 
   useEffect(() => {
-    if (!data || typeof data === 'string') return;
+    if (!data || typeof data === "string") return;
     const settings = data as {
       default_mode: string;
       voice_rate: number;

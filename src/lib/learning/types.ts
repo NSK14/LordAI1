@@ -585,3 +585,99 @@ export type PlanWithTasks = LearningPlan & {
     tasks: LearningPlanTask[];
   }>;
 };
+
+export type StudyMode = "ai" | "manual";
+
+export interface AIMission {
+  id: string;
+  title: string;
+  description: string;
+  conceptIds: string[];
+  tasks: Array<{
+    type: "learn" | "practice" | "review" | "quiz" | "flashcards" | "tutor";
+    conceptId: string | null;
+    conceptTitle: string;
+    estimatedMinutes: number;
+    reason: string;
+  }>;
+  estimatedMinutes: number;
+  priority: "high" | "medium" | "low";
+  reason: string;
+}
+
+export interface AIRecommendation {
+  id: string;
+  type:
+    "forgotten" | "weak_topic" | "unfinished" | "upcoming" | "prerequisite" | "habit" | "deadline";
+  conceptId: string | null;
+  conceptTitle: string | null;
+  message: string;
+  action: { type: string; payload: Record<string, unknown> };
+  urgency: number;
+}
+
+export interface DetectedTopic {
+  subject: string | null;
+  conceptId: string | null;
+  conceptTitle: string | null;
+  chapter: string | null;
+  keywords: string[];
+  intent:
+    | "learn"
+    | "practice"
+    | "revise"
+    | "quiz"
+    | "flashcard"
+    | "tutor"
+    | "homework"
+    | "assignment"
+    | "exam_prep"
+    | "general";
+  confidence: number;
+  difficulty: number;
+  examRelated: boolean;
+  deadlineHint: string | null;
+}
+
+export interface ConceptDependency {
+  conceptId: string;
+  conceptTitle: string;
+  subject: string;
+  mastery: number;
+  status: "mastered" | "learning" | "introduced" | "not-started" | "blocked";
+  unlocked: boolean;
+  depth: number;
+  prerequisites: string[];
+}
+
+export interface LearningJourneyEvent {
+  id: string;
+  date: string;
+  type:
+    "learned" | "practiced" | "mastered" | "exam" | "tutor" | "flashcard" | "milestone" | "streak";
+  conceptId: string | null;
+  conceptTitle: string | null;
+  subject: string | null;
+  description: string;
+  xpEarned: number;
+}
+
+export interface LearnerStats {
+  level: number;
+  xp: number;
+  xpToNextLevel: number;
+  totalXp: number;
+  streak: number;
+  longestStreak: number;
+  achievements: Array<{
+    id: string;
+    title: string;
+    description: string;
+    icon: string;
+    xpReward: number;
+    unlockedAt: string | null;
+    progress: number;
+    target: number;
+  }>;
+  recentXp: Array<{ amount: number; reason: string; timestamp: string }>;
+}

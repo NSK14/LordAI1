@@ -15,7 +15,9 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ShareTokenRouteImport } from './routes/share/$token'
+import { Route as ApiTitleRouteImport } from './routes/api/title'
 import { Route as ApiSharesRouteImport } from './routes/api/shares'
+import { Route as ApiSearchRouteImport } from './routes/api/search'
 import { Route as ApiOpenrouterTestRouteImport } from './routes/api/openrouter-test'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
@@ -24,6 +26,7 @@ import { Route as AuthenticatedTasksRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedStudyRouteImport } from './routes/_authenticated/study'
 import { Route as AuthenticatedStatisticsRouteImport } from './routes/_authenticated/statistics'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedSearchRouteImport } from './routes/_authenticated/search'
 import { Route as AuthenticatedProgressRouteImport } from './routes/_authenticated/progress'
 import { Route as AuthenticatedProductivityRouteImport } from './routes/_authenticated/productivity'
 import { Route as AuthenticatedPracticeRouteImport } from './routes/_authenticated/practice'
@@ -36,9 +39,13 @@ import { Route as AuthenticatedChatRouteImport } from './routes/_authenticated/c
 import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
 import { Route as AuthenticatedBoardsRouteImport } from './routes/_authenticated/boards'
 import { Route as ApiStudyPlansIndexRouteImport } from './routes/api/study-plans/index'
+import { Route as ApiProjectsIndexRouteImport } from './routes/api/projects/index'
+import { Route as ApiKnowledgeIndexRouteImport } from './routes/api/knowledge/index'
+import { Route as AuthenticatedProjectsIndexRouteImport } from './routes/_authenticated/projects/index'
 import { Route as ApiStudyPlansIdRouteImport } from './routes/api/study-plans/$id'
 import { Route as ApiSharesTokenRouteImport } from './routes/api/shares/$token'
 import { Route as ApiSharedTokenRouteImport } from './routes/api/shared/$token'
+import { Route as ApiProjectsIdRouteImport } from './routes/api/projects/$id'
 import { Route as ApiLearningWhiteboardRouteImport } from './routes/api/learning/whiteboard'
 import { Route as ApiLearningVoiceRouteImport } from './routes/api/learning/voice'
 import { Route as ApiLearningSessionRouteImport } from './routes/api/learning/session'
@@ -51,6 +58,10 @@ import { Route as ApiLearningFlashcardsRouteImport } from './routes/api/learning
 import { Route as ApiLearningFeaturesRouteImport } from './routes/api/learning/features'
 import { Route as ApiLearningExamsRouteImport } from './routes/api/learning/exams'
 import { Route as ApiLearningAnalyticsRouteImport } from './routes/api/learning/analytics'
+import { Route as ApiKnowledgeUploadRouteImport } from './routes/api/knowledge/upload'
+import { Route as ApiKnowledgeIdRouteImport } from './routes/api/knowledge/$id'
+import { Route as ApiBrainContextRouteImport } from './routes/api/brain/context'
+import { Route as AuthenticatedProjectsIdRouteImport } from './routes/_authenticated/projects/$id'
 import { Route as ApiLearningSourcesIngestRouteImport } from './routes/api/learning/sources/ingest'
 import { Route as ApiStudyPlansIdTasksIndexRouteImport } from './routes/api/study-plans/$id/tasks/index'
 import { Route as ApiResearchIdSourcesIndexRouteImport } from './routes/api/research/$id/sources/index'
@@ -88,9 +99,19 @@ const ShareTokenRoute = ShareTokenRouteImport.update({
   path: '/share/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTitleRoute = ApiTitleRouteImport.update({
+  id: '/api/title',
+  path: '/api/title',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSharesRoute = ApiSharesRouteImport.update({
   id: '/api/shares',
   path: '/api/shares',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSearchRoute = ApiSearchRouteImport.update({
+  id: '/api/search',
+  path: '/api/search',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiOpenrouterTestRoute = ApiOpenrouterTestRouteImport.update({
@@ -131,6 +152,11 @@ const AuthenticatedStatisticsRoute = AuthenticatedStatisticsRouteImport.update({
 const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSearchRoute = AuthenticatedSearchRouteImport.update({
+  id: '/search',
+  path: '/search',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedProgressRoute = AuthenticatedProgressRouteImport.update({
@@ -194,6 +220,22 @@ const ApiStudyPlansIndexRoute = ApiStudyPlansIndexRouteImport.update({
   path: '/api/study-plans/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiProjectsIndexRoute = ApiProjectsIndexRouteImport.update({
+  id: '/api/projects/',
+  path: '/api/projects/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiKnowledgeIndexRoute = ApiKnowledgeIndexRouteImport.update({
+  id: '/api/knowledge/',
+  path: '/api/knowledge/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedProjectsIndexRoute =
+  AuthenticatedProjectsIndexRouteImport.update({
+    id: '/projects/',
+    path: '/projects/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const ApiStudyPlansIdRoute = ApiStudyPlansIdRouteImport.update({
   id: '/api/study-plans/$id',
   path: '/api/study-plans/$id',
@@ -207,6 +249,11 @@ const ApiSharesTokenRoute = ApiSharesTokenRouteImport.update({
 const ApiSharedTokenRoute = ApiSharedTokenRouteImport.update({
   id: '/api/shared/$token',
   path: '/api/shared/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiProjectsIdRoute = ApiProjectsIdRouteImport.update({
+  id: '/api/projects/$id',
+  path: '/api/projects/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiLearningWhiteboardRoute = ApiLearningWhiteboardRouteImport.update({
@@ -269,6 +316,26 @@ const ApiLearningAnalyticsRoute = ApiLearningAnalyticsRouteImport.update({
   path: '/api/learning/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiKnowledgeUploadRoute = ApiKnowledgeUploadRouteImport.update({
+  id: '/api/knowledge/upload',
+  path: '/api/knowledge/upload',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiKnowledgeIdRoute = ApiKnowledgeIdRouteImport.update({
+  id: '/api/knowledge/$id',
+  path: '/api/knowledge/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiBrainContextRoute = ApiBrainContextRouteImport.update({
+  id: '/api/brain/context',
+  path: '/api/brain/context',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedProjectsIdRoute = AuthenticatedProjectsIdRouteImport.update({
+  id: '/projects/$id',
+  path: '/projects/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const ApiLearningSourcesIngestRoute =
   ApiLearningSourcesIngestRouteImport.update({
     id: '/api/learning/sources/ingest',
@@ -328,6 +395,7 @@ export interface FileRoutesByFullPath {
   '/practice': typeof AuthenticatedPracticeRoute
   '/productivity': typeof AuthenticatedProductivityRoute
   '/progress': typeof AuthenticatedProgressRoute
+  '/search': typeof AuthenticatedSearchRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/statistics': typeof AuthenticatedStatisticsRoute
   '/study': typeof AuthenticatedStudyRoute
@@ -336,8 +404,14 @@ export interface FileRoutesByFullPath {
   '/api/chat': typeof ApiChatRoute
   '/api/health': typeof ApiHealthRoute
   '/api/openrouter-test': typeof ApiOpenrouterTestRoute
+  '/api/search': typeof ApiSearchRoute
   '/api/shares': typeof ApiSharesRouteWithChildren
+  '/api/title': typeof ApiTitleRoute
   '/share/$token': typeof ShareTokenRoute
+  '/projects/$id': typeof AuthenticatedProjectsIdRoute
+  '/api/brain/context': typeof ApiBrainContextRoute
+  '/api/knowledge/$id': typeof ApiKnowledgeIdRoute
+  '/api/knowledge/upload': typeof ApiKnowledgeUploadRoute
   '/api/learning/analytics': typeof ApiLearningAnalyticsRoute
   '/api/learning/exams': typeof ApiLearningExamsRoute
   '/api/learning/features': typeof ApiLearningFeaturesRoute
@@ -350,9 +424,13 @@ export interface FileRoutesByFullPath {
   '/api/learning/session': typeof ApiLearningSessionRoute
   '/api/learning/voice': typeof ApiLearningVoiceRoute
   '/api/learning/whiteboard': typeof ApiLearningWhiteboardRoute
+  '/api/projects/$id': typeof ApiProjectsIdRoute
   '/api/shared/$token': typeof ApiSharedTokenRoute
   '/api/shares/$token': typeof ApiSharesTokenRoute
   '/api/study-plans/$id': typeof ApiStudyPlansIdRouteWithChildren
+  '/projects/': typeof AuthenticatedProjectsIndexRoute
+  '/api/knowledge/': typeof ApiKnowledgeIndexRoute
+  '/api/projects/': typeof ApiProjectsIndexRoute
   '/api/study-plans/': typeof ApiStudyPlansIndexRoute
   '/api/learning/sources/ingest': typeof ApiLearningSourcesIngestRoute
   '/api/study-plans/$id/ai/generate': typeof ApiStudyPlansIdAiGenerateRoute
@@ -378,6 +456,7 @@ export interface FileRoutesByTo {
   '/practice': typeof AuthenticatedPracticeRoute
   '/productivity': typeof AuthenticatedProductivityRoute
   '/progress': typeof AuthenticatedProgressRoute
+  '/search': typeof AuthenticatedSearchRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/statistics': typeof AuthenticatedStatisticsRoute
   '/study': typeof AuthenticatedStudyRoute
@@ -386,8 +465,14 @@ export interface FileRoutesByTo {
   '/api/chat': typeof ApiChatRoute
   '/api/health': typeof ApiHealthRoute
   '/api/openrouter-test': typeof ApiOpenrouterTestRoute
+  '/api/search': typeof ApiSearchRoute
   '/api/shares': typeof ApiSharesRouteWithChildren
+  '/api/title': typeof ApiTitleRoute
   '/share/$token': typeof ShareTokenRoute
+  '/projects/$id': typeof AuthenticatedProjectsIdRoute
+  '/api/brain/context': typeof ApiBrainContextRoute
+  '/api/knowledge/$id': typeof ApiKnowledgeIdRoute
+  '/api/knowledge/upload': typeof ApiKnowledgeUploadRoute
   '/api/learning/analytics': typeof ApiLearningAnalyticsRoute
   '/api/learning/exams': typeof ApiLearningExamsRoute
   '/api/learning/features': typeof ApiLearningFeaturesRoute
@@ -400,9 +485,13 @@ export interface FileRoutesByTo {
   '/api/learning/session': typeof ApiLearningSessionRoute
   '/api/learning/voice': typeof ApiLearningVoiceRoute
   '/api/learning/whiteboard': typeof ApiLearningWhiteboardRoute
+  '/api/projects/$id': typeof ApiProjectsIdRoute
   '/api/shared/$token': typeof ApiSharedTokenRoute
   '/api/shares/$token': typeof ApiSharesTokenRoute
   '/api/study-plans/$id': typeof ApiStudyPlansIdRouteWithChildren
+  '/projects': typeof AuthenticatedProjectsIndexRoute
+  '/api/knowledge': typeof ApiKnowledgeIndexRoute
+  '/api/projects': typeof ApiProjectsIndexRoute
   '/api/study-plans': typeof ApiStudyPlansIndexRoute
   '/api/learning/sources/ingest': typeof ApiLearningSourcesIngestRoute
   '/api/study-plans/$id/ai/generate': typeof ApiStudyPlansIdAiGenerateRoute
@@ -430,6 +519,7 @@ export interface FileRoutesById {
   '/_authenticated/practice': typeof AuthenticatedPracticeRoute
   '/_authenticated/productivity': typeof AuthenticatedProductivityRoute
   '/_authenticated/progress': typeof AuthenticatedProgressRoute
+  '/_authenticated/search': typeof AuthenticatedSearchRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/statistics': typeof AuthenticatedStatisticsRoute
   '/_authenticated/study': typeof AuthenticatedStudyRoute
@@ -438,8 +528,14 @@ export interface FileRoutesById {
   '/api/chat': typeof ApiChatRoute
   '/api/health': typeof ApiHealthRoute
   '/api/openrouter-test': typeof ApiOpenrouterTestRoute
+  '/api/search': typeof ApiSearchRoute
   '/api/shares': typeof ApiSharesRouteWithChildren
+  '/api/title': typeof ApiTitleRoute
   '/share/$token': typeof ShareTokenRoute
+  '/_authenticated/projects/$id': typeof AuthenticatedProjectsIdRoute
+  '/api/brain/context': typeof ApiBrainContextRoute
+  '/api/knowledge/$id': typeof ApiKnowledgeIdRoute
+  '/api/knowledge/upload': typeof ApiKnowledgeUploadRoute
   '/api/learning/analytics': typeof ApiLearningAnalyticsRoute
   '/api/learning/exams': typeof ApiLearningExamsRoute
   '/api/learning/features': typeof ApiLearningFeaturesRoute
@@ -452,9 +548,13 @@ export interface FileRoutesById {
   '/api/learning/session': typeof ApiLearningSessionRoute
   '/api/learning/voice': typeof ApiLearningVoiceRoute
   '/api/learning/whiteboard': typeof ApiLearningWhiteboardRoute
+  '/api/projects/$id': typeof ApiProjectsIdRoute
   '/api/shared/$token': typeof ApiSharedTokenRoute
   '/api/shares/$token': typeof ApiSharesTokenRoute
   '/api/study-plans/$id': typeof ApiStudyPlansIdRouteWithChildren
+  '/_authenticated/projects/': typeof AuthenticatedProjectsIndexRoute
+  '/api/knowledge/': typeof ApiKnowledgeIndexRoute
+  '/api/projects/': typeof ApiProjectsIndexRoute
   '/api/study-plans/': typeof ApiStudyPlansIndexRoute
   '/api/learning/sources/ingest': typeof ApiLearningSourcesIngestRoute
   '/api/study-plans/$id/ai/generate': typeof ApiStudyPlansIdAiGenerateRoute
@@ -482,6 +582,7 @@ export interface FileRouteTypes {
     | '/practice'
     | '/productivity'
     | '/progress'
+    | '/search'
     | '/settings'
     | '/statistics'
     | '/study'
@@ -490,8 +591,14 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/api/health'
     | '/api/openrouter-test'
+    | '/api/search'
     | '/api/shares'
+    | '/api/title'
     | '/share/$token'
+    | '/projects/$id'
+    | '/api/brain/context'
+    | '/api/knowledge/$id'
+    | '/api/knowledge/upload'
     | '/api/learning/analytics'
     | '/api/learning/exams'
     | '/api/learning/features'
@@ -504,9 +611,13 @@ export interface FileRouteTypes {
     | '/api/learning/session'
     | '/api/learning/voice'
     | '/api/learning/whiteboard'
+    | '/api/projects/$id'
     | '/api/shared/$token'
     | '/api/shares/$token'
     | '/api/study-plans/$id'
+    | '/projects/'
+    | '/api/knowledge/'
+    | '/api/projects/'
     | '/api/study-plans/'
     | '/api/learning/sources/ingest'
     | '/api/study-plans/$id/ai/generate'
@@ -532,6 +643,7 @@ export interface FileRouteTypes {
     | '/practice'
     | '/productivity'
     | '/progress'
+    | '/search'
     | '/settings'
     | '/statistics'
     | '/study'
@@ -540,8 +652,14 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/api/health'
     | '/api/openrouter-test'
+    | '/api/search'
     | '/api/shares'
+    | '/api/title'
     | '/share/$token'
+    | '/projects/$id'
+    | '/api/brain/context'
+    | '/api/knowledge/$id'
+    | '/api/knowledge/upload'
     | '/api/learning/analytics'
     | '/api/learning/exams'
     | '/api/learning/features'
@@ -554,9 +672,13 @@ export interface FileRouteTypes {
     | '/api/learning/session'
     | '/api/learning/voice'
     | '/api/learning/whiteboard'
+    | '/api/projects/$id'
     | '/api/shared/$token'
     | '/api/shares/$token'
     | '/api/study-plans/$id'
+    | '/projects'
+    | '/api/knowledge'
+    | '/api/projects'
     | '/api/study-plans'
     | '/api/learning/sources/ingest'
     | '/api/study-plans/$id/ai/generate'
@@ -583,6 +705,7 @@ export interface FileRouteTypes {
     | '/_authenticated/practice'
     | '/_authenticated/productivity'
     | '/_authenticated/progress'
+    | '/_authenticated/search'
     | '/_authenticated/settings'
     | '/_authenticated/statistics'
     | '/_authenticated/study'
@@ -591,8 +714,14 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/api/health'
     | '/api/openrouter-test'
+    | '/api/search'
     | '/api/shares'
+    | '/api/title'
     | '/share/$token'
+    | '/_authenticated/projects/$id'
+    | '/api/brain/context'
+    | '/api/knowledge/$id'
+    | '/api/knowledge/upload'
     | '/api/learning/analytics'
     | '/api/learning/exams'
     | '/api/learning/features'
@@ -605,9 +734,13 @@ export interface FileRouteTypes {
     | '/api/learning/session'
     | '/api/learning/voice'
     | '/api/learning/whiteboard'
+    | '/api/projects/$id'
     | '/api/shared/$token'
     | '/api/shares/$token'
     | '/api/study-plans/$id'
+    | '/_authenticated/projects/'
+    | '/api/knowledge/'
+    | '/api/projects/'
     | '/api/study-plans/'
     | '/api/learning/sources/ingest'
     | '/api/study-plans/$id/ai/generate'
@@ -627,8 +760,13 @@ export interface RootRouteChildren {
   ApiChatRoute: typeof ApiChatRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiOpenrouterTestRoute: typeof ApiOpenrouterTestRoute
+  ApiSearchRoute: typeof ApiSearchRoute
   ApiSharesRoute: typeof ApiSharesRouteWithChildren
+  ApiTitleRoute: typeof ApiTitleRoute
   ShareTokenRoute: typeof ShareTokenRoute
+  ApiBrainContextRoute: typeof ApiBrainContextRoute
+  ApiKnowledgeIdRoute: typeof ApiKnowledgeIdRoute
+  ApiKnowledgeUploadRoute: typeof ApiKnowledgeUploadRoute
   ApiLearningAnalyticsRoute: typeof ApiLearningAnalyticsRoute
   ApiLearningExamsRoute: typeof ApiLearningExamsRoute
   ApiLearningFeaturesRoute: typeof ApiLearningFeaturesRoute
@@ -641,8 +779,11 @@ export interface RootRouteChildren {
   ApiLearningSessionRoute: typeof ApiLearningSessionRoute
   ApiLearningVoiceRoute: typeof ApiLearningVoiceRoute
   ApiLearningWhiteboardRoute: typeof ApiLearningWhiteboardRoute
+  ApiProjectsIdRoute: typeof ApiProjectsIdRoute
   ApiSharedTokenRoute: typeof ApiSharedTokenRoute
   ApiStudyPlansIdRoute: typeof ApiStudyPlansIdRouteWithChildren
+  ApiKnowledgeIndexRoute: typeof ApiKnowledgeIndexRoute
+  ApiProjectsIndexRoute: typeof ApiProjectsIndexRoute
   ApiStudyPlansIndexRoute: typeof ApiStudyPlansIndexRoute
   ApiLearningSourcesIngestRoute: typeof ApiLearningSourcesIngestRoute
   ApiResearchIdSourcesIndexRoute: typeof ApiResearchIdSourcesIndexRoute
@@ -692,11 +833,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShareTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/title': {
+      id: '/api/title'
+      path: '/api/title'
+      fullPath: '/api/title'
+      preLoaderRoute: typeof ApiTitleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/shares': {
       id: '/api/shares'
       path: '/api/shares'
       fullPath: '/api/shares'
       preLoaderRoute: typeof ApiSharesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/search': {
+      id: '/api/search'
+      path: '/api/search'
+      fullPath: '/api/search'
+      preLoaderRoute: typeof ApiSearchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/openrouter-test': {
@@ -753,6 +908,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/search': {
+      id: '/_authenticated/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof AuthenticatedSearchRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/progress': {
@@ -839,6 +1001,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiStudyPlansIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/projects/': {
+      id: '/api/projects/'
+      path: '/api/projects'
+      fullPath: '/api/projects/'
+      preLoaderRoute: typeof ApiProjectsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/knowledge/': {
+      id: '/api/knowledge/'
+      path: '/api/knowledge'
+      fullPath: '/api/knowledge/'
+      preLoaderRoute: typeof ApiKnowledgeIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/projects/': {
+      id: '/_authenticated/projects/'
+      path: '/projects'
+      fullPath: '/projects/'
+      preLoaderRoute: typeof AuthenticatedProjectsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/api/study-plans/$id': {
       id: '/api/study-plans/$id'
       path: '/api/study-plans/$id'
@@ -858,6 +1041,13 @@ declare module '@tanstack/react-router' {
       path: '/api/shared/$token'
       fullPath: '/api/shared/$token'
       preLoaderRoute: typeof ApiSharedTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/projects/$id': {
+      id: '/api/projects/$id'
+      path: '/api/projects/$id'
+      fullPath: '/api/projects/$id'
+      preLoaderRoute: typeof ApiProjectsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/learning/whiteboard': {
@@ -944,6 +1134,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiLearningAnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/knowledge/upload': {
+      id: '/api/knowledge/upload'
+      path: '/api/knowledge/upload'
+      fullPath: '/api/knowledge/upload'
+      preLoaderRoute: typeof ApiKnowledgeUploadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/knowledge/$id': {
+      id: '/api/knowledge/$id'
+      path: '/api/knowledge/$id'
+      fullPath: '/api/knowledge/$id'
+      preLoaderRoute: typeof ApiKnowledgeIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/brain/context': {
+      id: '/api/brain/context'
+      path: '/api/brain/context'
+      fullPath: '/api/brain/context'
+      preLoaderRoute: typeof ApiBrainContextRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/projects/$id': {
+      id: '/_authenticated/projects/$id'
+      path: '/projects/$id'
+      fullPath: '/projects/$id'
+      preLoaderRoute: typeof AuthenticatedProjectsIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/api/learning/sources/ingest': {
       id: '/api/learning/sources/ingest'
       path: '/api/learning/sources/ingest'
@@ -1008,11 +1226,14 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPracticeRoute: typeof AuthenticatedPracticeRoute
   AuthenticatedProductivityRoute: typeof AuthenticatedProductivityRoute
   AuthenticatedProgressRoute: typeof AuthenticatedProgressRoute
+  AuthenticatedSearchRoute: typeof AuthenticatedSearchRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedStatisticsRoute: typeof AuthenticatedStatisticsRoute
   AuthenticatedStudyRoute: typeof AuthenticatedStudyRoute
   AuthenticatedTasksRoute: typeof AuthenticatedTasksRoute
   AuthenticatedVoiceRoute: typeof AuthenticatedVoiceRoute
+  AuthenticatedProjectsIdRoute: typeof AuthenticatedProjectsIdRoute
+  AuthenticatedProjectsIndexRoute: typeof AuthenticatedProjectsIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -1027,11 +1248,14 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPracticeRoute: AuthenticatedPracticeRoute,
   AuthenticatedProductivityRoute: AuthenticatedProductivityRoute,
   AuthenticatedProgressRoute: AuthenticatedProgressRoute,
+  AuthenticatedSearchRoute: AuthenticatedSearchRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedStatisticsRoute: AuthenticatedStatisticsRoute,
   AuthenticatedStudyRoute: AuthenticatedStudyRoute,
   AuthenticatedTasksRoute: AuthenticatedTasksRoute,
   AuthenticatedVoiceRoute: AuthenticatedVoiceRoute,
+  AuthenticatedProjectsIdRoute: AuthenticatedProjectsIdRoute,
+  AuthenticatedProjectsIndexRoute: AuthenticatedProjectsIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -1078,8 +1302,13 @@ const rootRouteChildren: RootRouteChildren = {
   ApiChatRoute: ApiChatRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiOpenrouterTestRoute: ApiOpenrouterTestRoute,
+  ApiSearchRoute: ApiSearchRoute,
   ApiSharesRoute: ApiSharesRouteWithChildren,
+  ApiTitleRoute: ApiTitleRoute,
   ShareTokenRoute: ShareTokenRoute,
+  ApiBrainContextRoute: ApiBrainContextRoute,
+  ApiKnowledgeIdRoute: ApiKnowledgeIdRoute,
+  ApiKnowledgeUploadRoute: ApiKnowledgeUploadRoute,
   ApiLearningAnalyticsRoute: ApiLearningAnalyticsRoute,
   ApiLearningExamsRoute: ApiLearningExamsRoute,
   ApiLearningFeaturesRoute: ApiLearningFeaturesRoute,
@@ -1092,8 +1321,11 @@ const rootRouteChildren: RootRouteChildren = {
   ApiLearningSessionRoute: ApiLearningSessionRoute,
   ApiLearningVoiceRoute: ApiLearningVoiceRoute,
   ApiLearningWhiteboardRoute: ApiLearningWhiteboardRoute,
+  ApiProjectsIdRoute: ApiProjectsIdRoute,
   ApiSharedTokenRoute: ApiSharedTokenRoute,
   ApiStudyPlansIdRoute: ApiStudyPlansIdRouteWithChildren,
+  ApiKnowledgeIndexRoute: ApiKnowledgeIndexRoute,
+  ApiProjectsIndexRoute: ApiProjectsIndexRoute,
   ApiStudyPlansIndexRoute: ApiStudyPlansIndexRoute,
   ApiLearningSourcesIngestRoute: ApiLearningSourcesIngestRoute,
   ApiResearchIdSourcesIndexRoute: ApiResearchIdSourcesIndexRoute,

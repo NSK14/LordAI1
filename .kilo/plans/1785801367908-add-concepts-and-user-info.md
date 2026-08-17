@@ -6,6 +6,7 @@ Allow students to add concepts to their study plan and ensure StudyHeader always
 Requirements:
 
 1. Add Concept UI
+
 - Add an "Add Concept" button to ConceptBrowser.
 - Open a modal/dialog when clicked.
 - Allow the user to search/select available concepts.
@@ -14,7 +15,8 @@ Requirements:
 - If the user has no study plan, handle plan creation safely instead of creating duplicate plans.
 
 2. StudyHeader Progress
-Display:
+   Display:
+
 - Mastery percentage
 - Total concept count
 - Completed/mastered concept count where available
@@ -22,9 +24,10 @@ Display:
 Keep the existing StudyHeader design and make the new information responsive on mobile.
 
 3. Reactive Updates
-This is critical.
+   This is critical.
 
 After successfully adding a concept:
+
 - Update the concept list immediately.
 - Update concept count immediately.
 - Refresh/recalculate mastery statistics when necessary.
@@ -34,30 +37,33 @@ After successfully adding a concept:
 If the existing data-fetching architecture has a cache/query invalidation mechanism, use it rather than creating a second state-management system.
 
 4. Data Source
-Reuse the existing DashboardView mastery calculations and existing learning client/services where appropriate.
+   Reuse the existing DashboardView mastery calculations and existing learning client/services where appropriate.
 
 Do NOT duplicate mastery calculation logic if it already exists.
 
 5. Error Handling
+
 - Show a clear loading state while adding.
 - Prevent double submission.
 - Show a useful error if adding fails.
 - Do not leave the UI in an optimistic state if the backend operation fails.
 
 6. Preserve Existing Functionality
-Do not redesign Study.
-Do not modify unrelated routes/components.
-Do not create duplicate API endpoints.
-Do not bypass authentication or RLS.
-Reuse existing components, services, types, and UI patterns wherever possible.
+   Do not redesign Study.
+   Do not modify unrelated routes/components.
+   Do not create duplicate API endpoints.
+   Do not bypass authentication or RLS.
+   Reuse existing components, services, types, and UI patterns wherever possible.
 
 7. Validation
-Before finishing:
+   Before finishing:
+
 - Run npm run build
 - Run npx tsc --noEmit
 - Run npm run lint
 
 Then test:
+
 1. Open Study.
 2. Add a concept.
 3. Confirm it appears in the concept list.

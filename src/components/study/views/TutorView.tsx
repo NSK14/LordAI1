@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, MessageSquare, Bot, User, Copy, Check } from "lucide-react";
+import { Send, MessageSquare, Bot, User, Copy, Check, Brain, Lightbulb } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { streamChat } from "@/lib/study-chat";
 import { useCurrentUser } from "@/hooks/use-current-user";
@@ -13,10 +13,13 @@ import {
   searchTutorSessions,
   renameTutorSession,
   deleteTutorSession,
+  recordAttempt,
 } from "@/lib/learning/client";
 import { StudyHeader } from "../StudyHeader";
 import { selectNextConcept } from "@/lib/learning/mastery";
 import { generateChatTitle, shouldGenerateTitle } from "@/lib/chat-title";
+import { generateConversationTitle } from "@/lib/title-service";
+import { detectTopic } from "@/lib/learning/brain";
 import type { LearningSnapshot, StudyView, TutorMode } from "../types";
 import type { TutorSessionRow, LearningSession } from "@/lib/learning/types";
 import { TutorSidebar } from "../TutorSidebar";
@@ -286,6 +289,11 @@ export function TutorView({ snapshot, userId, conceptId, onBack }: TutorViewProp
     setDraft("");
     setIsThinking(true);
 
+    const optimalMode = detectOptimalMode(text);
+    if (optimalMode !== tutorMode) {
+      setAdaptiveMode(optimalMode);
+    }
+
     let persistedSessionId = sessionId;
 
     if (!persistedSessionId) {
@@ -348,7 +356,7 @@ export function TutorView({ snapshot, userId, conceptId, onBack }: TutorViewProp
       `Subject: ${activeConcept?.subject ?? "General"}.`,
       `Current concept: ${activeConcept?.title ?? "any topic"} - ${activeConcept?.description ?? ""}.`,
       customTag,
-      `Teaching mode: ${MODE_LABELS[tutorMode]} - Guide the student with questions and hints before revealing answers.`,
+      `Teaching mode: ${MODE_LABELS[adaptiveMode ?? tutorMode]} - Guide the student with questions and hints before revealing answers.`,
       `Guidelines: Use short, clear chunks. Offer a hint, concrete example, and a one-question understanding check. Label worked examples as AI-generated.`,
       sourceContext
         ? `PRIVATE STUDENT MATERIALS:\n${sourceContext}`
@@ -398,22 +406,66 @@ export function TutorView({ snapshot, userId, conceptId, onBack }: TutorViewProp
           ),
         );
 
+        const masterySignal = analyzeMasterySignal(text);
+        if (masterySignal && activeConcept) {
+          masteryUpdateQueueRef.current.push(masterySignal);
+        }
+
         const currentSession = sessions.find((s) => s.id === persistedSessionId);
         if (
           currentSession &&
           shouldGenerateTitle(currentSession.title) &&
           !titleGeneratedForRef.current
         ) {
-          const generated = generateChatTitle(text);
-          if (generated) {
-            titleGeneratedForRef.current = persistedSessionId;
-            void renameTutorSession(user.id, persistedSessionId, generated).catch(() => {
+          titleGeneratedForRef.current = persistedSessionId;
+          generateConversationTitle(text, persistedSessionId)
+            .then((generated) => {
+              if (generated) {
+                void renameTutorSession(user.id, persistedSessionId, generated).catch(() => {
+                  titleGeneratedForRef.current = null;
+                });
+                setSessions((prev) =>
+                  prev.map((s) => (s.id === persistedSessionId ? { ...s, title: generated } : s)),
+                );
+              }
+            })
+            .catch(() => {
               titleGeneratedForRef.current = null;
             });
-            setSessions((prev) =>
-              prev.map((s) => (s.id === persistedSessionId ? { ...s, title: generated } : s)),
-            );
-          }
+        }
+
+        const allMessages = [
+          ...messages,
+          userMessage,
+          { role: "assistant" as const, content: answer },
+        ];
+        if (persistedSessionId && allMessages.length >= 4) {
+          void (async () => {
+            try {
+              const response = await fetch(
+                `${import.meta.env.VITE_API_BASE_URL || ""}/api/learning/session`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    action: "memory_extract",
+                    sessionId: persistedSessionId,
+                    messages: allMessages
+                      .slice(-10)
+                      .map((m) => ({ role: m.role, content: m.content })),
+                  }),
+                },
+              );
+              if (response.ok) {
+                const data = await response.json();
+                if (data.memories?.length > 0) {
+                  console.log(`[Tutor] Extracted ${data.memories.length} memories`);
+                }
+              }
+            } catch {
+              // memory extraction is non-critical
+            }
+          })();
         }
       }
     } catch {

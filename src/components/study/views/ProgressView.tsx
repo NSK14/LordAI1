@@ -1,4 +1,5 @@
 import { useState } from "react";
+import React from "react";
 import { motion } from "framer-motion";
 import {
   BarChart3,
@@ -9,13 +10,32 @@ import {
   TrendingUp,
   Award,
   Flame,
+  Target,
+  Brain,
 } from "lucide-react";
+import {
+  Radar,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+} from "recharts";
 import { cn } from "@/lib/utils";
 import { StudyHeader } from "../StudyHeader";
 import { MasteryBadge } from "../ui/MasteryBadge";
 import { DifficultyStars } from "../ui/DifficultyStars";
 import { StatCard } from "../ui/StatCard";
 import { EmptyState } from "../ui/EmptyState";
+import { LearningJourney } from "../ui/LearningJourney";
+import { getLearnerStats } from "@/lib/learning/gamification";
+import { buildLearningJourney } from "@/lib/learning/journey";
 import type { LearningSnapshot, StudyView } from "../types";
 
 interface ProgressViewProps {
@@ -84,6 +104,25 @@ export function ProgressView({ snapshot, userId, onNavigate, onBack, refresh }: 
     }))
     .sort((a, b) => b.avgMastery - a.avgMastery);
 
+  const learnerStats = getLearnerStats({
+    attempts,
+    sessions,
+    history: snapshot.history ?? [],
+    flashcards: (snapshot.flashcards ?? []).map((f) => ({ reviews: [] })),
+    exams: snapshot.exams ?? [],
+    mastery,
+    analytics: snapshot.analytics,
+    daily_goals: snapshot.daily_goals,
+  });
+
+  const journey = buildLearningJourney(
+    concepts,
+    mastery,
+    snapshot.history ?? [],
+    sessions,
+    attempts,
+  );
+
   const recentAttempts = attempts
     .slice()
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
@@ -140,10 +179,82 @@ export function ProgressView({ snapshot, userId, onNavigate, onBack, refresh }: 
         />
       </motion.section>
 
+      {learnerStats && (
+        <motion.section
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+          className="mb-8"
+        >
+          <h3 className="mb-4 font-display text-lg font-semibold text-foreground">
+            Learning Profile
+          </h3>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-xl border border-border/60 bg-card p-4 text-center">
+              <div className="text-3xl font-bold text-primary">Lvl {learnerStats.level}</div>
+              <div className="text-xs text-muted-foreground mt-1">Level</div>
+              <div className="mt-2 h-1.5 w-full rounded-full bg-muted/30 overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{
+                    width: `${Math.round((learnerStats.xp / learnerStats.xpToNextLevel) * 100)}%`,
+                  }}
+                  transition={{ duration: 0.6 }}
+                  className="h-full rounded-full bg-primary"
+                />
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">
+                {learnerStats.xp} / {learnerStats.xpToNextLevel} XP
+              </div>
+            </div>
+            <div className="rounded-xl border border-orange-500/30 bg-orange-500/5 p-4 text-center">
+              <div className="text-3xl font-bold text-orange-500">{learnerStats.streak}</div>
+              <div className="text-xs text-muted-foreground mt-1">Day Streak</div>
+              <div className="text-xs text-orange-400 mt-1">
+                Best: {learnerStats.longestStreak}d
+              </div>
+            </div>
+            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-center">
+              <div className="text-3xl font-bold text-emerald-500">
+                {learnerStats.achievements.filter((a) => a.unlockedAt).length}
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">Achievements</div>
+              <div className="text-xs text-emerald-400 mt-1">
+                {learnerStats.achievements.length} total
+              </div>
+            </div>
+            <div className="rounded-xl border border-violet-500/30 bg-violet-500/5 p-4 text-center">
+              <div className="text-3xl font-bold text-violet-500">{learnerStats.totalXp}</div>
+              <div className="text-xs text-muted-foreground mt-1">Total XP</div>
+              <div className="text-xs text-violet-400 mt-1">
+                {learnerStats.recentXp.length} recent activities
+              </div>
+            </div>
+          </div>
+        </motion.section>
+      )}
+
       <motion.section
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.2 }}
+        className="mb-8"
+      >
+        <h3 className="mb-4 font-display text-lg font-semibold text-foreground">
+          Learning Journey
+        </h3>
+        <LearningJourney
+          events={journey.events}
+          stats={learnerStats}
+          snapshot={snapshot}
+          onConceptClick={(id) => onNavigate("concepts")}
+        />
+      </motion.section>
+
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.3 }}
         className="mb-8"
       >
         <h3 className="mb-4 font-display text-lg font-semibold text-foreground">
@@ -261,6 +372,83 @@ export function ProgressView({ snapshot, userId, onNavigate, onBack, refresh }: 
             </div>
           )}
         </motion.section>
+
+        {subjectList.length > 0 && (
+          <motion.section
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.5 }}
+            className="mb-8"
+          >
+            <h3 className="mb-4 font-display text-lg font-semibold text-foreground">
+              Subject Radar
+            </h3>
+            <div className="rounded-xl border border-border/60 bg-card p-4">
+              <ResponsiveContainer width="100%" height={300}>
+                <RadarChart
+                  data={subjectList.map((s) => ({ subject: s.subject, mastery: s.avgMastery }))}
+                >
+                  <PolarGrid />
+                  <PolarAngleAxis dataKey="subject" className="text-xs" />
+                  <PolarRadiusAxis angle={30} domain={[0, 100]} className="text-xs" />
+                  <Radar
+                    name="Mastery %"
+                    dataKey="mastery"
+                    stroke="#3b82f6"
+                    fill="#3b82f6"
+                    fillOpacity={0.3}
+                  />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+          </motion.section>
+        )}
+
+        {snapshot.analytics && snapshot.analytics.length > 1 && (
+          <motion.section
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.6 }}
+            className="mb-8"
+          >
+            <h3 className="mb-4 font-display text-lg font-semibold text-foreground">
+              Study Consistency
+            </h3>
+            <div className="rounded-xl border border-border/60 bg-card p-4">
+              <ResponsiveContainer width="100%" height={250}>
+                <LineChart data={snapshot.analytics.slice(0, 14).reverse()}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted/30" />
+                  <XAxis dataKey="date" className="text-xs" tick={{ fontSize: 10 }} />
+                  <YAxis className="text-xs" tick={{ fontSize: 10 }} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px",
+                    }}
+                    labelStyle={{ color: "hsl(var(--foreground))" }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="study_time_seconds"
+                    stroke="#8b5cf6"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    name="Study Time (s)"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="questions_answered"
+                    stroke="#3b82f6"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    name="Questions"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </motion.section>
+        )}
       </div>
     </div>
   );

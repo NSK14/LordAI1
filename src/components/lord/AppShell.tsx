@@ -15,6 +15,7 @@ import {
   X,
   Calendar,
   BarChart3,
+  FolderOpen,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -29,6 +30,7 @@ import { DailyBriefing } from "./DailyBriefing";
 
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/projects", label: "Projects", icon: FolderOpen },
   { to: "/chat", label: "Chat", icon: MessageSquare },
   { to: "/study", label: "Study", icon: GraduationCap },
   { to: "/calendar", label: "Calendar", icon: Calendar },
@@ -38,7 +40,9 @@ const NAV = [
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
-const PRIMARY_NAV = NAV.filter((item) => ["/", "/chat", "/study", "/calendar"].includes(item.to));
+const PRIMARY_NAV = NAV.filter((item) =>
+  ["/", "/projects", "/chat", "/study", "/calendar"].includes(item.to),
+);
 const SECONDARY_NAV = NAV.filter((item) => !PRIMARY_NAV.some((primary) => primary.to === item.to));
 
 export function AppShell({ children }: { children: ReactNode }) {

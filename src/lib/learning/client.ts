@@ -351,19 +351,17 @@ export async function saveTutorMessage(
   sourceIds: string[] = [],
 ) {
   const idempotencyKey = `${sessionId}:${role}:${Date.now()}`;
-  const { error } = await db
-    .from("learning_messages")
-    .upsert(
-      {
-        user_id: userId,
-        session_id: sessionId,
-        role,
-        content,
-        source_ids: sourceIds,
-        idempotency_key: idempotencyKey,
-      },
-      { onConflict: "idempotency_key" },
-    );
+  const { error } = await db.from("learning_messages").upsert(
+    {
+      user_id: userId,
+      session_id: sessionId,
+      role,
+      content,
+      source_ids: sourceIds,
+      idempotency_key: idempotencyKey,
+    },
+    { onConflict: "idempotency_key" },
+  );
   if (error) throw error;
   const { error: sessionError } = await db
     .from("learning_sessions")
@@ -1036,6 +1034,17 @@ export async function recordAnalytics(
     body: JSON.stringify({ action: "record", ...input }),
   });
   if (!response.ok) throw new Error("Failed to record analytics");
+  return response.json();
+}
+
+// AI Study Session
+export async function startAutoStudy(conceptId?: string, durationMinutes = 25, focus?: string) {
+  const response = await authenticatedFetch(`${getApiBaseUrl()}/api/learning/session`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "auto_study", conceptId, durationMinutes, focus }),
+  });
+  if (!response.ok) throw new Error("Failed to start auto study session");
   return response.json();
 }
 

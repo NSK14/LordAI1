@@ -132,12 +132,17 @@ export const Route = createFileRoute("/api/learning/analytics")({
               totalQuestions: rows.reduce((sum: number, d) => sum + (d.questions_answered || 0), 0),
               totalCorrect: rows.reduce((sum: number, d) => sum + (d.correct_answers || 0), 0),
               totalTutorMessages: rows.reduce((sum: number, d) => sum + (d.tutor_messages || 0), 0),
-              totalFlashcards: rows.reduce((sum: number, d) => sum + (d.flashcards_reviewed || 0), 0),
+              totalFlashcards: rows.reduce(
+                (sum: number, d) => sum + (d.flashcards_reviewed || 0),
+                0,
+              ),
               totalNotes: rows.reduce((sum: number, d) => sum + (d.notes_created || 0), 0),
               totalExams: rows.reduce((sum: number, d) => sum + (d.exams_completed || 0), 0),
               totalVoiceMinutes: rows.reduce((sum: number, d) => sum + (d.voice_minutes || 0), 0),
-              totalWhiteboards:
-                rows.reduce((sum: number, d) => sum + (d.whiteboard_sessions || 0), 0),
+              totalWhiteboards: rows.reduce(
+                (sum: number, d) => sum + (d.whiteboard_sessions || 0),
+                0,
+              ),
               totalXP: rows.reduce((sum: number, d) => sum + (d.xp_earned || 0), 0),
               daysActive: rows.filter((d) => (d.study_time_seconds || 0) > 0).length,
               dailyData: rows,

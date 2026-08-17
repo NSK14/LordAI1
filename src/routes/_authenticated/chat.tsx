@@ -32,6 +32,7 @@ import { getApiBaseUrl } from "@/lib/api-config";
 import { getSupabaseAuthHeaders } from "@/lib/authenticated-fetch";
 import { emitDashboardEvent } from "@/lib/dashboard-service";
 import { generateChatTitle, shouldGenerateTitle } from "@/lib/chat-title";
+import { cancelTitleGeneration, generateConversationTitle } from "@/lib/title-service";
 import { cn } from "@/lib/utils";
 import { useMessageRealtime } from "@/lib/realtime/use-realtime-sync";
 import { createClientTag, markClientTagSent } from "@/lib/realtime/client-tag";
@@ -250,6 +251,15 @@ function ChatPage() {
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, []);
+
+  // Cancel any in-flight title generation when the page unmounts.
+  useEffect(() => {
+    return () => {
+      if (activeConversationIdRef.current) {
+        cancelTitleGeneration(activeConversationIdRef.current);
+      }
+    };
   }, []);
   const modeRef = useRef<LordMode>(mode);
   const requestBodyRef = useRef({
@@ -734,19 +744,22 @@ function ChatPage() {
   });
 
   // Generate a title for a conversation at most once, using the first meaningful
-  // user prompt, and persist it via the existing rename mutation. Never
-  // overwrites a conversation that has already been renamed (non-default title).
-  // Failures are logged and swallowed so the conversation stays usable.
-  const maybeGenerateTitle = (convId: string, userPrompt: string, storedTitle: string) => {
+  // user prompt. Prefers AI generation via /api/title and falls back to the
+  // improved heuristic. Never overwrites a conversation that has already been
+  // renamed (non-default title). Failures are logged and swallowed so the
+  // conversation stays usable.
+  const maybeGenerateTitle = async (convId: string, userPrompt: string, storedTitle: string) => {
     if (titleGeneratedForRef.current === convId) return;
     if (!shouldGenerateTitle(storedTitle)) {
       titleGeneratedForRef.current = convId;
       return;
     }
-    const generated = generateChatTitle(userPrompt);
-    if (!generated) return; // greetings only — keep default, retry on next prompt
     titleGeneratedForRef.current = convId;
-    renameMutation.mutateAsync({ id: convId, title: generated }).catch((err: unknown) => {
+    try {
+      const generated = await generateConversationTitle(userPrompt, convId);
+      if (!generated) return;
+      await renameMutation.mutateAsync({ id: convId, title: generated });
+    } catch (err) {
       console.error(
         JSON.stringify({
           event: "chat_title_generate_error",
@@ -756,7 +769,7 @@ function ChatPage() {
       );
       // Allow a later attempt if persistence failed.
       if (titleGeneratedForRef.current === convId) titleGeneratedForRef.current = null;
-    });
+    }
   };
 
   const deleteMutation = useMutation({
@@ -781,6 +794,8 @@ function ChatPage() {
         (old ?? []).filter((c) => c.id !== id),
       );
       qc.removeQueries({ queryKey: ["messages", id] });
+      // Cancel any in-flight title generation for this conversation.
+      cancelTitleGeneration(id);
       return { previous, id };
     },
     onError: (_err, id, context) => {

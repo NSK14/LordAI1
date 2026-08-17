@@ -28,11 +28,11 @@ export const PROVIDER_CONFIG: Record<
   },
   openrouter: {
     apiKeyEnv: "OPENROUTER_API_KEY",
-    models: ["google/gemma-4-26b-a4b-it:free", "openai/gpt-oss-20b:free"],
+    models: [],
   },
   openai: {
     apiKeyEnv: "OPENAI_API_KEY",
-    models: [],
+    models: ["gpt-4o-mini", "gpt-4o"],
   },
 };
 
@@ -43,41 +43,23 @@ const candidate = (provider: ProviderName, modelId: string): Candidate => ({ pro
 // through the rest only when the selected provider fails, times out, is
 // rate-limited, returns 5xx, or has no configured key.
 export const LORD_MODELS: Record<LordMode, readonly Candidate[]> = {
-  fast: [
-    candidate("gemini", "gemini-2.5-flash"),
-    candidate("openrouter", "google/gemma-4-26b-a4b-it:free"),
-    candidate("openrouter", "openai/gpt-oss-20b:free"),
-  ],
+  // ⚡ Lowest latency / everyday chat — prefer free/fast providers.
+  fast: [candidate("gemini", "gemini-2.5-flash"), candidate("openai", "gpt-4o-mini")],
 
-  balanced: [
-    candidate("gemini", "gemini-2.5-flash"),
-    candidate("openrouter", "google/gemma-4-26b-a4b-it:free"),
-    candidate("openrouter", "openai/gpt-oss-20b:free"),
-  ],
+  // 💬 Best general-purpose — Gemini first, then OpenAI.
+  balanced: [candidate("gemini", "gemini-2.5-flash"), candidate("openai", "gpt-4o")],
 
-  reasoning: [
-    candidate("gemini", "gemini-2.5-pro"),
-    candidate("openrouter", "google/gemma-4-26b-a4b-it:free"),
-    candidate("openrouter", "openai/gpt-oss-20b:free"),
-  ],
+  // 🧠 Deep reasoning & planning — premium providers first.
+  reasoning: [candidate("openai", "gpt-4o"), candidate("gemini", "gemini-2.5-pro")],
 
-  coding: [
-    candidate("gemini", "gemini-2.5-flash"),
-    candidate("openrouter", "openai/gpt-oss-20b:free"),
-    candidate("openrouter", "google/gemma-4-26b-a4b-it:free"),
-  ],
+  // 💻 Software engineering — coding-capable models first.
+  coding: [candidate("openai", "gpt-4o"), candidate("gemini", "gemini-2.5-flash")],
 
-  creative: [
-    candidate("gemini", "gemini-2.5-flash"),
-    candidate("openrouter", "google/gemma-4-26b-a4b-it:free"),
-    candidate("openrouter", "openai/gpt-oss-20b:free"),
-  ],
+  // 🎨 Writing, storytelling & content creation
+  creative: [candidate("openai", "gpt-4o"), candidate("gemini", "gemini-2.5-flash")],
 
-  local: [
-    candidate("openrouter", "google/gemma-4-26b-a4b-it:free"),
-    candidate("gemini", "gemini-2.5-flash"),
-    candidate("openrouter", "openai/gpt-oss-20b:free"),
-  ],
+  // 🖥️ Lightweight fallback — smallest available models.
+  local: [candidate("gemini", "gemini-2.5-flash"), candidate("openai", "gpt-4o-mini")],
 };
 
 export type LordMode = "fast" | "balanced" | "coding" | "creative" | "reasoning" | "local";
@@ -176,13 +158,7 @@ export function getModeCandidates(
         ]
       : [...base];
   const list = explicitModelId
-    ? [
-        {
-          provider: preferredProvider ?? resolveProvider(explicitModelId) ?? "openrouter",
-          modelId: explicitModelId,
-        },
-        ...ordered,
-      ]
+    ? [{ provider: preferredProvider ?? "openrouter", modelId: explicitModelId }, ...ordered]
     : ordered;
   const seen = new Set<string>();
   const out: Candidate[] = [];

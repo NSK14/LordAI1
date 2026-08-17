@@ -144,6 +144,7 @@ export type Database = {
           last_message_at: string | null;
           pinned: boolean;
           pinned_at: string | null;
+          project_id: string | null;
           sort_order: number | null;
           title: string | null;
           updated_at: string | null;
@@ -158,6 +159,7 @@ export type Database = {
           last_message_at?: string | null;
           pinned?: boolean;
           pinned_at?: string | null;
+          project_id?: string | null;
           sort_order?: number | null;
           title?: string | null;
           updated_at?: string | null;
@@ -172,6 +174,7 @@ export type Database = {
           last_message_at?: string | null;
           pinned?: boolean;
           pinned_at?: string | null;
+          project_id?: string | null;
           sort_order?: number | null;
           title?: string | null;
           updated_at?: string | null;
@@ -2218,8 +2221,377 @@ export type Database = {
           },
         ];
       };
+      knowledge_chunks: {
+        Row: {
+          chunk_index: number;
+          content: string;
+          created_at: string;
+          embedding: string | null;
+          embedding_hash: string | null;
+          heading: string | null;
+          id: string;
+          knowledge_source_id: string;
+          language: string;
+          page_number: number | null;
+          project_id: string | null;
+          section: string | null;
+          summary: string | null;
+          token_count: number;
+          user_id: string;
+        };
+        Insert: {
+          chunk_index?: number;
+          content?: string;
+          created_at?: string;
+          embedding?: string | null;
+          embedding_hash?: string | null;
+          heading?: string | null;
+          id?: string;
+          knowledge_source_id?: string;
+          language?: string;
+          page_number?: number | null;
+          project_id?: string | null;
+          section?: string | null;
+          summary?: string | null;
+          token_count?: number;
+          user_id?: string;
+        };
+        Update: {
+          chunk_index?: number;
+          content?: string;
+          created_at?: string;
+          embedding?: string | null;
+          embedding_hash?: string | null;
+          heading?: string | null;
+          id?: string;
+          knowledge_source_id?: string;
+          language?: string;
+          page_number?: number | null;
+          project_id?: string | null;
+          section?: string | null;
+          summary?: string | null;
+          token_count?: number;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_chunks_knowledge_source_id_fkey";
+            columns: ["knowledge_source_id"];
+            isOneToOne: false;
+            referencedRelation: "knowledge_sources";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      knowledge_sources: {
+        Row: {
+          chunk_count: number;
+          content_text: string | null;
+          created_at: string;
+          file_size_bytes: number;
+          id: string;
+          is_indexed: boolean;
+          language: string;
+          last_indexed_at: string | null;
+          metadata: Json;
+          mime_type: string | null;
+          name: string;
+          page_count: number | null;
+          processing_error: string | null;
+          processing_status: string;
+          project_id: string | null;
+          source_type: string;
+          source_url: string | null;
+          storage_path: string | null;
+          updated_at: string;
+          user_id: string;
+          word_count: number;
+        };
+        Insert: {
+          chunk_count?: number;
+          content_text?: string | null;
+          created_at?: string;
+          file_size_bytes?: number;
+          id?: string;
+          is_indexed?: boolean;
+          language?: string;
+          last_indexed_at?: string | null;
+          metadata?: Json;
+          mime_type?: string | null;
+          name: string;
+          page_count?: number | null;
+          processing_error?: string | null;
+          processing_status?: string;
+          project_id?: string | null;
+          source_type: string;
+          source_url?: string | null;
+          storage_path?: string | null;
+          updated_at?: string;
+          user_id?: string;
+          word_count?: number;
+        };
+        Update: {
+          chunk_count?: number;
+          content_text?: string | null;
+          created_at?: string;
+          file_size_bytes?: number;
+          id?: string;
+          is_indexed?: boolean;
+          language?: string;
+          last_indexed_at?: string | null;
+          metadata?: Json;
+          mime_type?: string | null;
+          name?: string;
+          page_count?: number | null;
+          processing_error?: string | null;
+          processing_status?: string;
+          project_id?: string | null;
+          source_type?: string;
+          source_url?: string | null;
+          storage_path?: string | null;
+          updated_at?: string;
+          user_id?: string;
+          word_count?: number;
+        };
+        Relationships: [];
+      };
+      project_activity: {
+        Row: {
+          action: string;
+          created_at: string;
+          entity_id: string | null;
+          entity_type: string;
+          id: string;
+          metadata: Json;
+          project_id: string;
+          user_id: string;
+        };
+        Insert: {
+          action?: string;
+          created_at?: string;
+          entity_id?: string | null;
+          entity_type?: string;
+          id?: string;
+          metadata?: Json;
+          project_id?: string;
+          user_id?: string;
+        };
+        Update: {
+          action?: string;
+          created_at?: string;
+          entity_id?: string | null;
+          entity_type?: string;
+          id?: string;
+          metadata?: Json;
+          project_id?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      project_members: {
+        Row: {
+          id: string;
+          invited_by: string | null;
+          joined_at: string;
+          last_accessed_at: string | null;
+          project_id: string;
+          role: string;
+          user_id: string;
+        };
+        Insert: {
+          id?: string;
+          invited_by?: string | null;
+          joined_at?: string;
+          last_accessed_at?: string | null;
+          project_id?: string;
+          role?: string;
+          user_id?: string;
+        };
+        Update: {
+          id?: string;
+          invited_by?: string | null;
+          joined_at?: string;
+          last_accessed_at?: string | null;
+          project_id?: string;
+          role?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      project_notes: {
+        Row: {
+          content: string;
+          created_at: string;
+          id: string;
+          is_archived: boolean;
+          is_pinned: boolean;
+          project_id: string;
+          tags: string[] | null;
+          title: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          content?: string;
+          created_at?: string;
+          id?: string;
+          is_archived?: boolean;
+          is_pinned?: boolean;
+          project_id?: string;
+          tags?: string[] | null;
+          title?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Update: {
+          content?: string;
+          created_at?: string;
+          id?: string;
+          is_archived?: boolean;
+          is_pinned?: boolean;
+          project_id?: string;
+          tags?: string[] | null;
+          title?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      project_tasks: {
+        Row: {
+          completed_at: string | null;
+          created_at: string;
+          description: string | null;
+          due_date: string | null;
+          id: string;
+          priority: string;
+          project_id: string;
+          status: string;
+          tags: string[] | null;
+          title: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          completed_at?: string | null;
+          created_at?: string;
+          description?: string | null;
+          due_date?: string | null;
+          id?: string;
+          priority?: string;
+          project_id?: string;
+          status?: string;
+          tags?: string[] | null;
+          title?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Update: {
+          completed_at?: string | null;
+          created_at?: string;
+          description?: string | null;
+          due_date?: string | null;
+          id?: string;
+          priority?: string;
+          project_id?: string;
+          status?: string;
+          tags?: string[] | null;
+          title?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      projects: {
+        Row: {
+          color: string;
+          created_at: string;
+          description: string | null;
+          icon: string;
+          id: string;
+          is_archived: boolean;
+          is_pinned: boolean;
+          last_accessed_at: string;
+          name: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          color?: string;
+          created_at?: string;
+          description?: string | null;
+          icon?: string;
+          id?: string;
+          is_archived?: boolean;
+          is_pinned?: boolean;
+          last_accessed_at?: string;
+          name: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Update: {
+          color?: string;
+          created_at?: string;
+          description?: string | null;
+          icon?: string;
+          id?: string;
+          is_archived?: boolean;
+          is_pinned?: boolean;
+          last_accessed_at?: string;
+          name?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      search_index: {
+        Row: {
+          content: string;
+          content_vector: string | null;
+          created_at: string;
+          entity_id: string;
+          entity_type: string;
+          id: string;
+          metadata: Json;
+          project_id: string | null;
+          tags: string[] | null;
+          title: string | null;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          content?: string;
+          content_vector?: string | null;
+          created_at?: string;
+          entity_id?: string;
+          entity_type?: string;
+          id?: string;
+          metadata?: Json;
+          project_id?: string | null;
+          tags?: string[] | null;
+          title?: string | null;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Update: {
+          content?: string;
+          content_vector?: string | null;
+          created_at?: string;
+          entity_id?: string;
+          entity_type?: string;
+          id?: string;
+          metadata?: Json;
+          project_id?: string | null;
+          tags?: string[] | null;
+          title?: string | null;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       memories: {
         Row: {
+          archived: boolean | null;
           category: string | null;
           client_tag: string | null;
           confidence: number;
@@ -2227,13 +2599,23 @@ export type Database = {
           created_at: string;
           embedding: Json | null;
           embedding_vec: string | null;
+          expires_at: string | null;
           id: string;
+          importance: number;
+          is_user_generated: boolean | null;
+          last_accessed: string | null;
+          merged_from: string[] | null;
           pinned: boolean | null;
+          project_id: string | null;
           source: string;
+          summary: string | null;
+          tags: string[] | null;
           updated_at: string | null;
           user_id: string | null;
+          version: number | null;
         };
         Insert: {
+          archived?: boolean | null;
           category?: string | null;
           client_tag?: string | null;
           confidence?: number;
@@ -2241,13 +2623,23 @@ export type Database = {
           created_at?: string;
           embedding?: Json | null;
           embedding_vec?: string | null;
+          expires_at?: string | null;
           id?: string;
+          importance?: number;
+          is_user_generated?: boolean | null;
+          last_accessed?: string | null;
+          merged_from?: string[] | null;
           pinned?: boolean | null;
+          project_id?: string | null;
           source?: string;
+          summary?: string | null;
+          tags?: string[] | null;
           updated_at?: string | null;
           user_id?: string | null;
+          version?: number | null;
         };
         Update: {
+          archived?: boolean | null;
           category?: string | null;
           client_tag?: string | null;
           confidence?: number;
@@ -2255,11 +2647,20 @@ export type Database = {
           created_at?: string;
           embedding?: Json | null;
           embedding_vec?: string | null;
+          expires_at?: string | null;
           id?: string;
+          importance?: number;
+          is_user_generated?: boolean | null;
+          last_accessed?: string | null;
+          merged_from?: string[] | null;
           pinned?: boolean | null;
+          project_id?: string | null;
           source?: string;
+          summary?: string | null;
+          tags?: string[] | null;
           updated_at?: string | null;
           user_id?: string | null;
+          version?: number | null;
         };
         Relationships: [];
       };
@@ -2298,6 +2699,7 @@ export type Database = {
           created_at: string;
           id: string;
           model: string | null;
+          project_id: string | null;
           role: string | null;
           streaming: boolean;
           user_id: string | null;
@@ -2309,6 +2711,7 @@ export type Database = {
           created_at?: string;
           id?: string;
           model?: string | null;
+          project_id?: string | null;
           role?: string | null;
           streaming?: boolean;
           user_id?: string | null;
@@ -2320,6 +2723,7 @@ export type Database = {
           created_at?: string;
           id?: string;
           model?: string | null;
+          project_id?: string | null;
           role?: string | null;
           streaming?: boolean;
           user_id?: string | null;
@@ -2457,6 +2861,43 @@ export type Database = {
           id: string;
           pinned: boolean;
           similarity: number;
+        }[];
+      };
+      match_memories_by_project: {
+        Args: {
+          p_embedding: Json;
+          p_limit?: number;
+          p_project_id: string;
+          p_user_id: string;
+        };
+        Returns: {
+          category: string;
+          confidence: number;
+          content: string;
+          id: string;
+          importance: number;
+          pinned: boolean;
+          similarity: number;
+        }[];
+      };
+      match_search_index: {
+        Args: {
+          p_embedding: Json;
+          p_entity_types?: string[];
+          p_limit?: number;
+          p_project_id?: string;
+          p_user_id: string;
+        };
+        Returns: {
+          content: string;
+          entity_id: string;
+          entity_type: string;
+          id: string;
+          metadata: Json;
+          project_id: string;
+          similarity: number;
+          tags: string[];
+          title: string;
         }[];
       };
     };

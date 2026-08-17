@@ -114,6 +114,12 @@ const RequestSchema = z.discriminatedUnion("action", [
       )
       .min(1),
   }),
+  z.object({
+    action: z.literal("auto_study"),
+    conceptId: z.string().optional(),
+    durationMinutes: z.number().int().min(5).max(120).optional(),
+    focus: z.string().optional(),
+  }),
 ]);
 
 const QuestionSchema = z.object({
@@ -757,6 +763,99 @@ export const Route = createFileRoute("/api/learning/session")({
           if (parsed.data.action === "memory_extract") {
             const memories = await extractMemories(parsed.data.sessionId, parsed.data.messages);
             return Response.json({ memories });
+          }
+
+          if (parsed.data.action === "auto_study") {
+            const conceptId = parsed.data.conceptId;
+            const durationMinutes = parsed.data.durationMinutes ?? 25;
+            const focus = parsed.data.focus;
+
+            let concept: LearningConcept | null = null;
+            if (conceptId) {
+              concept = await resolveConcept(db, conceptId);
+            }
+
+            if (!concept) {
+              const { data: masteryRows } = await db
+                .from("learning_mastery")
+                .select("concept_id, score")
+                .eq("user_id", userId)
+                .order("score", { ascending: true })
+                .limit(1);
+
+              if (masteryRows && masteryRows.length > 0) {
+                concept = await resolveConcept(db, masteryRows[0].concept_id);
+              } else {
+                const { data: conceptRows } = await db
+                  .from("learning_concepts")
+                  .select("*")
+                  .limit(1)
+                  .maybeSingle();
+                if (conceptRows) {
+                  concept = conceptRows as LearningConcept;
+                }
+              }
+            }
+
+            if (!concept) {
+              return apiErrorResponse(
+                404,
+                "NOT_FOUND",
+                "No concept found for study session.",
+                requestId,
+              );
+            }
+
+            const { data: mastery } = await db
+              .from("learning_mastery")
+              .select("*")
+              .eq("user_id", userId)
+              .eq("concept_id", concept.id)
+              .maybeSingle();
+
+            const sessionPlan = {
+              conceptId: concept.id,
+              conceptTitle: concept.title,
+              subject: concept.subject,
+              durationMinutes,
+              phases: [
+                {
+                  type: "learn",
+                  duration: Math.round(durationMinutes * 0.3),
+                  description: `Learn the fundamentals of ${concept.title}`,
+                },
+                {
+                  type: "practice",
+                  duration: Math.round(durationMinutes * 0.4),
+                  description: `Practice problems on ${concept.title}`,
+                },
+                {
+                  type: "review",
+                  duration: Math.round(durationMinutes * 0.3),
+                  description: `Review and summarize ${concept.title}`,
+                },
+              ],
+              recommendedDifficulty: mastery
+                ? Math.max(1, Math.min(5, Math.round(mastery.score * 5)))
+                : 2,
+              masteryBefore: mastery?.score ?? 0.35,
+              focus: focus ?? concept.title,
+            };
+
+            const { error: sessionError } = await db.from("learning_sessions").insert({
+              user_id: userId,
+              concept_id: concept.id,
+              title: `Auto Study: ${concept.title}`,
+              status: "active",
+              subject: concept.subject,
+              topic: focus ?? concept.title,
+            });
+
+            if (sessionError) {
+              console.error("Failed to create auto study session:", sessionError);
+            }
+
+            return Response.json({ sessionPlan, aiGenerated: true });
           }
 
           return apiErrorResponse(400, "INVALID_ACTION", "Unknown action.", requestId);
