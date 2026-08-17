@@ -146,7 +146,7 @@ ${JSON.stringify({ class: profile?.class, subjects: profile?.subjects, weeklyMin
 
         try {
           const { text } = await generateText({
-            model: getProvider()("openai/gpt-4o-mini"),
+            model: getProvider()("google/gemma-4-26b-a4b-it:free"),
             system: systemPrompt,
             messages: [{ role: "user", content: "Optimize my study plan." }],
             maxOutputTokens: 1500,

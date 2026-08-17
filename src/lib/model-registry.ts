@@ -13,28 +13,28 @@ export type ModelRegistryEntry = {
 // Update/add models in lord-config.ts PROVIDER_CONFIG first.
 export const MODEL_REGISTRY: ModelRegistryEntry[] = [
   {
-    id: "openai/gpt-4o",
-    label: "GPT-4o",
-    provider: "OpenAI",
-    description: "OpenAI's most capable multimodal model",
-  },
-  {
-    id: "openai/gpt-4o-mini",
-    label: "GPT-4o Mini",
-    provider: "OpenAI",
-    description: "Fast, cost-effective GPT-4o variant",
+    id: "google/gemini-2.5-flash",
+    label: "Gemini 2.5 Flash",
+    provider: "Google",
+    description: "Google's fast, efficient model (free tier)",
   },
   {
     id: "google/gemini-2.5-pro",
     label: "Gemini 2.5 Pro",
     provider: "Google",
-    description: "Google's most capable reasoning model",
+    description: "Google's most capable reasoning model (free tier)",
   },
   {
-    id: "google/gemini-2.5-flash",
-    label: "Gemini 2.5 Flash",
-    provider: "Google",
-    description: "Google's fast, efficient model",
+    id: "google/gemma-4-26b-a4b-it:free",
+    label: "Gemma 4 26B (Free)",
+    provider: "OpenRouter",
+    description: "Google's open-weight model via OpenRouter free tier",
+  },
+  {
+    id: "openai/gpt-oss-20b:free",
+    label: "GPT OSS 20B (Free)",
+    provider: "OpenRouter",
+    description: "OpenAI open-weight model via OpenRouter free tier",
   },
 ];
 

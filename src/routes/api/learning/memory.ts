@@ -143,7 +143,7 @@ export const Route = createFileRoute("/api/learning/memory")({
 
             const provider = getOpenRouterProvider();
             const { text } = await generateText({
-              model: provider("openai/gpt-4o-mini"),
+              model: provider("google/gemma-4-26b-a4b-it:free"),
               system: `You are a learning memory extractor. Analyze the conversation and extract structured memories. Output ONLY a JSON array of memory objects. No markdown. No extra text.`,
               messages: [
                 {

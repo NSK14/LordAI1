@@ -1212,7 +1212,7 @@ export async function testOpenRouterConnection(opts: {
   model?: string;
   prompt?: string;
 }): Promise<OpenRouterTestResult> {
-  const model = opts.model ?? "openai/gpt-4o-mini";
+  const model = opts.model ?? "google/gemma-4-26b-a4b-it:free";
   const url = `${OPENROUTER_BASE_URL}${OPENROUTER_CHAT_PATH}`;
   const body = {
     model,

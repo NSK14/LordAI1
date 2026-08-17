@@ -20,9 +20,7 @@ const ExamRequestSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("create"),
     conceptIds: z.array(z.string().min(1)).min(1).max(20),
-    examType: z
-      .enum(["mock", "chapter", "full_syllabus", "custom", "timed_quiz"])
-      .optional(),
+    examType: z.enum(["mock", "chapter", "full_syllabus", "custom", "timed_quiz"]).optional(),
     questionCount: z.number().int().min(5).max(50).optional(),
     timeLimitMinutes: z.number().int().min(5).max(180).optional(),
     difficulty: z.number().int().min(1).max(5).optional(),
@@ -360,7 +358,7 @@ export const Route = createFileRoute("/api/learning/features")({
               ) {
                 const difficulty = mastery
                   ? Math.ceil((1 - (mastery.score ?? 0.35)) * 5)
-                  : parsed.data.difficulty ?? 3;
+                  : (parsed.data.difficulty ?? 3);
                 let question;
                 try {
                   question = await generateAIQuestion(
@@ -439,7 +437,7 @@ export const Route = createFileRoute("/api/learning/features")({
               // Short answer, diagram, essay - use AI evaluation
               const provider = getOpenRouterProvider();
               const { text } = await generateText({
-                model: provider("openai/gpt-4o-mini"),
+                model: provider("google/gemma-4-26b-a4b-it:free"),
                 system:
                   "You are an exam evaluator. Return JSON: {correct: boolean, score: number, feedback: string}",
                 messages: [

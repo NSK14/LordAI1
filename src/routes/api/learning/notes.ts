@@ -122,7 +122,7 @@ export const Route = createFileRoute("/api/learning/notes")({
             };
 
             const { text } = await generateText({
-              model: provider("openai/gpt-4o-mini"),
+              model: provider("google/gemma-4-26b-a4b-it:free"),
               system: `You are a ${concept.framework} study material creator. Output only the requested format. No extra commentary.`,
               messages: [
                 {

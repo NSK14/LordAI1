@@ -1,9 +1,9 @@
 /** Approximate per-million-token USD pricing for cost estimation. */
 const MODEL_COST: Record<string, { input: number; output: number }> = {
-  "openai/gpt-4o": { input: 2.5, output: 10 },
-  "openai/gpt-4o-mini": { input: 0.15, output: 0.6 },
-  "google/gemini-2.5-pro": { input: 1.25, output: 10 },
-  "google/gemini-2.5-flash": { input: 0.3, output: 2.5 },
+  "google/gemini-2.5-pro": { input: 0, output: 0 },
+  "google/gemini-2.5-flash": { input: 0, output: 0 },
+  "google/gemma-4-26b-a4b-it:free": { input: 0, output: 0 },
+  "openai/gpt-oss-20b:free": { input: 0, output: 0 },
   local: { input: 0, output: 0 },
 };
 

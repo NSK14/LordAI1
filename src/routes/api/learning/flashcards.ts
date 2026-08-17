@@ -97,7 +97,7 @@ export const Route = createFileRoute("/api/learning/flashcards")({
 
             const { generateText } = require("ai");
             const { text } = await generateText({
-              model: provider("openai/gpt-4o-mini"),
+              model: provider("google/gemma-4-26b-a4b-it:free"),
               system: `You are a ${diffLabel}-level ${concept.framework} flashcard creator. Output ONLY strict JSON array. No markdown. No extra text.`,
               messages: [
                 {

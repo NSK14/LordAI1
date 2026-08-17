@@ -108,7 +108,7 @@ Return STRICT JSON only (no markdown, no extra text):
 
         try {
           const { text } = await generateText({
-            model: getProvider()("openai/gpt-4o-mini"),
+            model: getProvider()("google/gemma-4-26b-a4b-it:free"),
             system: systemPrompt,
             messages: [{ role: "user", content: "Suggest changes to my study plan." }],
             maxOutputTokens: 1200,

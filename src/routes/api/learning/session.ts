@@ -65,9 +65,7 @@ const RequestSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("exam"),
     conceptIds: z.array(z.string().min(1)).min(1).max(20),
-    examType: z
-      .enum(["mock", "chapter", "full_syllabus", "custom", "timed_quiz"])
-      .optional(),
+    examType: z.enum(["mock", "chapter", "full_syllabus", "custom", "timed_quiz"]).optional(),
     questionCount: z.number().int().min(5).max(50).optional(),
     timeLimitMinutes: z.number().int().min(5).max(180).optional(),
     difficulty: z.number().int().min(1).max(5).optional(),
@@ -180,7 +178,7 @@ async function generateAIQuestion(
   const provider = getOpenRouterProvider();
 
   const { text } = await generateText({
-    model: provider("openai/gpt-4o-mini"),
+    model: provider("google/gemma-4-26b-a4b-it:free"),
     system: `You are a ${["", "introductory", "foundational", "standard", "advanced", "mastery"][difficulty] ?? "standard"}-level ${concept.framework} assessment designer. Output ONLY strict JSON. No markdown. No extra text.`,
     messages: [
       {
@@ -351,7 +349,7 @@ async function generateFlashcards(
   const diffLabel = diffLabels[difficulty] ?? "standard";
 
   const { text } = await generateText({
-    model: provider("openai/gpt-4o-mini"),
+    model: provider("google/gemma-4-26b-a4b-it:free"),
     system: `You are a ${diffLabel}-level ${concept.framework} flashcard creator. Output ONLY strict JSON array. No markdown. No extra text.`,
     messages: [
       {
@@ -478,7 +476,7 @@ async function generateTutorResponse(
     .join("\n\n");
 
   const { text } = await generateText({
-    model: provider("openai/gpt-4o-mini"),
+    model: provider("google/gemma-4-26b-a4b-it:free"),
     system: systemPrompt,
     messages: [],
     maxOutputTokens: 1500,
@@ -506,7 +504,7 @@ async function generateSummary(
   };
 
   const { text } = await generateText({
-    model: provider("openai/gpt-4o-mini"),
+    model: provider("google/gemma-4-26b-a4b-it:free"),
     system: `You are a ${concept.framework} study material creator. Output only the requested format. No extra commentary.`,
     messages: [
       {
@@ -581,7 +579,7 @@ async function extractMemories(
   const conversation = messages.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join("\n");
 
   const { text } = await generateText({
-    model: provider("openai/gpt-4o-mini"),
+    model: provider("google/gemma-4-26b-a4b-it:free"),
     system: `You are a learning memory extractor. Analyze the conversation and extract structured memories. Output ONLY a JSON array of memory objects. No markdown. No extra text.`,
     messages: [
       {

@@ -92,12 +92,12 @@ async function main() {
     process.exit(1);
   }
 
-  // Models from lord-config.ts PROVIDER_CONFIG
+  // Models from lord-config.ts PROVIDER_CONFIG (free models only)
   const configuredModels = [
     "gemini-2.5-flash",
     "gemini-2.5-pro",
-    "openai/gpt-4o-mini",
-    "openai/gpt-4o",
+    "google/gemma-4-26b-a4b-it:free",
+    "openai/gpt-oss-20b:free",
   ];
 
   console.log("Fetching OpenRouter model catalog...");

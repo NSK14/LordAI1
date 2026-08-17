@@ -132,7 +132,7 @@ export const Route = createFileRoute("/api/learning/whiteboard")({
               : null;
 
             const { text } = await generateText({
-              model: provider("openai/gpt-4o-mini"),
+              model: provider("google/gemma-4-26b-a4b-it:free"),
               system: `You are an AI whiteboard assistant for ${conceptInfo?.data?.title ?? "learning"}. Analyze the canvas and provide helpful annotations. Return JSON array of annotation objects.`,
               messages: [
                 {
