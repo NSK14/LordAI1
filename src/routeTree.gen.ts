@@ -41,11 +41,18 @@ import { Route as AuthenticatedBoardsRouteImport } from './routes/_authenticated
 import { Route as ApiStudyPlansIndexRouteImport } from './routes/api/study-plans/index'
 import { Route as ApiProjectsIndexRouteImport } from './routes/api/projects/index'
 import { Route as ApiKnowledgeIndexRouteImport } from './routes/api/knowledge/index'
+import { Route as ApiDashboardsIndexRouteImport } from './routes/api/dashboards/index'
+import { Route as ApiCanvasIndexRouteImport } from './routes/api/canvas/index'
 import { Route as AuthenticatedProjectsIndexRouteImport } from './routes/_authenticated/projects/index'
+import { Route as AuthenticatedObservabilityIndexRouteImport } from './routes/_authenticated/observability/index'
+import { Route as AuthenticatedKnowledge2IndexRouteImport } from './routes/_authenticated/knowledge2/index'
+import { Route as AuthenticatedDashboardsIndexRouteImport } from './routes/_authenticated/dashboards/index'
+import { Route as AuthenticatedCanvasIndexRouteImport } from './routes/_authenticated/canvas/index'
 import { Route as ApiStudyPlansIdRouteImport } from './routes/api/study-plans/$id'
 import { Route as ApiSharesTokenRouteImport } from './routes/api/shares/$token'
 import { Route as ApiSharedTokenRouteImport } from './routes/api/shared/$token'
 import { Route as ApiProjectsIdRouteImport } from './routes/api/projects/$id'
+import { Route as ApiObservabilityHealthRouteImport } from './routes/api/observability/health'
 import { Route as ApiLearningWhiteboardRouteImport } from './routes/api/learning/whiteboard'
 import { Route as ApiLearningVoiceRouteImport } from './routes/api/learning/voice'
 import { Route as ApiLearningSessionRouteImport } from './routes/api/learning/session'
@@ -58,10 +65,16 @@ import { Route as ApiLearningFlashcardsRouteImport } from './routes/api/learning
 import { Route as ApiLearningFeaturesRouteImport } from './routes/api/learning/features'
 import { Route as ApiLearningExamsRouteImport } from './routes/api/learning/exams'
 import { Route as ApiLearningAnalyticsRouteImport } from './routes/api/learning/analytics'
+import { Route as ApiKnowledge2RelationsRouteImport } from './routes/api/knowledge2/relations'
+import { Route as ApiKnowledge2EntitiesRouteImport } from './routes/api/knowledge2/entities'
 import { Route as ApiKnowledgeUploadRouteImport } from './routes/api/knowledge/upload'
 import { Route as ApiKnowledgeIdRouteImport } from './routes/api/knowledge/$id'
+import { Route as ApiCommandPaletteSearchRouteImport } from './routes/api/command-palette/search'
+import { Route as ApiCanvasVersionsRouteImport } from './routes/api/canvas/versions'
+import { Route as ApiCanvasStreamRouteImport } from './routes/api/canvas/stream'
 import { Route as ApiBrainContextRouteImport } from './routes/api/brain/context'
 import { Route as AuthenticatedProjectsIdRouteImport } from './routes/_authenticated/projects/$id'
+import { Route as AuthenticatedCanvasIdRouteImport } from './routes/_authenticated/canvas/$id'
 import { Route as ApiLearningSourcesIngestRouteImport } from './routes/api/learning/sources/ingest'
 import { Route as ApiStudyPlansIdTasksIndexRouteImport } from './routes/api/study-plans/$id/tasks/index'
 import { Route as ApiResearchIdSourcesIndexRouteImport } from './routes/api/research/$id/sources/index'
@@ -230,10 +243,44 @@ const ApiKnowledgeIndexRoute = ApiKnowledgeIndexRouteImport.update({
   path: '/api/knowledge/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiDashboardsIndexRoute = ApiDashboardsIndexRouteImport.update({
+  id: '/api/dashboards/',
+  path: '/api/dashboards/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCanvasIndexRoute = ApiCanvasIndexRouteImport.update({
+  id: '/api/canvas/',
+  path: '/api/canvas/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedProjectsIndexRoute =
   AuthenticatedProjectsIndexRouteImport.update({
     id: '/projects/',
     path: '/projects/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedObservabilityIndexRoute =
+  AuthenticatedObservabilityIndexRouteImport.update({
+    id: '/observability/',
+    path: '/observability/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedKnowledge2IndexRoute =
+  AuthenticatedKnowledge2IndexRouteImport.update({
+    id: '/knowledge2/',
+    path: '/knowledge2/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedDashboardsIndexRoute =
+  AuthenticatedDashboardsIndexRouteImport.update({
+    id: '/dashboards/',
+    path: '/dashboards/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedCanvasIndexRoute =
+  AuthenticatedCanvasIndexRouteImport.update({
+    id: '/canvas/',
+    path: '/canvas/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const ApiStudyPlansIdRoute = ApiStudyPlansIdRouteImport.update({
@@ -254,6 +301,11 @@ const ApiSharedTokenRoute = ApiSharedTokenRouteImport.update({
 const ApiProjectsIdRoute = ApiProjectsIdRouteImport.update({
   id: '/api/projects/$id',
   path: '/api/projects/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiObservabilityHealthRoute = ApiObservabilityHealthRouteImport.update({
+  id: '/api/observability/health',
+  path: '/api/observability/health',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiLearningWhiteboardRoute = ApiLearningWhiteboardRouteImport.update({
@@ -316,6 +368,16 @@ const ApiLearningAnalyticsRoute = ApiLearningAnalyticsRouteImport.update({
   path: '/api/learning/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiKnowledge2RelationsRoute = ApiKnowledge2RelationsRouteImport.update({
+  id: '/api/knowledge2/relations',
+  path: '/api/knowledge2/relations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiKnowledge2EntitiesRoute = ApiKnowledge2EntitiesRouteImport.update({
+  id: '/api/knowledge2/entities',
+  path: '/api/knowledge2/entities',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiKnowledgeUploadRoute = ApiKnowledgeUploadRouteImport.update({
   id: '/api/knowledge/upload',
   path: '/api/knowledge/upload',
@@ -326,6 +388,21 @@ const ApiKnowledgeIdRoute = ApiKnowledgeIdRouteImport.update({
   path: '/api/knowledge/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCommandPaletteSearchRoute = ApiCommandPaletteSearchRouteImport.update({
+  id: '/api/command-palette/search',
+  path: '/api/command-palette/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCanvasVersionsRoute = ApiCanvasVersionsRouteImport.update({
+  id: '/api/canvas/versions',
+  path: '/api/canvas/versions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCanvasStreamRoute = ApiCanvasStreamRouteImport.update({
+  id: '/api/canvas/stream',
+  path: '/api/canvas/stream',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiBrainContextRoute = ApiBrainContextRouteImport.update({
   id: '/api/brain/context',
   path: '/api/brain/context',
@@ -334,6 +411,11 @@ const ApiBrainContextRoute = ApiBrainContextRouteImport.update({
 const AuthenticatedProjectsIdRoute = AuthenticatedProjectsIdRouteImport.update({
   id: '/projects/$id',
   path: '/projects/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedCanvasIdRoute = AuthenticatedCanvasIdRouteImport.update({
+  id: '/canvas/$id',
+  path: '/canvas/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const ApiLearningSourcesIngestRoute =
@@ -408,10 +490,16 @@ export interface FileRoutesByFullPath {
   '/api/shares': typeof ApiSharesRouteWithChildren
   '/api/title': typeof ApiTitleRoute
   '/share/$token': typeof ShareTokenRoute
+  '/canvas/$id': typeof AuthenticatedCanvasIdRoute
   '/projects/$id': typeof AuthenticatedProjectsIdRoute
   '/api/brain/context': typeof ApiBrainContextRoute
+  '/api/canvas/stream': typeof ApiCanvasStreamRoute
+  '/api/canvas/versions': typeof ApiCanvasVersionsRoute
+  '/api/command-palette/search': typeof ApiCommandPaletteSearchRoute
   '/api/knowledge/$id': typeof ApiKnowledgeIdRoute
   '/api/knowledge/upload': typeof ApiKnowledgeUploadRoute
+  '/api/knowledge2/entities': typeof ApiKnowledge2EntitiesRoute
+  '/api/knowledge2/relations': typeof ApiKnowledge2RelationsRoute
   '/api/learning/analytics': typeof ApiLearningAnalyticsRoute
   '/api/learning/exams': typeof ApiLearningExamsRoute
   '/api/learning/features': typeof ApiLearningFeaturesRoute
@@ -424,11 +512,18 @@ export interface FileRoutesByFullPath {
   '/api/learning/session': typeof ApiLearningSessionRoute
   '/api/learning/voice': typeof ApiLearningVoiceRoute
   '/api/learning/whiteboard': typeof ApiLearningWhiteboardRoute
+  '/api/observability/health': typeof ApiObservabilityHealthRoute
   '/api/projects/$id': typeof ApiProjectsIdRoute
   '/api/shared/$token': typeof ApiSharedTokenRoute
   '/api/shares/$token': typeof ApiSharesTokenRoute
   '/api/study-plans/$id': typeof ApiStudyPlansIdRouteWithChildren
+  '/canvas/': typeof AuthenticatedCanvasIndexRoute
+  '/dashboards/': typeof AuthenticatedDashboardsIndexRoute
+  '/knowledge2/': typeof AuthenticatedKnowledge2IndexRoute
+  '/observability/': typeof AuthenticatedObservabilityIndexRoute
   '/projects/': typeof AuthenticatedProjectsIndexRoute
+  '/api/canvas/': typeof ApiCanvasIndexRoute
+  '/api/dashboards/': typeof ApiDashboardsIndexRoute
   '/api/knowledge/': typeof ApiKnowledgeIndexRoute
   '/api/projects/': typeof ApiProjectsIndexRoute
   '/api/study-plans/': typeof ApiStudyPlansIndexRoute
@@ -469,10 +564,16 @@ export interface FileRoutesByTo {
   '/api/shares': typeof ApiSharesRouteWithChildren
   '/api/title': typeof ApiTitleRoute
   '/share/$token': typeof ShareTokenRoute
+  '/canvas/$id': typeof AuthenticatedCanvasIdRoute
   '/projects/$id': typeof AuthenticatedProjectsIdRoute
   '/api/brain/context': typeof ApiBrainContextRoute
+  '/api/canvas/stream': typeof ApiCanvasStreamRoute
+  '/api/canvas/versions': typeof ApiCanvasVersionsRoute
+  '/api/command-palette/search': typeof ApiCommandPaletteSearchRoute
   '/api/knowledge/$id': typeof ApiKnowledgeIdRoute
   '/api/knowledge/upload': typeof ApiKnowledgeUploadRoute
+  '/api/knowledge2/entities': typeof ApiKnowledge2EntitiesRoute
+  '/api/knowledge2/relations': typeof ApiKnowledge2RelationsRoute
   '/api/learning/analytics': typeof ApiLearningAnalyticsRoute
   '/api/learning/exams': typeof ApiLearningExamsRoute
   '/api/learning/features': typeof ApiLearningFeaturesRoute
@@ -485,11 +586,18 @@ export interface FileRoutesByTo {
   '/api/learning/session': typeof ApiLearningSessionRoute
   '/api/learning/voice': typeof ApiLearningVoiceRoute
   '/api/learning/whiteboard': typeof ApiLearningWhiteboardRoute
+  '/api/observability/health': typeof ApiObservabilityHealthRoute
   '/api/projects/$id': typeof ApiProjectsIdRoute
   '/api/shared/$token': typeof ApiSharedTokenRoute
   '/api/shares/$token': typeof ApiSharesTokenRoute
   '/api/study-plans/$id': typeof ApiStudyPlansIdRouteWithChildren
+  '/canvas': typeof AuthenticatedCanvasIndexRoute
+  '/dashboards': typeof AuthenticatedDashboardsIndexRoute
+  '/knowledge2': typeof AuthenticatedKnowledge2IndexRoute
+  '/observability': typeof AuthenticatedObservabilityIndexRoute
   '/projects': typeof AuthenticatedProjectsIndexRoute
+  '/api/canvas': typeof ApiCanvasIndexRoute
+  '/api/dashboards': typeof ApiDashboardsIndexRoute
   '/api/knowledge': typeof ApiKnowledgeIndexRoute
   '/api/projects': typeof ApiProjectsIndexRoute
   '/api/study-plans': typeof ApiStudyPlansIndexRoute
@@ -532,10 +640,16 @@ export interface FileRoutesById {
   '/api/shares': typeof ApiSharesRouteWithChildren
   '/api/title': typeof ApiTitleRoute
   '/share/$token': typeof ShareTokenRoute
+  '/_authenticated/canvas/$id': typeof AuthenticatedCanvasIdRoute
   '/_authenticated/projects/$id': typeof AuthenticatedProjectsIdRoute
   '/api/brain/context': typeof ApiBrainContextRoute
+  '/api/canvas/stream': typeof ApiCanvasStreamRoute
+  '/api/canvas/versions': typeof ApiCanvasVersionsRoute
+  '/api/command-palette/search': typeof ApiCommandPaletteSearchRoute
   '/api/knowledge/$id': typeof ApiKnowledgeIdRoute
   '/api/knowledge/upload': typeof ApiKnowledgeUploadRoute
+  '/api/knowledge2/entities': typeof ApiKnowledge2EntitiesRoute
+  '/api/knowledge2/relations': typeof ApiKnowledge2RelationsRoute
   '/api/learning/analytics': typeof ApiLearningAnalyticsRoute
   '/api/learning/exams': typeof ApiLearningExamsRoute
   '/api/learning/features': typeof ApiLearningFeaturesRoute
@@ -548,11 +662,18 @@ export interface FileRoutesById {
   '/api/learning/session': typeof ApiLearningSessionRoute
   '/api/learning/voice': typeof ApiLearningVoiceRoute
   '/api/learning/whiteboard': typeof ApiLearningWhiteboardRoute
+  '/api/observability/health': typeof ApiObservabilityHealthRoute
   '/api/projects/$id': typeof ApiProjectsIdRoute
   '/api/shared/$token': typeof ApiSharedTokenRoute
   '/api/shares/$token': typeof ApiSharesTokenRoute
   '/api/study-plans/$id': typeof ApiStudyPlansIdRouteWithChildren
+  '/_authenticated/canvas/': typeof AuthenticatedCanvasIndexRoute
+  '/_authenticated/dashboards/': typeof AuthenticatedDashboardsIndexRoute
+  '/_authenticated/knowledge2/': typeof AuthenticatedKnowledge2IndexRoute
+  '/_authenticated/observability/': typeof AuthenticatedObservabilityIndexRoute
   '/_authenticated/projects/': typeof AuthenticatedProjectsIndexRoute
+  '/api/canvas/': typeof ApiCanvasIndexRoute
+  '/api/dashboards/': typeof ApiDashboardsIndexRoute
   '/api/knowledge/': typeof ApiKnowledgeIndexRoute
   '/api/projects/': typeof ApiProjectsIndexRoute
   '/api/study-plans/': typeof ApiStudyPlansIndexRoute
@@ -595,10 +716,16 @@ export interface FileRouteTypes {
     | '/api/shares'
     | '/api/title'
     | '/share/$token'
+    | '/canvas/$id'
     | '/projects/$id'
     | '/api/brain/context'
+    | '/api/canvas/stream'
+    | '/api/canvas/versions'
+    | '/api/command-palette/search'
     | '/api/knowledge/$id'
     | '/api/knowledge/upload'
+    | '/api/knowledge2/entities'
+    | '/api/knowledge2/relations'
     | '/api/learning/analytics'
     | '/api/learning/exams'
     | '/api/learning/features'
@@ -611,11 +738,18 @@ export interface FileRouteTypes {
     | '/api/learning/session'
     | '/api/learning/voice'
     | '/api/learning/whiteboard'
+    | '/api/observability/health'
     | '/api/projects/$id'
     | '/api/shared/$token'
     | '/api/shares/$token'
     | '/api/study-plans/$id'
+    | '/canvas/'
+    | '/dashboards/'
+    | '/knowledge2/'
+    | '/observability/'
     | '/projects/'
+    | '/api/canvas/'
+    | '/api/dashboards/'
     | '/api/knowledge/'
     | '/api/projects/'
     | '/api/study-plans/'
@@ -656,10 +790,16 @@ export interface FileRouteTypes {
     | '/api/shares'
     | '/api/title'
     | '/share/$token'
+    | '/canvas/$id'
     | '/projects/$id'
     | '/api/brain/context'
+    | '/api/canvas/stream'
+    | '/api/canvas/versions'
+    | '/api/command-palette/search'
     | '/api/knowledge/$id'
     | '/api/knowledge/upload'
+    | '/api/knowledge2/entities'
+    | '/api/knowledge2/relations'
     | '/api/learning/analytics'
     | '/api/learning/exams'
     | '/api/learning/features'
@@ -672,11 +812,18 @@ export interface FileRouteTypes {
     | '/api/learning/session'
     | '/api/learning/voice'
     | '/api/learning/whiteboard'
+    | '/api/observability/health'
     | '/api/projects/$id'
     | '/api/shared/$token'
     | '/api/shares/$token'
     | '/api/study-plans/$id'
+    | '/canvas'
+    | '/dashboards'
+    | '/knowledge2'
+    | '/observability'
     | '/projects'
+    | '/api/canvas'
+    | '/api/dashboards'
     | '/api/knowledge'
     | '/api/projects'
     | '/api/study-plans'
@@ -718,10 +865,16 @@ export interface FileRouteTypes {
     | '/api/shares'
     | '/api/title'
     | '/share/$token'
+    | '/_authenticated/canvas/$id'
     | '/_authenticated/projects/$id'
     | '/api/brain/context'
+    | '/api/canvas/stream'
+    | '/api/canvas/versions'
+    | '/api/command-palette/search'
     | '/api/knowledge/$id'
     | '/api/knowledge/upload'
+    | '/api/knowledge2/entities'
+    | '/api/knowledge2/relations'
     | '/api/learning/analytics'
     | '/api/learning/exams'
     | '/api/learning/features'
@@ -734,11 +887,18 @@ export interface FileRouteTypes {
     | '/api/learning/session'
     | '/api/learning/voice'
     | '/api/learning/whiteboard'
+    | '/api/observability/health'
     | '/api/projects/$id'
     | '/api/shared/$token'
     | '/api/shares/$token'
     | '/api/study-plans/$id'
+    | '/_authenticated/canvas/'
+    | '/_authenticated/dashboards/'
+    | '/_authenticated/knowledge2/'
+    | '/_authenticated/observability/'
     | '/_authenticated/projects/'
+    | '/api/canvas/'
+    | '/api/dashboards/'
     | '/api/knowledge/'
     | '/api/projects/'
     | '/api/study-plans/'
@@ -765,8 +925,13 @@ export interface RootRouteChildren {
   ApiTitleRoute: typeof ApiTitleRoute
   ShareTokenRoute: typeof ShareTokenRoute
   ApiBrainContextRoute: typeof ApiBrainContextRoute
+  ApiCanvasStreamRoute: typeof ApiCanvasStreamRoute
+  ApiCanvasVersionsRoute: typeof ApiCanvasVersionsRoute
+  ApiCommandPaletteSearchRoute: typeof ApiCommandPaletteSearchRoute
   ApiKnowledgeIdRoute: typeof ApiKnowledgeIdRoute
   ApiKnowledgeUploadRoute: typeof ApiKnowledgeUploadRoute
+  ApiKnowledge2EntitiesRoute: typeof ApiKnowledge2EntitiesRoute
+  ApiKnowledge2RelationsRoute: typeof ApiKnowledge2RelationsRoute
   ApiLearningAnalyticsRoute: typeof ApiLearningAnalyticsRoute
   ApiLearningExamsRoute: typeof ApiLearningExamsRoute
   ApiLearningFeaturesRoute: typeof ApiLearningFeaturesRoute
@@ -779,9 +944,12 @@ export interface RootRouteChildren {
   ApiLearningSessionRoute: typeof ApiLearningSessionRoute
   ApiLearningVoiceRoute: typeof ApiLearningVoiceRoute
   ApiLearningWhiteboardRoute: typeof ApiLearningWhiteboardRoute
+  ApiObservabilityHealthRoute: typeof ApiObservabilityHealthRoute
   ApiProjectsIdRoute: typeof ApiProjectsIdRoute
   ApiSharedTokenRoute: typeof ApiSharedTokenRoute
   ApiStudyPlansIdRoute: typeof ApiStudyPlansIdRouteWithChildren
+  ApiCanvasIndexRoute: typeof ApiCanvasIndexRoute
+  ApiDashboardsIndexRoute: typeof ApiDashboardsIndexRoute
   ApiKnowledgeIndexRoute: typeof ApiKnowledgeIndexRoute
   ApiProjectsIndexRoute: typeof ApiProjectsIndexRoute
   ApiStudyPlansIndexRoute: typeof ApiStudyPlansIndexRoute
@@ -1015,11 +1183,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiKnowledgeIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/dashboards/': {
+      id: '/api/dashboards/'
+      path: '/api/dashboards'
+      fullPath: '/api/dashboards/'
+      preLoaderRoute: typeof ApiDashboardsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/canvas/': {
+      id: '/api/canvas/'
+      path: '/api/canvas'
+      fullPath: '/api/canvas/'
+      preLoaderRoute: typeof ApiCanvasIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/projects/': {
       id: '/_authenticated/projects/'
       path: '/projects'
       fullPath: '/projects/'
       preLoaderRoute: typeof AuthenticatedProjectsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/observability/': {
+      id: '/_authenticated/observability/'
+      path: '/observability'
+      fullPath: '/observability/'
+      preLoaderRoute: typeof AuthenticatedObservabilityIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/knowledge2/': {
+      id: '/_authenticated/knowledge2/'
+      path: '/knowledge2'
+      fullPath: '/knowledge2/'
+      preLoaderRoute: typeof AuthenticatedKnowledge2IndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dashboards/': {
+      id: '/_authenticated/dashboards/'
+      path: '/dashboards'
+      fullPath: '/dashboards/'
+      preLoaderRoute: typeof AuthenticatedDashboardsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/canvas/': {
+      id: '/_authenticated/canvas/'
+      path: '/canvas'
+      fullPath: '/canvas/'
+      preLoaderRoute: typeof AuthenticatedCanvasIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/api/study-plans/$id': {
@@ -1048,6 +1258,13 @@ declare module '@tanstack/react-router' {
       path: '/api/projects/$id'
       fullPath: '/api/projects/$id'
       preLoaderRoute: typeof ApiProjectsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/observability/health': {
+      id: '/api/observability/health'
+      path: '/api/observability/health'
+      fullPath: '/api/observability/health'
+      preLoaderRoute: typeof ApiObservabilityHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/learning/whiteboard': {
@@ -1134,6 +1351,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiLearningAnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/knowledge2/relations': {
+      id: '/api/knowledge2/relations'
+      path: '/api/knowledge2/relations'
+      fullPath: '/api/knowledge2/relations'
+      preLoaderRoute: typeof ApiKnowledge2RelationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/knowledge2/entities': {
+      id: '/api/knowledge2/entities'
+      path: '/api/knowledge2/entities'
+      fullPath: '/api/knowledge2/entities'
+      preLoaderRoute: typeof ApiKnowledge2EntitiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/knowledge/upload': {
       id: '/api/knowledge/upload'
       path: '/api/knowledge/upload'
@@ -1148,6 +1379,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiKnowledgeIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/command-palette/search': {
+      id: '/api/command-palette/search'
+      path: '/api/command-palette/search'
+      fullPath: '/api/command-palette/search'
+      preLoaderRoute: typeof ApiCommandPaletteSearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/canvas/versions': {
+      id: '/api/canvas/versions'
+      path: '/api/canvas/versions'
+      fullPath: '/api/canvas/versions'
+      preLoaderRoute: typeof ApiCanvasVersionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/canvas/stream': {
+      id: '/api/canvas/stream'
+      path: '/api/canvas/stream'
+      fullPath: '/api/canvas/stream'
+      preLoaderRoute: typeof ApiCanvasStreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/brain/context': {
       id: '/api/brain/context'
       path: '/api/brain/context'
@@ -1160,6 +1412,13 @@ declare module '@tanstack/react-router' {
       path: '/projects/$id'
       fullPath: '/projects/$id'
       preLoaderRoute: typeof AuthenticatedProjectsIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/canvas/$id': {
+      id: '/_authenticated/canvas/$id'
+      path: '/canvas/$id'
+      fullPath: '/canvas/$id'
+      preLoaderRoute: typeof AuthenticatedCanvasIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/api/learning/sources/ingest': {
@@ -1232,7 +1491,12 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedStudyRoute: typeof AuthenticatedStudyRoute
   AuthenticatedTasksRoute: typeof AuthenticatedTasksRoute
   AuthenticatedVoiceRoute: typeof AuthenticatedVoiceRoute
+  AuthenticatedCanvasIdRoute: typeof AuthenticatedCanvasIdRoute
   AuthenticatedProjectsIdRoute: typeof AuthenticatedProjectsIdRoute
+  AuthenticatedCanvasIndexRoute: typeof AuthenticatedCanvasIndexRoute
+  AuthenticatedDashboardsIndexRoute: typeof AuthenticatedDashboardsIndexRoute
+  AuthenticatedKnowledge2IndexRoute: typeof AuthenticatedKnowledge2IndexRoute
+  AuthenticatedObservabilityIndexRoute: typeof AuthenticatedObservabilityIndexRoute
   AuthenticatedProjectsIndexRoute: typeof AuthenticatedProjectsIndexRoute
 }
 
@@ -1254,7 +1518,12 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedStudyRoute: AuthenticatedStudyRoute,
   AuthenticatedTasksRoute: AuthenticatedTasksRoute,
   AuthenticatedVoiceRoute: AuthenticatedVoiceRoute,
+  AuthenticatedCanvasIdRoute: AuthenticatedCanvasIdRoute,
   AuthenticatedProjectsIdRoute: AuthenticatedProjectsIdRoute,
+  AuthenticatedCanvasIndexRoute: AuthenticatedCanvasIndexRoute,
+  AuthenticatedDashboardsIndexRoute: AuthenticatedDashboardsIndexRoute,
+  AuthenticatedKnowledge2IndexRoute: AuthenticatedKnowledge2IndexRoute,
+  AuthenticatedObservabilityIndexRoute: AuthenticatedObservabilityIndexRoute,
   AuthenticatedProjectsIndexRoute: AuthenticatedProjectsIndexRoute,
 }
 
@@ -1307,8 +1576,13 @@ const rootRouteChildren: RootRouteChildren = {
   ApiTitleRoute: ApiTitleRoute,
   ShareTokenRoute: ShareTokenRoute,
   ApiBrainContextRoute: ApiBrainContextRoute,
+  ApiCanvasStreamRoute: ApiCanvasStreamRoute,
+  ApiCanvasVersionsRoute: ApiCanvasVersionsRoute,
+  ApiCommandPaletteSearchRoute: ApiCommandPaletteSearchRoute,
   ApiKnowledgeIdRoute: ApiKnowledgeIdRoute,
   ApiKnowledgeUploadRoute: ApiKnowledgeUploadRoute,
+  ApiKnowledge2EntitiesRoute: ApiKnowledge2EntitiesRoute,
+  ApiKnowledge2RelationsRoute: ApiKnowledge2RelationsRoute,
   ApiLearningAnalyticsRoute: ApiLearningAnalyticsRoute,
   ApiLearningExamsRoute: ApiLearningExamsRoute,
   ApiLearningFeaturesRoute: ApiLearningFeaturesRoute,
@@ -1321,9 +1595,12 @@ const rootRouteChildren: RootRouteChildren = {
   ApiLearningSessionRoute: ApiLearningSessionRoute,
   ApiLearningVoiceRoute: ApiLearningVoiceRoute,
   ApiLearningWhiteboardRoute: ApiLearningWhiteboardRoute,
+  ApiObservabilityHealthRoute: ApiObservabilityHealthRoute,
   ApiProjectsIdRoute: ApiProjectsIdRoute,
   ApiSharedTokenRoute: ApiSharedTokenRoute,
   ApiStudyPlansIdRoute: ApiStudyPlansIdRouteWithChildren,
+  ApiCanvasIndexRoute: ApiCanvasIndexRoute,
+  ApiDashboardsIndexRoute: ApiDashboardsIndexRoute,
   ApiKnowledgeIndexRoute: ApiKnowledgeIndexRoute,
   ApiProjectsIndexRoute: ApiProjectsIndexRoute,
   ApiStudyPlansIndexRoute: ApiStudyPlansIndexRoute,
