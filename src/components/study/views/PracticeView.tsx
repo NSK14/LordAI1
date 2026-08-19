@@ -99,7 +99,8 @@ export function PracticeView({ snapshot, userId, conceptId, onBack, refresh }: P
   }
 
   const handleStartPractice = () => {
-    const concept = conceptId || selectNextConcept(snapshot.concepts, snapshot.mastery)?.id;
+    const concept =
+      conceptId || selectNextConcept(snapshot.concepts ?? [], snapshot.mastery ?? [])?.id;
     if (!concept) return;
     void fetchQuestion();
   };
@@ -146,12 +147,12 @@ export function PracticeView({ snapshot, userId, conceptId, onBack, refresh }: P
   };
 
   const getSelectedConcept = () => {
-    const id = conceptId || selectNextConcept(snapshot.concepts, snapshot.mastery)?.id;
-    return id ? snapshot.concepts.find((c) => c.id === id) : undefined;
+    const id = conceptId || selectNextConcept(snapshot.concepts ?? [], snapshot.mastery ?? [])?.id;
+    return id ? (snapshot.concepts ?? []).find((c) => c.id === id) : undefined;
   };
 
   const getMasteryForConcept = () => {
-    const id = conceptId || selectNextConcept(snapshot.concepts, snapshot.mastery)?.id;
+    const id = conceptId || selectNextConcept(snapshot.concepts ?? [], snapshot.mastery ?? [])?.id;
     return id ? snapshot.mastery.find((m) => m.concept_id === id) : undefined;
   };
 

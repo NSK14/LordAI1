@@ -40,32 +40,7 @@ import type {
 const db = supabase;
 
 export async function getLearningSnapshot(userId: string): Promise<LearningSnapshot> {
-  const [
-    concepts,
-    userConcepts,
-    mastery,
-    tasks,
-    boards,
-    resources,
-    profile,
-    sources,
-    integrations,
-    sessions,
-    artifacts,
-    attempts,
-    flashcards,
-    notes,
-    exams,
-    revisionSchedule,
-    memory,
-    voiceSessions,
-    ocrJobs,
-    whiteboards,
-    dailyGoals,
-    weeklyGoals,
-    analytics,
-    history,
-  ] = await Promise.all([
+  const results = await Promise.allSettled([
     db.from("learning_concepts").select("*").order("framework").order("title"),
     (db as any)
       .from("learning_user_concepts")
@@ -191,7 +166,7 @@ export async function getLearningSnapshot(userId: string): Promise<LearningSnaps
       .limit(50),
   ]);
 
-  for (const result of [
+  const [
     concepts,
     userConcepts,
     mastery,
@@ -216,47 +191,50 @@ export async function getLearningSnapshot(userId: string): Promise<LearningSnaps
     weeklyGoals,
     analytics,
     history,
-  ]) {
-    if (result.error) throw result.error;
-  }
+  ] = results.map((r) => {
+    if (r.status === "fulfilled") return r.value;
+    return { data: null as any, error: r.reason };
+  });
+
+  const safe = <T>(result: { data: T | null; error: any }): T => (result.data ?? []) as T;
 
   return {
     concepts: [
-      ...(concepts.data ?? []).map((concept) => ({
+      ...(safe(concepts) as any[]).map((concept: any) => ({
         ...concept,
         framework: concept.framework as LearningConcept["framework"],
         grade_band: concept.grade_band as LearningConcept["grade_band"],
         is_custom: false,
       })),
-      ...((userConcepts?.data ?? []) as any[]).map((concept) => ({
+      ...(safe(userConcepts) as any[]).map((concept: any) => ({
         ...concept,
         framework: concept.framework as LearningConcept["framework"],
         grade_band: concept.grade_band as LearningConcept["grade_band"],
         is_custom: true,
       })),
     ] as LearningConcept[],
-    mastery: (mastery.data ?? []) as Mastery[],
-    tasks: (tasks.data ?? []) as (LearningPlanTask & { learning_concepts?: { title: string } })[],
-    boards: (boards.data ?? []) as LearningBoard[],
-    resources: (resources.data ?? []) as LearningResource[],
-    profile: profile.data as LearningProfile | null,
-    sources: (sources.data ?? []) as LearningSource[],
-    integrations: (integrations.data ?? []) as any[],
-    sessions: (sessions.data ?? []) as LearningSession[],
-    artifacts: (artifacts.data ?? []) as LearningArtifact[],
-    attempts: (attempts.data ?? []) as LearningAttempt[],
-    flashcards: (flashcards.data ?? []) as Flashcard[],
-    notes: (notes.data ?? []) as LearningNote[],
-    exams: (exams.data ?? []) as Exam[],
-    revision_schedule: (revisionSchedule.data ?? []) as RevisionSchedule[],
-    memory: (memory.data ?? []) as LearningMemory[],
-    voice_sessions: (voiceSessions.data ?? []) as VoiceSession[],
-    ocr_jobs: (ocrJobs.data ?? []) as OCRJob[],
-    whiteboards: (whiteboards.data ?? []) as Whiteboard[],
-    daily_goals: (dailyGoals.data ?? []) as DailyGoal[],
-    weekly_goals: (weeklyGoals.data ?? []) as WeeklyGoal[],
-    analytics: (analytics.data ?? []) as LearningAnalytics[],
-    history: (history.data ?? []) as LearningHistory[],
+    mastery: safe(mastery) as Mastery[],
+    tasks: safe(tasks) as (LearningPlanTask & { learning_concepts?: { title: string } })[],
+    boards: safe(boards) as LearningBoard[],
+    resources: safe(resources) as LearningResource[],
+    profile: (profile as any)?.data ?? null,
+    sources: safe(sources) as LearningSource[],
+    integrations: safe(integrations) as any[],
+    sessions: safe(sessions) as LearningSession[],
+    artifacts: safe(artifacts) as LearningArtifact[],
+    attempts: safe(attempts) as LearningAttempt[],
+    flashcards: safe(flashcards) as Flashcard[],
+    notes: safe(notes) as LearningNote[],
+    exams: safe(exams) as Exam[],
+    revision_schedule: safe(revisionSchedule) as RevisionSchedule[],
+    memory: safe(memory) as LearningMemory[],
+    voice_sessions: safe(voiceSessions) as VoiceSession[],
+    ocr_jobs: safe(ocrJobs) as OCRJob[],
+    whiteboards: safe(whiteboards) as Whiteboard[],
+    daily_goals: safe(dailyGoals) as DailyGoal[],
+    weekly_goals: safe(weeklyGoals) as WeeklyGoal[],
+    analytics: safe(analytics) as LearningAnalytics[],
+    history: safe(history) as LearningHistory[],
   } as LearningSnapshot;
 }
 

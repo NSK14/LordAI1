@@ -5,6 +5,8 @@
 // A `Candidate` pairs a provider with the model id understood by that
 // provider. This makes routing deterministic (no fragile string-prefix guessing)
 // and lets every provider be configured in one place.
+import { z } from "zod";
+
 export type ProviderName = "gemini" | "openrouter" | "openai";
 
 export interface Candidate {
@@ -24,11 +26,11 @@ export const PROVIDER_CONFIG: Record<
 > = {
   gemini: {
     apiKeyEnv: "GEMINI_API_KEY",
-    models: ["gemini-2.5-flash", "gemini-2.5-pro"],
+    models: ["gemini-3.5-flash", "gemini-3.1-pro"],
   },
   openrouter: {
     apiKeyEnv: "OPENROUTER_API_KEY",
-    models: [],
+    models: ["google/gemma-4-26b-a4b-it:free", "openai/gpt-oss-20b:free"],
   },
   openai: {
     apiKeyEnv: "OPENAI_API_KEY",
@@ -44,22 +46,22 @@ const candidate = (provider: ProviderName, modelId: string): Candidate => ({ pro
 // rate-limited, returns 5xx, or has no configured key.
 export const LORD_MODELS: Record<LordMode, readonly Candidate[]> = {
   // ⚡ Lowest latency / everyday chat — prefer free/fast providers.
-  fast: [candidate("gemini", "gemini-2.5-flash"), candidate("openai", "gpt-4o-mini")],
+  fast: [candidate("gemini", "gemini-3.5-flash"), candidate("openai", "gpt-4o-mini")],
 
   // 💬 Best general-purpose — Gemini first, then OpenAI.
-  balanced: [candidate("gemini", "gemini-2.5-flash"), candidate("openai", "gpt-4o")],
+  balanced: [candidate("gemini", "gemini-3.5-flash"), candidate("openai", "gpt-4o")],
 
   // 🧠 Deep reasoning & planning — premium providers first.
-  reasoning: [candidate("openai", "gpt-4o"), candidate("gemini", "gemini-2.5-pro")],
+  reasoning: [candidate("openai", "gpt-4o"), candidate("gemini", "gemini-3.1-pro")],
 
   // 💻 Software engineering — coding-capable models first.
-  coding: [candidate("openai", "gpt-4o"), candidate("gemini", "gemini-2.5-flash")],
+  coding: [candidate("openai", "gpt-4o"), candidate("gemini", "gemini-3.5-flash")],
 
   // 🎨 Writing, storytelling & content creation
-  creative: [candidate("openai", "gpt-4o"), candidate("gemini", "gemini-2.5-flash")],
+  creative: [candidate("openai", "gpt-4o"), candidate("gemini", "gemini-3.5-flash")],
 
   // 🖥️ Lightweight fallback — smallest available models.
-  local: [candidate("gemini", "gemini-2.5-flash"), candidate("openai", "gpt-4o-mini")],
+  local: [candidate("gemini", "gemini-3.5-flash"), candidate("openai", "gpt-4o-mini")],
 };
 
 export type LordMode = "fast" | "balanced" | "coding" | "creative" | "reasoning" | "local";
@@ -87,6 +89,76 @@ export function buildCandidates(mode: LordMode, explicitModelId?: string): strin
 
 // Backwards-compatible wrapper
 export const getLordModelCandidates = buildCandidates;
+
+export type ModelRegistryEntry = {
+  id: string;
+  label: string;
+  provider: string;
+  description?: string;
+};
+
+const PROVIDER_LABELS: Record<ProviderName, string> = {
+  gemini: "Google",
+  openrouter: "OpenRouter",
+  openai: "OpenAI",
+};
+
+const MODEL_DESCRIPTIONS: Record<string, string> = {
+  "gemini-3.5-flash": "Google's latest fast, efficient model (stable)",
+  "gemini-3.1-pro": "Google's most capable reasoning model (stable)",
+  "google/gemma-4-26b-a4b-it:free": "Google's open-weight model via OpenRouter free tier",
+  "openai/gpt-oss-20b:free": "OpenAI open-weight model via OpenRouter free tier",
+  "gpt-4o-mini": "OpenAI's fast, cost-effective model",
+  "gpt-4o": "OpenAI's most capable general-purpose model",
+};
+
+export function buildModelRegistry(): ModelRegistryEntry[] {
+  const entries: ModelRegistryEntry[] = [];
+  for (const [provider, config] of Object.entries(PROVIDER_CONFIG)) {
+    const label = PROVIDER_LABELS[provider as ProviderName] ?? provider;
+    for (const modelId of config.models) {
+      const displayId = modelId.includes("/") ? modelId : `${provider}/${modelId}`;
+      entries.push({
+        id: displayId,
+        label: formatModelLabel(modelId),
+        provider: label,
+        description: MODEL_DESCRIPTIONS[modelId] ?? `${label} model: ${modelId}`,
+      });
+    }
+  }
+  return entries;
+}
+
+function formatModelLabel(modelId: string): string {
+  const base = modelId.includes("/") ? (modelId.split("/").pop() ?? modelId) : modelId;
+  return base
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .replace(/\s+/g, " ");
+}
+
+export const MODEL_REGISTRY = buildModelRegistry();
+export const DEFAULT_MODEL_ID: string = MODEL_REGISTRY[0]?.id ?? "";
+
+const ModelIdSchema = z.string().min(1);
+
+export function validateModelId(
+  modelId: unknown,
+): { valid: true; modelId: string } | { valid: false; modelId: string; reason: string } {
+  const fallback = DEFAULT_MODEL_ID;
+
+  const parsed = ModelIdSchema.safeParse(modelId);
+  if (!parsed.success) {
+    return { valid: false, modelId: fallback, reason: "missing_or_not_string" };
+  }
+
+  const knownIds = new Set(MODEL_REGISTRY.map((m) => m.id));
+  if (knownIds.has(parsed.data)) {
+    return { valid: true, modelId: parsed.data };
+  }
+
+  return { valid: false, modelId: fallback, reason: "unknown_model_id" };
+}
 
 // Flatten every candidate across all modes into provider+modelId pairs. Used
 // for bare-id resolution and diagnostics.

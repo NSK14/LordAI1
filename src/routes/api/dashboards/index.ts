@@ -3,7 +3,7 @@ import { requireSupabaseRequestAuth } from "@/integrations/supabase/auth-middlew
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
-export const Route = createFileRoute("/api/dashboards")({
+export const Route = createFileRoute("/api/dashboards/")({
   server: {
     middleware: [requireSupabaseRequestAuth],
     handlers: {

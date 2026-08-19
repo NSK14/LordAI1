@@ -1,12 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { generateText } from "ai";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { createOpenAI } from "@ai-sdk/openai";
 import { createLordProviders, type LordProvidersState } from "@/lib/ai-gateway.server";
+import { PROVIDER_CONFIG, type ProviderName } from "@/lib/lord-config";
 import { GATEWAY_CONFIG } from "@/lib/gateway-config";
 import { createLogger } from "@/lib/gateway-logger";
 import { requireSupabaseRequestAuth } from "@/integrations/supabase/auth-middleware";
 import { getSafeErrorMessage } from "@/lib/api-error";
 import { generateChatTitle } from "@/lib/chat-title";
+
+type ProviderFunction =
+  | ReturnType<typeof createGoogleGenerativeAI>
+  | ReturnType<typeof createOpenAICompatible>
+  | ReturnType<typeof createOpenAI>;
 
 const TitleRequestSchema = z.object({
   prompt: z.string().min(1).max(10000),
@@ -15,10 +24,19 @@ const TitleRequestSchema = z.object({
 const TITLE_SYSTEM_PROMPT = `You are a conversation title generator. Generate a concise, human-readable title (2-5 words, Title Case, no punctuation, no quotes, no emojis) for the following user message. Output ONLY the title text.`;
 
 function getTitleCandidates(lordState: LordProvidersState) {
-  return [
-    { name: "gemini" as const, provider: lordState.providers.gemini, model: "gemini-2.5-flash" },
-    { name: "openai" as const, provider: lordState.providers.openai, model: "gpt-4o-mini" },
-  ];
+  const candidates: Array<{ name: ProviderName; provider: ProviderFunction; model: string }> = [];
+  for (const providerName of ["gemini", "openai"] as ProviderName[]) {
+    const models = PROVIDER_CONFIG[providerName].models;
+    const provider = lordState.providers[providerName];
+    if (models.length > 0 && provider) {
+      candidates.push({
+        name: providerName,
+        provider: provider as ProviderFunction,
+        model: models[0],
+      });
+    }
+  }
+  return candidates;
 }
 
 async function generateTitleWithAI(

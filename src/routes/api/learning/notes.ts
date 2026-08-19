@@ -5,6 +5,7 @@ import { generateText } from "ai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { requireSupabaseRequestAuth } from "@/integrations/supabase/auth-middleware";
 import { apiErrorResponse } from "@/lib/api-error";
+import { OPENROUTER_DEFAULT_MODEL } from "@/lib/openrouter-provider";
 
 function getOpenRouterProvider() {
   const apiKey = process.env.OPENROUTER_API_KEY;
@@ -122,7 +123,7 @@ export const Route = createFileRoute("/api/learning/notes")({
             };
 
             const { text } = await generateText({
-              model: provider("google/gemma-4-26b-a4b-it:free"),
+              model: provider(OPENROUTER_DEFAULT_MODEL),
               system: `You are a ${concept.framework} study material creator. Output only the requested format. No extra commentary.`,
               messages: [
                 {

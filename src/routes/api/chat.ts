@@ -16,6 +16,7 @@ import {
   type LordMode,
   type ModelAttempt,
   type StartupValidationResult,
+  logStartupBanner,
 } from "@/lib/ai-gateway.server";
 import type { TokenUsageEvent } from "@/lib/token-usage-store";
 import { apiErrorResponse, getSafeErrorMessage, type ProviderStatus } from "@/lib/api-error";
@@ -51,6 +52,18 @@ const ChatRequestSchema = z.object({
     .passthrough()
     .optional(),
 });
+
+function sanitizeProviderMessage(message?: string): string | undefined {
+  if (!message) return undefined;
+  const trimmed = message.trim();
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+    return "Provider returned an error. Reference ID: " + crypto.randomUUID().slice(0, 8);
+  }
+  if (trimmed.length > 200) {
+    return trimmed.slice(0, 200) + "...";
+  }
+  return trimmed;
+}
 
 function logChat(event: string, payload: Record<string, unknown>) {
   console.info(JSON.stringify({ event, ...payload }));
@@ -179,6 +192,7 @@ async function getStartupValidation(state: LordProvidersState): Promise<StartupV
     const infra = getGatewayInfrastructure();
     startupValidationPromise = validateProvidersAtStartup(state, infra).then((results) => {
       infra.logger.startupValidation(results);
+      logStartupBanner(state, infra, getConfiguredProviders());
       return results;
     });
   }
@@ -375,7 +389,7 @@ export const Route = createFileRoute("/api/chat")({
               status: a.status,
               reason: a.reason,
               retryable: a.retryable,
-              providerMessage: a.providerMessage,
+              providerMessage: sanitizeProviderMessage(a.providerMessage),
               errorCode: a.errorCode,
               requestId: a.requestId,
             })),
@@ -399,7 +413,7 @@ export const Route = createFileRoute("/api/chat")({
                     status: a.status,
                     reason: a.reason,
                     retryable: a.retryable,
-                    providerMessage: a.providerMessage,
+                    providerMessage: sanitizeProviderMessage(a.providerMessage),
                     errorCode: a.errorCode,
                     requestId: a.requestId,
                   })) ?? [],
@@ -420,7 +434,7 @@ export const Route = createFileRoute("/api/chat")({
                     status: a.status,
                     reason: a.reason,
                     retryable: a.retryable,
-                    providerMessage: a.providerMessage,
+                    providerMessage: sanitizeProviderMessage(a.providerMessage),
                     errorCode: a.errorCode,
                     requestId: a.requestId,
                   })) ?? [],
@@ -442,7 +456,7 @@ export const Route = createFileRoute("/api/chat")({
                   status: a.status,
                   reason: a.reason,
                   retryable: a.retryable,
-                  providerMessage: a.providerMessage,
+                  providerMessage: sanitizeProviderMessage(a.providerMessage),
                   errorCode: a.errorCode,
                   requestId: a.requestId,
                 })),
@@ -462,7 +476,7 @@ export const Route = createFileRoute("/api/chat")({
                   status: a.status,
                   reason: a.reason,
                   retryable: a.retryable,
-                  providerMessage: a.providerMessage,
+                  providerMessage: sanitizeProviderMessage(a.providerMessage),
                   errorCode: a.errorCode,
                   requestId: a.requestId,
                 })),
@@ -483,7 +497,7 @@ export const Route = createFileRoute("/api/chat")({
                 status: a.status,
                 reason: a.reason,
                 retryable: a.retryable,
-                providerMessage: a.providerMessage,
+                providerMessage: sanitizeProviderMessage(a.providerMessage),
                 errorCode: a.errorCode,
                 requestId: a.requestId,
               })) ?? [],

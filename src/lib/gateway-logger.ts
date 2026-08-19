@@ -1,4 +1,5 @@
 import { GATEWAY_CONFIG, type GatewayConfig } from "./gateway-config";
+import { PROVIDER_CONFIG, type ProviderName } from "./lord-config";
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
@@ -15,6 +16,14 @@ export interface Logger {
       disabledModels?: Array<{ model: string; reason: string; disabledUntil: number }>;
     }>,
   ): void;
+  startupBanner(state: {
+    configuredProviders: ProviderName[];
+    enabledModels: Record<ProviderName, string[]>;
+    disabledModels: Record<ProviderName, string[]>;
+    healthCacheEntries: number;
+    circuitBreakerEntries: number;
+    preferredModels: Record<string, string>;
+  }): void;
 }
 
 export function createLogger(config: GatewayConfig): Logger {
@@ -103,6 +112,43 @@ export function createLogger(config: GatewayConfig): Logger {
       }
       console.info("");
       console.info("━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.info("");
+    },
+    startupBanner(state) {
+      console.info("");
+      console.info("==================================");
+      console.info("LORD ACTIVE CONFIGURATION");
+      console.info("==================================");
+      for (const provider of state.configuredProviders) {
+        const providerLabel =
+          provider === "gemini" ? "Gemini" : provider === "openrouter" ? "OpenRouter" : "OpenAI";
+        console.info("");
+        console.info(providerLabel);
+        const enabled = state.enabledModels[provider] ?? [];
+        const disabled = state.disabledModels[provider] ?? [];
+        if (enabled.length > 0) {
+          for (const m of enabled) {
+            console.info(`  ✔ ${m}`);
+          }
+        } else {
+          console.info("  (none enabled)");
+        }
+        if (disabled.length > 0) {
+          for (const m of disabled) {
+            console.info(`  ⊘ ${m}`);
+          }
+        }
+      }
+      console.info("");
+      console.info("Health Cache: " + state.healthCacheEntries + " entries");
+      console.info("Circuit Breaker: " + state.circuitBreakerEntries + " entries");
+      console.info("");
+      console.info("Preferred Models:");
+      for (const [mode, model] of Object.entries(state.preferredModels)) {
+        console.info(`  ${mode}: ${model}`);
+      }
+      console.info("");
+      console.info("==================================");
       console.info("");
     },
   };

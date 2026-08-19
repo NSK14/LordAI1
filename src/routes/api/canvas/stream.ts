@@ -3,6 +3,7 @@ import { requireSupabaseRequestAuth } from "@/integrations/supabase/auth-middlew
 import { streamText } from "ai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
+import { PROVIDER_CONFIG } from "@/lib/lord-config";
 
 export const Route = createFileRoute("/api/canvas/stream")({
   server: {
@@ -55,7 +56,7 @@ export const Route = createFileRoute("/api/canvas/stream")({
             flowchart:
               "You are a flowchart expert. Produce valid Mermaid flowchart syntax. Output only the diagram code.",
             mind_map:
-              "You are a mind mapping expert. Produce a valid Mermaid mindmap. Output only the diagram code.",
+              "You are a mind mapping expert. Produce a valid Mermaid mindmap. Output only the mindmap code.",
             note: "You are a note-taking assistant. Produce concise, well-organized notes.",
             study_guide:
               "You are an educational content expert. Produce comprehensive study guides.",
@@ -70,11 +71,13 @@ export const Route = createFileRoute("/api/canvas/stream")({
 
           let model;
           if (geminiKey) {
+            const geminiModels = PROVIDER_CONFIG.gemini.models;
             const gemini = createGoogleGenerativeAI({ apiKey: geminiKey });
-            model = gemini("gemini-2.5-flash");
+            model = gemini(geminiModels[0] ?? "gemini-3.5-flash");
           } else if (openaiKey) {
+            const openaiModels = PROVIDER_CONFIG.openai.models;
             const openai = createOpenAI({ apiKey: openaiKey });
-            model = openai("gpt-4o-mini");
+            model = openai(openaiModels[0] ?? "gpt-4o-mini");
           } else {
             return Response.json(
               { error: { code: "configuration", message: "No AI provider configured" } },

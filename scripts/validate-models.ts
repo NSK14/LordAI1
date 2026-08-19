@@ -6,6 +6,8 @@
  * Run with: OPENROUTER_API_KEY=xxx bun scripts/validate-models.ts
  */
 
+import { PROVIDER_CONFIG } from "../src/lib/lord-config";
+
 interface OpenRouterModel {
   id: string;
   name: string;
@@ -92,13 +94,8 @@ async function main() {
     process.exit(1);
   }
 
-  // Models from lord-config.ts PROVIDER_CONFIG (free models only)
-  const configuredModels = [
-    "gemini-2.5-flash",
-    "gemini-2.5-pro",
-    "google/gemma-4-26b-a4b-it:free",
-    "openai/gpt-oss-20b:free",
-  ];
+  const openRouterModels = PROVIDER_CONFIG.openrouter.models;
+  const configuredModels = [...openRouterModels];
 
   console.log("Fetching OpenRouter model catalog...");
   const models = await fetchModels(apiKey);

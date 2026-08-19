@@ -146,7 +146,7 @@ export function PlannerView({ snapshot, userId, onNavigate, onBack, refresh }: P
     try {
       await callLearningSession({
         action: "plan",
-        conceptIds: snapshot.concepts.slice(0, 8).map((c) => c.id),
+        conceptIds: (snapshot.concepts ?? []).slice(0, 8).map((c) => c.id),
         weeklyMinutes: 180,
       });
       await loadPlans();

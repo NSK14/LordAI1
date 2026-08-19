@@ -13,6 +13,7 @@ import { estimateCost } from "@/lib/model-cost";
 import type { TokenUsageEvent } from "@/lib/token-usage-store";
 import {
   LORD_MODE_LABELS,
+  LORD_MODELS,
   classifyModelError,
   OpenRouterClientError,
   type LordMode,
@@ -30,6 +31,7 @@ import { createHealthCache, type HealthCacheEntry, type HealthCache } from "./pr
 import { createCircuitBreaker, type CircuitBreaker } from "./circuit-breaker";
 import { createModelStatsStore, type ModelStatsStore } from "./model-stats";
 import { createLogger, type Logger } from "./gateway-logger";
+import { OPENROUTER_DEFAULT_MODEL } from "./openrouter-provider";
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const OPENROUTER_CHAT_PATH = "/chat/completions";
@@ -644,6 +646,51 @@ export async function validateProvidersAtStartup(
   return results;
 }
 
+export function logStartupBanner(
+  state: LordProvidersState,
+  infra: GatewayInfrastructure,
+  configuredProviders: ProviderName[],
+) {
+  const enabledModels: Record<ProviderName, string[]> = { gemini: [], openrouter: [], openai: [] };
+  const disabledModels: Record<ProviderName, string[]> = { gemini: [], openrouter: [], openai: [] };
+
+  for (const provider of configuredProviders) {
+    const models = PROVIDER_CONFIG[provider].models;
+    const enabled: string[] = [];
+    const disabled: string[] = [];
+    for (const modelId of models) {
+      const health = infra.healthCache.get(provider, modelId);
+      const circuitOpen = infra.circuitBreaker.isOpen(provider, modelId);
+      if (health && health.status !== "healthy") {
+        disabled.push(modelId);
+      } else if (circuitOpen) {
+        disabled.push(modelId + " (open circuit)");
+      } else {
+        enabled.push(modelId);
+      }
+    }
+    enabledModels[provider] = enabled;
+    disabledModels[provider] = disabled;
+  }
+
+  const preferredModels: Record<string, string> = {};
+  for (const mode of Object.keys(LORD_MODELS) as LordMode[]) {
+    const cached = getCachedCandidate(mode);
+    if (cached) {
+      preferredModels[mode] = `${cached.provider}/${cached.model}`;
+    }
+  }
+
+  infra.logger.startupBanner({
+    configuredProviders,
+    enabledModels,
+    disabledModels,
+    healthCacheEntries: infra.healthCache.getAll().length,
+    circuitBreakerEntries: infra.circuitBreaker.getAll().length,
+    preferredModels,
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Core gateway logic
 // ---------------------------------------------------------------------------
@@ -1212,7 +1259,7 @@ export async function testOpenRouterConnection(opts: {
   model?: string;
   prompt?: string;
 }): Promise<OpenRouterTestResult> {
-  const model = opts.model ?? "google/gemma-4-26b-a4b-it:free";
+  const model = opts.model ?? OPENROUTER_DEFAULT_MODEL;
   const url = `${OPENROUTER_BASE_URL}${OPENROUTER_CHAT_PATH}`;
   const body = {
     model,

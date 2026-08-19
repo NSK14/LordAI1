@@ -6,6 +6,7 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { requireSupabaseRequestAuth } from "@/integrations/supabase/auth-middleware";
 import { apiErrorResponse } from "@/lib/api-error";
 import type { Question, TutorMode, LearningConcept, Mastery } from "@/lib/learning/types";
+import { OPENROUTER_DEFAULT_MODEL } from "@/lib/openrouter-provider";
 
 async function resolveConcept(db: any, conceptId: string): Promise<LearningConcept | null> {
   const { data: catalog } = await db
@@ -184,7 +185,7 @@ async function generateAIQuestion(
   const provider = getOpenRouterProvider();
 
   const { text } = await generateText({
-    model: provider("google/gemma-4-26b-a4b-it:free"),
+    model: provider(OPENROUTER_DEFAULT_MODEL),
     system: `You are a ${["", "introductory", "foundational", "standard", "advanced", "mastery"][difficulty] ?? "standard"}-level ${concept.framework} assessment designer. Output ONLY strict JSON. No markdown. No extra text.`,
     messages: [
       {
@@ -355,7 +356,7 @@ async function generateFlashcards(
   const diffLabel = diffLabels[difficulty] ?? "standard";
 
   const { text } = await generateText({
-    model: provider("google/gemma-4-26b-a4b-it:free"),
+    model: provider(OPENROUTER_DEFAULT_MODEL),
     system: `You are a ${diffLabel}-level ${concept.framework} flashcard creator. Output ONLY strict JSON array. No markdown. No extra text.`,
     messages: [
       {
@@ -482,7 +483,7 @@ async function generateTutorResponse(
     .join("\n\n");
 
   const { text } = await generateText({
-    model: provider("google/gemma-4-26b-a4b-it:free"),
+    model: provider(OPENROUTER_DEFAULT_MODEL),
     system: systemPrompt,
     messages: [],
     maxOutputTokens: 1500,
@@ -510,7 +511,7 @@ async function generateSummary(
   };
 
   const { text } = await generateText({
-    model: provider("google/gemma-4-26b-a4b-it:free"),
+    model: provider(OPENROUTER_DEFAULT_MODEL),
     system: `You are a ${concept.framework} study material creator. Output only the requested format. No extra commentary.`,
     messages: [
       {
@@ -585,7 +586,7 @@ async function extractMemories(
   const conversation = messages.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join("\n");
 
   const { text } = await generateText({
-    model: provider("google/gemma-4-26b-a4b-it:free"),
+    model: provider(OPENROUTER_DEFAULT_MODEL),
     system: `You are a learning memory extractor. Analyze the conversation and extract structured memories. Output ONLY a JSON array of memory objects. No markdown. No extra text.`,
     messages: [
       {

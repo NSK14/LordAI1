@@ -6,6 +6,7 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { requireSupabaseRequestAuth } from "@/integrations/supabase/auth-middleware";
 import { apiErrorResponse, apiOkResponse } from "@/lib/api-error";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { OPENROUTER_DEFAULT_MODEL } from "@/lib/openrouter-provider";
 
 const SuggestSchema = z.object({
   userMessage: z.string().min(1).max(2000),
@@ -108,7 +109,7 @@ Return STRICT JSON only (no markdown, no extra text):
 
         try {
           const { text } = await generateText({
-            model: getProvider()("google/gemma-4-26b-a4b-it:free"),
+            model: getProvider()(OPENROUTER_DEFAULT_MODEL),
             system: systemPrompt,
             messages: [{ role: "user", content: "Suggest changes to my study plan." }],
             maxOutputTokens: 1200,

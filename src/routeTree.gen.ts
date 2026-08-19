@@ -73,6 +73,7 @@ import { Route as ApiCommandPaletteSearchRouteImport } from './routes/api/comman
 import { Route as ApiCanvasVersionsRouteImport } from './routes/api/canvas/versions'
 import { Route as ApiCanvasStreamRouteImport } from './routes/api/canvas/stream'
 import { Route as ApiBrainContextRouteImport } from './routes/api/brain/context'
+import { Route as ApiAdminGatewayRouteImport } from './routes/api/admin/gateway'
 import { Route as AuthenticatedProjectsIdRouteImport } from './routes/_authenticated/projects/$id'
 import { Route as AuthenticatedCanvasIdRouteImport } from './routes/_authenticated/canvas/$id'
 import { Route as ApiLearningSourcesIngestRouteImport } from './routes/api/learning/sources/ingest'
@@ -408,6 +409,11 @@ const ApiBrainContextRoute = ApiBrainContextRouteImport.update({
   path: '/api/brain/context',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminGatewayRoute = ApiAdminGatewayRouteImport.update({
+  id: '/api/admin/gateway',
+  path: '/api/admin/gateway',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedProjectsIdRoute = AuthenticatedProjectsIdRouteImport.update({
   id: '/projects/$id',
   path: '/projects/$id',
@@ -492,6 +498,7 @@ export interface FileRoutesByFullPath {
   '/share/$token': typeof ShareTokenRoute
   '/canvas/$id': typeof AuthenticatedCanvasIdRoute
   '/projects/$id': typeof AuthenticatedProjectsIdRoute
+  '/api/admin/gateway': typeof ApiAdminGatewayRoute
   '/api/brain/context': typeof ApiBrainContextRoute
   '/api/canvas/stream': typeof ApiCanvasStreamRoute
   '/api/canvas/versions': typeof ApiCanvasVersionsRoute
@@ -566,6 +573,7 @@ export interface FileRoutesByTo {
   '/share/$token': typeof ShareTokenRoute
   '/canvas/$id': typeof AuthenticatedCanvasIdRoute
   '/projects/$id': typeof AuthenticatedProjectsIdRoute
+  '/api/admin/gateway': typeof ApiAdminGatewayRoute
   '/api/brain/context': typeof ApiBrainContextRoute
   '/api/canvas/stream': typeof ApiCanvasStreamRoute
   '/api/canvas/versions': typeof ApiCanvasVersionsRoute
@@ -642,6 +650,7 @@ export interface FileRoutesById {
   '/share/$token': typeof ShareTokenRoute
   '/_authenticated/canvas/$id': typeof AuthenticatedCanvasIdRoute
   '/_authenticated/projects/$id': typeof AuthenticatedProjectsIdRoute
+  '/api/admin/gateway': typeof ApiAdminGatewayRoute
   '/api/brain/context': typeof ApiBrainContextRoute
   '/api/canvas/stream': typeof ApiCanvasStreamRoute
   '/api/canvas/versions': typeof ApiCanvasVersionsRoute
@@ -718,6 +727,7 @@ export interface FileRouteTypes {
     | '/share/$token'
     | '/canvas/$id'
     | '/projects/$id'
+    | '/api/admin/gateway'
     | '/api/brain/context'
     | '/api/canvas/stream'
     | '/api/canvas/versions'
@@ -792,6 +802,7 @@ export interface FileRouteTypes {
     | '/share/$token'
     | '/canvas/$id'
     | '/projects/$id'
+    | '/api/admin/gateway'
     | '/api/brain/context'
     | '/api/canvas/stream'
     | '/api/canvas/versions'
@@ -867,6 +878,7 @@ export interface FileRouteTypes {
     | '/share/$token'
     | '/_authenticated/canvas/$id'
     | '/_authenticated/projects/$id'
+    | '/api/admin/gateway'
     | '/api/brain/context'
     | '/api/canvas/stream'
     | '/api/canvas/versions'
@@ -924,6 +936,7 @@ export interface RootRouteChildren {
   ApiSharesRoute: typeof ApiSharesRouteWithChildren
   ApiTitleRoute: typeof ApiTitleRoute
   ShareTokenRoute: typeof ShareTokenRoute
+  ApiAdminGatewayRoute: typeof ApiAdminGatewayRoute
   ApiBrainContextRoute: typeof ApiBrainContextRoute
   ApiCanvasStreamRoute: typeof ApiCanvasStreamRoute
   ApiCanvasVersionsRoute: typeof ApiCanvasVersionsRoute
@@ -1407,6 +1420,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiBrainContextRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/gateway': {
+      id: '/api/admin/gateway'
+      path: '/api/admin/gateway'
+      fullPath: '/api/admin/gateway'
+      preLoaderRoute: typeof ApiAdminGatewayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/projects/$id': {
       id: '/_authenticated/projects/$id'
       path: '/projects/$id'
@@ -1575,6 +1595,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSharesRoute: ApiSharesRouteWithChildren,
   ApiTitleRoute: ApiTitleRoute,
   ShareTokenRoute: ShareTokenRoute,
+  ApiAdminGatewayRoute: ApiAdminGatewayRoute,
   ApiBrainContextRoute: ApiBrainContextRoute,
   ApiCanvasStreamRoute: ApiCanvasStreamRoute,
   ApiCanvasVersionsRoute: ApiCanvasVersionsRoute,

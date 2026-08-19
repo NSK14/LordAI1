@@ -80,7 +80,7 @@ export function DashboardView({
 
   const brainInput = useMemo(
     () => ({
-      snapshot: snapshot!,
+      snapshot: snapshot ?? ({} as LearningSnapshot),
       availableMinutes: 120,
       energyLevel: "medium" as const,
     }),

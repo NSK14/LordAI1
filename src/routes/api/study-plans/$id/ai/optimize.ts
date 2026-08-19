@@ -6,6 +6,7 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { requireSupabaseRequestAuth } from "@/integrations/supabase/auth-middleware";
 import { apiErrorResponse, apiOkResponse } from "@/lib/api-error";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { OPENROUTER_DEFAULT_MODEL } from "@/lib/openrouter-provider";
 
 function getProvider() {
   const apiKey = process.env.OPENROUTER_API_KEY;
@@ -146,7 +147,7 @@ ${JSON.stringify({ class: profile?.class, subjects: profile?.subjects, weeklyMin
 
         try {
           const { text } = await generateText({
-            model: getProvider()("google/gemma-4-26b-a4b-it:free"),
+            model: getProvider()(OPENROUTER_DEFAULT_MODEL),
             system: systemPrompt,
             messages: [{ role: "user", content: "Optimize my study plan." }],
             maxOutputTokens: 1500,

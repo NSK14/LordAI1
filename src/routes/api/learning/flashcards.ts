@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { requireSupabaseRequestAuth } from "@/integrations/supabase/auth-middleware";
 import { apiErrorResponse } from "@/lib/api-error";
+import { OPENROUTER_DEFAULT_MODEL } from "@/lib/openrouter-provider";
 
 const FlashcardRequestSchema = z.discriminatedUnion("action", [
   z.object({
@@ -97,7 +98,7 @@ export const Route = createFileRoute("/api/learning/flashcards")({
 
             const { generateText } = require("ai");
             const { text } = await generateText({
-              model: provider("google/gemma-4-26b-a4b-it:free"),
+              model: provider(OPENROUTER_DEFAULT_MODEL),
               system: `You are a ${diffLabel}-level ${concept.framework} flashcard creator. Output ONLY strict JSON array. No markdown. No extra text.`,
               messages: [
                 {

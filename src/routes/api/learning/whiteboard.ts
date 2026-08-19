@@ -5,6 +5,7 @@ import { generateText } from "ai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { requireSupabaseRequestAuth } from "@/integrations/supabase/auth-middleware";
 import { apiErrorResponse } from "@/lib/api-error";
+import { OPENROUTER_DEFAULT_MODEL } from "@/lib/openrouter-provider";
 
 function getOpenRouterProvider() {
   const apiKey = process.env.OPENROUTER_API_KEY;
@@ -132,7 +133,7 @@ export const Route = createFileRoute("/api/learning/whiteboard")({
               : null;
 
             const { text } = await generateText({
-              model: provider("google/gemma-4-26b-a4b-it:free"),
+              model: provider(OPENROUTER_DEFAULT_MODEL),
               system: `You are an AI whiteboard assistant for ${conceptInfo?.data?.title ?? "learning"}. Analyze the canvas and provide helpful annotations. Return JSON array of annotation objects.`,
               messages: [
                 {

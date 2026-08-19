@@ -1,11 +1,13 @@
-/** Approximate per-million-token USD pricing for cost estimation. */
-const MODEL_COST: Record<string, { input: number; output: number }> = {
-  "google/gemini-2.5-pro": { input: 0, output: 0 },
-  "google/gemini-2.5-flash": { input: 0, output: 0 },
-  "google/gemma-4-26b-a4b-it:free": { input: 0, output: 0 },
-  "openai/gpt-oss-20b:free": { input: 0, output: 0 },
-  local: { input: 0, output: 0 },
-};
+import { PROVIDER_CONFIG } from "./lord-config";
+
+const MODEL_COST: Record<string, { input: number; output: number }> = {};
+
+for (const [provider, config] of Object.entries(PROVIDER_CONFIG)) {
+  for (const modelId of config.models) {
+    const key = modelId.includes("/") ? modelId : `${provider}/${modelId}`;
+    MODEL_COST[key] = { input: 0, output: 0 };
+  }
+}
 
 export function estimateCost(modelId: string, inputTokens: number, outputTokens: number): number {
   const rate = MODEL_COST[modelId] ?? { input: 0, output: 0 };

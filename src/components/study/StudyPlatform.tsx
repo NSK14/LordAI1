@@ -7,6 +7,7 @@ import { useCurrentUser } from "@/hooks/use-current-user";
 import { getLearningSnapshot } from "@/lib/learning/client";
 import { detectTopic, generateDailyMissions, generateRecommendations } from "@/lib/learning/brain";
 import { StudyTopNav } from "./StudyTopNav";
+import { StudyErrorBoundary } from "./StudyErrorBoundary";
 import { DashboardView } from "./views/DashboardView";
 import { ConceptBrowser } from "./views/ConceptBrowser";
 import { ConceptDetail } from "./views/ConceptDetail";
@@ -320,90 +321,108 @@ export function StudyPlatform() {
 
   const views: Record<StudyView, ReactNode> = {
     dashboard: (
-      <DashboardView
-        snapshot={snapshot}
-        userId={userId}
-        onNavigate={handleViewChange}
-        onStartPractice={handleStartPractice}
-        onStartTutor={handleStartTutor}
-        onConceptClick={handleConceptClick}
-        refresh={refresh}
-      />
+      <StudyErrorBoundary>
+        <DashboardView
+          snapshot={snapshot}
+          userId={userId}
+          onNavigate={handleViewChange}
+          onStartPractice={handleStartPractice}
+          onStartTutor={handleStartTutor}
+          onConceptClick={handleConceptClick}
+          refresh={refresh}
+        />
+      </StudyErrorBoundary>
     ),
     concepts: conceptId ? (
-      <ConceptDetail
-        snapshot={snapshot}
-        userId={userId}
-        conceptId={conceptId}
-        onNavigate={handleViewChange}
-        onStartInContext={(view) => navigateTo(view, conceptId)}
-        onBack={() => navigateTo("concepts")}
-        refresh={refresh}
-      />
+      <StudyErrorBoundary>
+        <ConceptDetail
+          snapshot={snapshot}
+          userId={userId}
+          conceptId={conceptId}
+          onNavigate={handleViewChange}
+          onStartInContext={(view) => navigateTo(view, conceptId)}
+          onBack={() => navigateTo("concepts")}
+          refresh={refresh}
+        />
+      </StudyErrorBoundary>
     ) : (
-      <ConceptBrowser
-        snapshot={snapshot}
-        userId={userId}
-        onConceptClick={handleConceptClick}
-        onNavigate={handleViewChange}
-        refresh={refresh}
-      />
+      <StudyErrorBoundary>
+        <ConceptBrowser
+          snapshot={snapshot}
+          userId={userId}
+          onConceptClick={handleConceptClick}
+          onNavigate={handleViewChange}
+          refresh={refresh}
+        />
+      </StudyErrorBoundary>
     ),
     practice: (
-      <PracticeView
-        snapshot={snapshot}
-        userId={userId}
-        conceptId={conceptId}
-        onNavigate={handleViewChange}
-        onBack={() => navigateTo("dashboard")}
-        refresh={refresh}
-      />
+      <StudyErrorBoundary>
+        <PracticeView
+          snapshot={snapshot}
+          userId={userId}
+          conceptId={conceptId}
+          onNavigate={handleViewChange}
+          onBack={() => navigateTo("dashboard")}
+          refresh={refresh}
+        />
+      </StudyErrorBoundary>
     ),
     tutor: (
-      <TutorView
-        snapshot={snapshot}
-        userId={userId}
-        conceptId={conceptId}
-        onNavigate={handleViewChange}
-        onBack={() => navigateTo("dashboard")}
-        refresh={refresh}
-      />
+      <StudyErrorBoundary>
+        <TutorView
+          snapshot={snapshot}
+          userId={userId}
+          conceptId={conceptId}
+          onNavigate={handleViewChange}
+          onBack={() => navigateTo("dashboard")}
+          refresh={refresh}
+        />
+      </StudyErrorBoundary>
     ),
     flashcards: (
-      <FlashcardStudy
-        snapshot={snapshot}
-        userId={userId}
-        onNavigate={handleViewChange}
-        onBack={() => navigateTo("dashboard")}
-        refresh={refresh}
-      />
+      <StudyErrorBoundary>
+        <FlashcardStudy
+          snapshot={snapshot}
+          userId={userId}
+          onNavigate={handleViewChange}
+          onBack={() => navigateTo("dashboard")}
+          refresh={refresh}
+        />
+      </StudyErrorBoundary>
     ),
     exams: (
-      <TestCenter
-        snapshot={snapshot}
-        userId={userId}
-        onNavigate={handleViewChange}
-        onBack={() => navigateTo("dashboard")}
-        refresh={refresh}
-      />
+      <StudyErrorBoundary>
+        <TestCenter
+          snapshot={snapshot}
+          userId={userId}
+          onNavigate={handleViewChange}
+          onBack={() => navigateTo("dashboard")}
+          refresh={refresh}
+        />
+      </StudyErrorBoundary>
     ),
     planner: (
-      <PlannerView
-        snapshot={snapshot}
-        userId={userId}
-        onNavigate={handleViewChange}
-        onBack={() => navigateTo("dashboard")}
-        refresh={refresh}
-      />
+      <StudyErrorBoundary>
+        <PlannerView
+          snapshot={snapshot}
+          userId={userId}
+          onNavigate={handleViewChange}
+          onBack={() => navigateTo("dashboard")}
+          refresh={refresh}
+        />
+      </StudyErrorBoundary>
     ),
     progress: (
-      <ProgressView
-        snapshot={snapshot}
-        userId={userId}
-        onNavigate={handleViewChange}
-        onBack={() => navigateTo("dashboard")}
-        refresh={refresh}
-      />
+      <StudyErrorBoundary>
+        <ProgressView
+          snapshot={snapshot}
+          userId={userId}
+          onNavigate={handleViewChange}
+          onBack={() => navigateTo("dashboard")}
+          refresh={refresh}
+        />
+      </StudyErrorBoundary>
     ),
   };
 

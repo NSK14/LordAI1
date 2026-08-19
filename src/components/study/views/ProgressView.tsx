@@ -111,8 +111,8 @@ export function ProgressView({ snapshot, userId, onNavigate, onBack, refresh }: 
     flashcards: (snapshot.flashcards ?? []).map((f) => ({ reviews: [] })),
     exams: snapshot.exams ?? [],
     mastery,
-    analytics: snapshot.analytics,
-    daily_goals: snapshot.daily_goals,
+    analytics: snapshot.analytics ?? [],
+    daily_goals: snapshot.daily_goals ?? [],
   });
 
   const journey = buildLearningJourney(
@@ -404,7 +404,7 @@ export function ProgressView({ snapshot, userId, onNavigate, onBack, refresh }: 
           </motion.section>
         )}
 
-        {snapshot.analytics && snapshot.analytics.length > 1 && (
+        {(snapshot.analytics ?? []).length > 1 && (
           <motion.section
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -416,7 +416,7 @@ export function ProgressView({ snapshot, userId, onNavigate, onBack, refresh }: 
             </h3>
             <div className="rounded-xl border border-border/60 bg-card p-4">
               <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={snapshot.analytics.slice(0, 14).reverse()}>
+                <LineChart data={(snapshot.analytics ?? []).slice(0, 14).reverse()}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted/30" />
                   <XAxis dataKey="date" className="text-xs" tick={{ fontSize: 10 }} />
                   <YAxis className="text-xs" tick={{ fontSize: 10 }} />

@@ -60,7 +60,7 @@ export function TestCenter({ snapshot, userId, onBack, refresh }: TestCenterProp
   const handleCreateExam = useCallback(async () => {
     if (!user?.id || !snapshot) return;
 
-    const conceptIds = snapshot.concepts.slice(0, 5).map((c) => c.id);
+    const conceptIds = (snapshot.concepts ?? []).slice(0, 5).map((c) => c.id);
 
     setCreating(true);
     try {
@@ -254,7 +254,7 @@ export function TestCenter({ snapshot, userId, onBack, refresh }: TestCenterProp
               </h3>
               <p className="mb-4 text-sm text-muted-foreground">
                 LORD will generate an adaptive {newExamInputs.examType} exam covering{" "}
-                {snapshot.concepts.slice(0, 5).length} concepts.
+                {(snapshot.concepts ?? []).slice(0, 5).length} concepts.
               </p>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
